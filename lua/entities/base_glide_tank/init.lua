@@ -145,6 +145,7 @@ function ENT:OnWeaponFire( weapon )
 
     local projectile = Glide.FireProjectile( projectilePos, dir:Angle(), self:GetDriver(), self )
     projectile.damage = self.TurretDamage
+    projectile.radius = 175
 
     self:EmitSound( self.TurretFireSound, 100, math.random( 95, 105 ), self.TurretFireVolume )
 
