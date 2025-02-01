@@ -75,6 +75,8 @@ end
 
 --- Override this base class function.
 function ENT:OnTakeDamage( dmginfo )
+    hook.Run( "Glide_VehicleDamage", self, dmginfo )
+
     if dmginfo:IsDamageType( 64 ) then -- DMG_BLAST
         local inflictor = dmginfo:GetInflictor()
 

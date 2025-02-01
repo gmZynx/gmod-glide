@@ -93,6 +93,7 @@ local cvarBlast = GetConVar( "glide_blast_damage_multiplier" )
 
 function ENT:OnTakeDamage( dmginfo )
     if self.hasExploded then return end
+    hook.Run( "Glide_VehicleDamage", self, dmginfo )
 
     local health = self:GetChassisHealth()
     local amount = dmginfo:GetDamage()
