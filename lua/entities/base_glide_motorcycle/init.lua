@@ -130,6 +130,7 @@ local WORLD_UP = Vector( 0, 0, 1 )
 --- Override this base class function.
 function ENT:OnSimulatePhysics( phys, _, outLin, outAng )
     if not self.stayUpright then return end
+    if self:IsPlayerHolding() then return end
 
     local isAnyWheelGrounded = self.groundedCount > 0
     local angVel = phys:GetAngleVelocity()

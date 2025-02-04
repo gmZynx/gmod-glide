@@ -46,6 +46,7 @@ function Config:Reset()
     self.showPassengerList = true
     self.showEmptyVehicleHealth = false
     self.showSkybox = true
+    self.reduceTireParticles = false
     self.useKMH = false  -- Option to display speed in KM/H instead of MPH
 
     self.maxSkidMarkPieces = 500
@@ -133,6 +134,7 @@ function Config:Save( immediate )
         showPassengerList = self.showPassengerList,
         showEmptyVehicleHealth = self.showEmptyVehicleHealth,
         showSkybox = self.showSkybox,
+        reduceTireParticles = self.reduceTireParticles,
         useKMH = self.useKMH,
 
         manualGearShifting = self.manualGearShifting,
@@ -222,6 +224,7 @@ function Config:Load()
     LoadBool( "showPassengerList", true )
     LoadBool( "showEmptyVehicleHealth", false )
     LoadBool( "showSkybox", true )
+    LoadBool( "reduceTireParticles", false )
     LoadBool( "useKMH", false )
 
     LoadBool( "manualGearShifting", false )
@@ -717,6 +720,11 @@ function Config:OpenFrame()
         self.showSkybox = value
         self:Save()
         Glide.EnableSkyboxIndicator()
+    end )
+
+    theme:CreateToggleButton( panelMisc, L"misc.reduce_tire_particles", self.reduceTireParticles, function( value )
+        self.reduceTireParticles = value
+        self:Save()
     end )
 
     theme:CreateToggleButton( panelMisc, L"misc.auto_headlights_on", self.autoHeadlightOn, function( value )

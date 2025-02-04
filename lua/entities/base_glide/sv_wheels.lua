@@ -91,16 +91,19 @@ function ENT:PhysicsSimulate( phys, dt )
     -- Let children classes do additional physics if they want to
     self:OnSimulatePhysics( phys, dt, linForce, angForce )
 
-    -- Indirectly and subtly make the PhysObj go asleep when not moving
-    local factor = 1 - Clamp( self.totalSpeed / 10, 0, 1 )
+    -- At slow speeds, try to prevent slipping sideways on mildly steep slopes
+    local factor = 1 - Clamp( self.totalSpeed / 30, 0, 1 )
 
     if factor > 0.1 then
         local vel = phys:GetVelocity()
+        local rt = self:GetRight()
+        local force = rt:Dot( vel ) / dt
 
-        factor = factor * mass * 10
-        linForce[1] = linForce[1] - vel[1] * factor
-        linForce[2] = linForce[2] - vel[2] * factor
-        linForce[3] = linForce[3] - vel[3] * factor
+        force = force * mass * factor * rt
+
+        linForce[1] = linForce[1] - force[1]
+        linForce[2] = linForce[2] - force[2]
+        linForce[3] = linForce[3] - force[3]
     end
 
     -- Prevent crashes

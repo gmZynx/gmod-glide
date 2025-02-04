@@ -13,6 +13,8 @@ hook.Add( "CanPlayerEnterVehicle", "Glide.CheckVehicleLock", function( ply, seat
     if not IsValid( parent ) then return end
     if not parent.IsGlideVehicle then return end
 
+    if hook.Run( "Glide_CanEnterVehicle", ply, parent, seatIndex ) == false then return false end
+
     -- Check if this vehicle is locked
     if not parent:GetIsLocked() then return end
 
@@ -193,13 +195,6 @@ hook.Add( "OnDamagedByExplosion", "Glide.DisableRingingSound", function( _, dmgi
 
     if IsValid( inflictor ) and ( inflictor.IsGlideVehicle or inflictor:GetClass() == "glide_missile" ) then
         return true
-    end
-end )
-
--- Disable keep upright on motorcycles when picking them up with the Physics Gun.
-hook.Add( "OnPhysgunPickup", "Glide.DisableKeepUpright", function( _, ent )
-    if IsValid( ent ) and ent.IsGlideVehicle and ent.VehicleType == 2 then -- Glide.VEHICLE_TYPE.MOTORCYCLE
-        ent.stayUpright = false
     end
 end )
 

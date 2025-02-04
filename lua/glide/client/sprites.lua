@@ -1,9 +1,9 @@
 local lights = {}
 local lightCount = 0
 
-function Glide.DrawLight( pos, color, size )
+function Glide.DrawLight( pos, color, size, brightness )
     lightCount = lightCount + 1
-    lights[lightCount] = { pos, color.r, color.g, color.b, size or 70 }
+    lights[lightCount] = { pos, color.r, color.g, color.b, size or 70, brightness or 5 }
 end
 
 local CurTime = CurTime
@@ -24,10 +24,10 @@ hook.Add( "Think", "Glide.DrawLights", function()
             light.r = data[2]
             light.g = data[3]
             light.b = data[4]
-            light.brightness = 5
+            light.dietime = t + 0.25
             light.decay = 5000
             light.size = data[5]
-            light.dietime = t + 0.5
+            light.brightness = data[6]
         end
     end
 

@@ -24,15 +24,26 @@ local function HUDShouldDraw( name )
     if hideComponent[name] then return false end
 end
 
--- Block binds that uses the same button as Glide
+-- Block (some) binds that uses the same buttons as Glide
+
+local ACTION_FILTER = {
+    ["countermeasures"] = true,
+    ["landing_gear"] = true,
+    ["shift_up"] = true,
+    ["shift_down"] = true,
+    ["shift_neutral"] = true
+}
+
 local usedButtons = {}
 
 hook.Add( "Glide_OnConfigChange", "Glide.BlockBindConflicts", function()
     table.Empty( usedButtons )
 
     for _, actions in pairs( Glide.Config.binds ) do
-        for _, button in pairs( actions ) do
-            usedButtons[button] = true
+        for action, button in pairs( actions ) do
+            if ACTION_FILTER[action] then
+                usedButtons[button] = true
+            end
         end
     end
 end )

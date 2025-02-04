@@ -278,6 +278,12 @@ do
     local COLOR_BRAKE = Color( 255, 0, 0, 255 )
     local COLOR_REV = Color( 255, 255, 255, 200 )
 
+    local DEFAULT_BRIGHTNESS = {
+        ["signal_left"] = 6,
+        ["signal_right"] = 6,
+        ["taillight"] = 1
+    }
+
     --- Update out model's bodygroups depending on which lights are on.
     function ENT:DrawLights()
         lightState.brake = self:GetIsBraking()
@@ -320,15 +326,15 @@ do
 
             elseif enable and ( ltype == "taillight" or ltype == "signal_left" or ltype == "signal_right" ) then
                 DrawLightSprite( pos, dir, l.size or 30, l.color or COLOR_BRAKE )
-                DrawLight( pos + dir * 10, l.color or COLOR_BRAKE, l.lightRadius )
+                DrawLight( pos + dir * 10, l.color or COLOR_BRAKE, l.lightRadius, l.lightBrightness or DEFAULT_BRIGHTNESS[ltype] )
 
             elseif enable and ltype == "brake" then
                 DrawLightSprite( pos, dir, l.size or 30, COLOR_BRAKE )
-                DrawLight( pos + dir * 10, COLOR_BRAKE, l.lightRadius )
+                DrawLight( pos + dir * 10, COLOR_BRAKE, l.lightRadius, l.lightBrightness )
 
             elseif enable and ltype == "reverse" then
                 DrawLightSprite( pos, dir, l.size or 20, COLOR_REV )
-                DrawLight( pos + dir * 10, COLOR_REV, l.lightRadius )
+                DrawLight( pos + dir * 10, COLOR_REV, l.lightRadius, l.lightBrightness )
             end
         end
     end
@@ -384,7 +390,7 @@ function ENT:OnUpdateMisc()
 
         for _, v in ipairs( self.Headlights ) do
             v.angles = v.angles or Angle( 10, 0, 0 )
-            self:CreateHeadlight( v.offset, v.angles, COLOR_HEADLIGHT )
+            self:CreateHeadlight( v.offset, v.angles, COLOR_HEADLIGHT, v.texture )
         end
     end
 
@@ -456,11 +462,11 @@ function ENT:OnUpdateMisc()
     end
 end
 
-function ENT:CreateHeadlight( offset, angles, color )
+function ENT:CreateHeadlight( offset, angles, color, texture )
     color = color or Color( 255, 255, 255 )
 
     local state = self.headlightState
-    local fov = state > 1 and 80 or 70
+    local fov = state > 1 and 85 or 75
 
     local index = #self.headlights + 1
     local light = ProjectedTexture()
@@ -469,11 +475,11 @@ function ENT:CreateHeadlight( offset, angles, color )
 
     light:SetConstantAttenuation( 0 )
     light:SetLinearAttenuation( 50 )
-    light:SetTexture( "effects/flashlight001" )
-    light:SetBrightness( state > 1 and 6 or 4 )
+    light:SetTexture( texture or "glide/effects/headlight_rect" )
+    light:SetBrightness( state > 1 and 8 or 5 )
     light:SetEnableShadows( Glide.Config.headlightShadows )
     light:SetColor( color )
-    light:SetNearZ( 10 )
+    light:SetNearZ( 20 )
     light:SetFarZ( state > 1 and 3000 or 1500 )
     light:SetFOV( fov )
     light:SetPos( self:LocalToWorld( offset ) )

@@ -29,15 +29,17 @@ end
 local RandomInt = math.random
 local RandomFloat = math.Rand
 local DEBRIS_GRAVITY = Vector( 0, 0, -40 )
+local Config = Glide.Config
 
 function EFFECT:DoSurface( emitter, origin, velocity, scale, fx )
     local p
+    local lifetime = fx.lifetime * ( Config.reduceTireParticles and 0.4 or 1 )
 
     for _ = 1, 5 do
         p = emitter:Add( fx.mat, origin )
 
         if p then
-            p:SetDieTime( fx.lifetime * RandomFloat( 0.8, 1.2 ) )
+            p:SetDieTime( lifetime * RandomFloat( 0.8, 1.2 ) )
             p:SetStartAlpha( fx.alpha )
             p:SetEndAlpha( 0 )
             p:SetStartSize( fx.minSize * scale * RandomFloat( 0.9, 1.1 ) )
@@ -68,12 +70,13 @@ function EFFECT:DoSmoke( emitter, origin, velocity, scale, vehicle )
 
     local p
     local count = math.floor( scale )
+    local lifetime = Config.reduceTireParticles and 0.4 or 1
 
     for _ = 1, count do
         p = emitter:Add( SMOKE_MAT .. RandomInt( 9 ), origin )
 
         if p then
-            p:SetDieTime( RandomFloat( 2, 3 ) )
+            p:SetDieTime( RandomFloat( 2, 3 ) * lifetime )
             p:SetStartAlpha( 70 )
             p:SetEndAlpha( 0 )
             p:SetStartSize( 5 + RandomFloat( 1, 2 ) * scale )

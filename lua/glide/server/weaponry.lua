@@ -24,6 +24,10 @@ function Glide.CreateTurret( vehicle, offset, angles )
 end
 
 function Glide.FireMissile( pos, ang, attacker, parent, target )
+    if not IsValid( attacker ) and IsValid( parent ) then
+        attacker = parent:GetCreator()
+    end
+
     local missile = ents.Create( "glide_missile" )
     missile:SetPos( pos )
     missile:SetAngles( ang )
@@ -38,6 +42,10 @@ function Glide.FireMissile( pos, ang, attacker, parent, target )
 end
 
 function Glide.FireProjectile( pos, ang, attacker, parent )
+    if not IsValid( attacker ) and IsValid( parent ) then
+        attacker = parent:GetCreator()
+    end
+
     local projectile = ents.Create( "glide_projectile" )
     projectile:SetPos( pos )
     projectile:SetAngles( ang )
