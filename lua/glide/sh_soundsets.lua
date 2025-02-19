@@ -22,23 +22,29 @@ end
 
 local IsEntity = isentity
 local EmitSound = EmitSound
-
 local RandomInt = math.random
 local RandomFloat = math.Rand
 
+local audioExt = { [".wav"] = true, [".mp3"] = true }
+
+--- Get a random sound from a sound set.
+--- If you pass a .wav file path as a set `id`, that will be returned instead.
 function Glide.GetRandomSound( id )
     local set = soundSets[id]
 
     if not set then
-        Glide.Print( "Tried to get inexistant sound set: %s", id )
-        return ""
+        if audioExt[id:sub( -4 )] then
+            return id
+        else
+            Glide.Print( "Tried to get inexistant sound set: %s", id )
+            return ""
+        end
     end
 
     return set.paths[RandomInt( #set.paths )]
 end
 
 local dummySet = { paths = {}, level = 80, minPitch = 100, maxPitch = 100 }
-local audioExt = { [".wav"] = true, [".mp3"] = true }
 
 --- Play a random sound from a sound set.
 --- If you pass a .wav file path as a set `id`, that will be played instead.

@@ -8,6 +8,8 @@ ENT.AdminOnly = false
 -- Change vehicle type
 ENT.VehicleType = Glide.VEHICLE_TYPE.MOTORCYCLE
 
+ENT.MaxChassisHealth = 600
+
 ENT.UneditableNWVars = {
     WheelRadius = true,
     SuspensionLength = true,
@@ -34,9 +36,8 @@ end
 if SERVER then
     -- Change default car variables
     ENT.ChassisMass = 300
-    ENT.MaxChassisHealth = 600
 
-    ENT.AngularDrag = Vector( 0, -0.5, -0.5 ) -- Roll, pitch, yaw
+    ENT.AngularDrag = Vector( 0, -2, -0.5 ) -- Roll, pitch, yaw
     ENT.FallOnCollision = true
     ENT.SuspensionHeavySound = "Glide.Suspension.CompressBike"
 

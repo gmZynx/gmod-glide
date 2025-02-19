@@ -630,6 +630,8 @@ function ENT:CreateWheel( offset, params )
     return wheel
 end
 
+local GetDevMode = Glide.GetDevMode
+
 local traction, tractionFront, tractionRear
 local frontTorque, rearTorque, steerAngle, frontBrake, rearBrake
 local groundedCount, rpm, avgRPM, totalSideSlip, totalForwardSlip, state
@@ -685,6 +687,10 @@ function ENT:WheelThink( dt )
     selfTbl.groundedCount = groundedCount
     selfTbl.avgSideSlip = totalSideSlip / selfTbl.wheelCount
     selfTbl.avgForwardSlip = totalForwardSlip / selfTbl.wheelCount
+
+    if GetDevMode() then
+        debugoverlay.Axis( self:LocalToWorld( phys:GetMassCenter() ), self:GetAngles(), 15, 0.1, true )
+    end
 end
 
 local Floor = math.floor

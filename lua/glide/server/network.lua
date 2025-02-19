@@ -21,6 +21,60 @@ commands[Glide.CMD_SET_HEADLIGHTS] = function( ply )
     end
 end
 
+commands[Glide.CMD_UPLOAD_STREAM_PRESET] = function( ply )
+    local veh = net.ReadEntity()
+
+    if not IsValid( veh ) then return end
+    if not veh.IsGlideVehicle then return end
+
+    -- Make sure this player can tool this vehicle
+    local tr = ply:GetEyeTrace()
+    tr.Entity = veh
+
+    if hook.Run( "CanTool", ply, tr, "glide_engine_stream", {}, 1 ) == false then return end
+
+    local size = net.ReadUInt( 16 )
+
+    if size > Glide.MAX_JSON_SIZE then
+        Glide.Print( "Tried to read data that was too big! (%d/%d)", size, Glide.MAX_JSON_SIZE )
+        return
+    end
+
+    local data = net.ReadData( size )
+
+    data = util.Decompress( data )
+    if not data then return end
+
+    Glide.ApplyEngineStreamModifier( ply, veh, { json = data } )
+end
+
+commands[Glide.CMD_UPLOAD_SOUND_PRESET] = function( ply )
+    local veh = net.ReadEntity()
+
+    if not IsValid( veh ) then return end
+    if not veh.IsGlideVehicle then return end
+
+    -- Make sure this player can tool this vehicle
+    local tr = ply:GetEyeTrace()
+    tr.Entity = veh
+
+    if hook.Run( "CanTool", ply, tr, "glide_misc_sounds", {}, 1 ) == false then return end
+
+    local size = net.ReadUInt( 16 )
+
+    if size > Glide.MAX_JSON_SIZE then
+        Glide.Print( "Tried to read data that was too big! (%d/%d)", size, Glide.MAX_JSON_SIZE )
+        return
+    end
+
+    local data = net.ReadData( size )
+
+    data = util.Decompress( data )
+    if not data then return end
+
+    Glide.ApplyMiscSoundsModifier( ply, veh, { json = data } )
+end
+
 -- Store the last entity the CLIENT told it was aiming at.
 -- Used for lag compensation on turrets.
 local lastAimEntity = Glide.lastAimEntity or {}
@@ -40,7 +94,9 @@ local cooldowns = {
     [Glide.CMD_INPUT_SETTINGS] = { interval = 1, players = {} },
     [Glide.CMD_SWITCH_SEATS] = { interval = 0.5, players = {} },
     [Glide.CMD_SET_HEADLIGHTS] = { interval = 0.5, players = {} },
-    [Glide.CMD_LAST_AIM_ENTITY] = { interval = 0.01, players = {} }
+    [Glide.CMD_LAST_AIM_ENTITY] = { interval = 0.01, players = {} },
+    [Glide.CMD_UPLOAD_STREAM_PRESET] = { interval = 0.4, players = {} },
+    [Glide.CMD_UPLOAD_SOUND_PRESET] = { interval = 0.4, players = {} }
 }
 
 -- Receive and validate network commands

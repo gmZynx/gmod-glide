@@ -40,7 +40,7 @@ function ENT:GetSeatBoneManipulations( seatIndex )
 
     local decay = 5
     local dt = FrameTime()
-    local resting = self:GetVelocity():Length() < 30
+    local resting = self:GetVelocity():Length() < 50
 
     local thigh = DRIVER_POSE_DATA["ValveBiped.Bip01_L_Thigh"]
     local calf = DRIVER_POSE_DATA["ValveBiped.Bip01_L_Calf"]

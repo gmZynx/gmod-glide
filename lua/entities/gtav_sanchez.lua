@@ -35,6 +35,13 @@ if CLIENT then
         { offset = Vector( 28, 0, 27 ) }
     }
 
+    ENT.StoppedSound = "Glide.Sanchez.EngineStop"
+
+    Glide.AddSoundSet( "Glide.Sanchez.EngineStop", 80, 100, 100, {
+        "glide/streams/sanchez/turn_off_1.wav",
+        "glide/streams/sanchez/turn_off_2.wav"
+    } )
+
     function ENT:OnCreateEngineStream( stream )
         stream.offset = Vector( 5, 0, 0 )
         stream:LoadPreset( "sanchez" )

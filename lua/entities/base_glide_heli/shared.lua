@@ -23,7 +23,10 @@ function ENT:SetupDataTables()
     BaseClass.SetupDataTables( self )
 
     self:NetworkVar( "Bool", "OutOfControl" )
+    self:NetworkVar( "Bool", "IsEngineDying" )
+
     self:SetOutOfControl( false )
+    self:SetIsEngineDying( false )
 
     if CLIENT then
         -- Callback used to play out-of-control sounds clientside
@@ -64,6 +67,10 @@ if CLIENT then
     ENT.BassSoundVol = 1.0
     ENT.MidSoundVol = 0.4
     ENT.HighSoundVol = 0.8
+
+    -- Play this sound (to passengers only) when the engine is failing
+    ENT.EngineFailSound = "glide/ui/stall_beep.wav"
+    ENT.EngineFailVolume = 1.0
 end
 
 if SERVER then

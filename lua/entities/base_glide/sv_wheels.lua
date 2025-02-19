@@ -20,7 +20,9 @@ function ENT:CreateWheel( offset, params )
     local wheel = ents.Create( "glide_wheel" )
     wheel:SetPos( pos )
     wheel:SetAngles( ang )
+    wheel:SetOwner( self )
     wheel:SetParent( self )
+    wheel:SetCreator( self:GetCreator() )
     wheel:Spawn()
     wheel:SetupWheel( params )
 
@@ -60,6 +62,7 @@ function ENT:WheelThink( dt )
     end
 end
 
+local Abs = math.abs
 local Clamp = math.Clamp
 local ClampForce = Glide.ClampForce
 
@@ -92,14 +95,13 @@ function ENT:PhysicsSimulate( phys, dt )
     self:OnSimulatePhysics( phys, dt, linForce, angForce )
 
     -- At slow speeds, try to prevent slipping sideways on mildly steep slopes
-    local factor = 1 - Clamp( self.totalSpeed / 30, 0, 1 )
+    local totalSpeed = self.totalSpeed + Abs( angVel[3] )
+    local factor = 1 - Clamp( totalSpeed / 30, 0, 1 )
 
     if factor > 0.1 then
         local vel = phys:GetVelocity()
         local rt = self:GetRight()
-        local force = rt:Dot( vel ) / dt
-
-        force = force * mass * factor * rt
+        local force = ( rt:Dot( vel ) / dt ) * mass * factor * rt
 
         linForce[1] = linForce[1] - force[1]
         linForce[2] = linForce[2] - force[2]

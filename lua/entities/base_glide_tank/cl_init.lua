@@ -27,6 +27,7 @@ end
 function ENT:OnPostInitialize()
     self.currentTurretAng = Angle()
     self.targetTurretAng = Angle()
+    self.streamJSONOverride = nil
 end
 
 --- Override this base class function.
@@ -65,17 +66,19 @@ function ENT:OnDeactivateSounds()
     end
 end
 
+local GetVolume = Glide.Config.GetVolume
+
 --- Implement this base class function.
 function ENT:OnTurnOn()
     if self.StartedSound ~= "" then
-        self:EmitSound( self.StartedSound, 85, 100, 1.0 )
+        Glide.PlaySoundSet( self.StartedSound, self, GetVolume( "carVolume" ), nil, 85 )
     end
 end
 
 --- Implement this base class function.
 function ENT:OnTurnOff()
     if self.StoppedSound ~= "" then
-        self:EmitSound( self.StoppedSound, 75, 100, 1.0 )
+        Glide.PlaySoundSet( self.StoppedSound, self, GetVolume( "carVolume" ), nil, 85 )
     end
 
     if self.stream then
@@ -121,7 +124,6 @@ end
 local Abs = math.abs
 local Clamp = math.Clamp
 local FrameTime = FrameTime
-local GetVolume = Glide.Config.GetVolume
 local ExpDecayAngle = Glide.ExpDecayAngle
 
 --- Implement this base class function.
@@ -205,7 +207,13 @@ function ENT:OnUpdateSounds()
 
     if not stream then
         self.stream = Glide.CreateEngineStream( self )
-        self:OnCreateEngineStream( self.stream )
+
+        if self.streamJSONOverride then
+            self.stream:LoadJSON( self.streamJSONOverride )
+        else
+            self:OnCreateEngineStream( self.stream )
+        end
+
         self.stream:Play()
 
         return

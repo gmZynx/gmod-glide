@@ -12,6 +12,7 @@ function Config:Reset()
     self.explosionVolume = 1.0
     self.hornVolume = 1.0
     self.windVolume = 0.7
+    self.warningVolume = 0.8
     self.vcVolume = 0.4
 
     -- Camera settings
@@ -97,6 +98,7 @@ function Config:Save( immediate )
         explosionVolume = self.explosionVolume,
         hornVolume = self.hornVolume,
         windVolume = self.windVolume,
+        warningVolume = self.warningVolume,
         vcVolume = self.vcVolume,
 
         -- Camera settings
@@ -186,6 +188,7 @@ function Config:Load()
     SetNumber( self, "explosionVolume", data.explosionVolume, 0, 1, self.explosionVolume )
     SetNumber( self, "hornVolume", data.hornVolume, 0, 1, self.hornVolume )
     SetNumber( self, "windVolume", data.windVolume, 0, 1, self.windVolume )
+    SetNumber( self, "warningVolume", data.warningVolume, 0, 1, self.warningVolume )
     SetNumber( self, "vcVolume", data.vcVolume, 0, 1, self.vcVolume )
 
     -- Camera settings
@@ -335,12 +338,9 @@ function Config:OpenFrame()
         return
     end
 
-    local theme = Glide.Theme
-
     local frame = vgui.Create( "Styled_TabbedFrame" )
     frame:SetIcon( "glide/icons/car.png" )
     frame:SetTitle( Glide.GetLanguageText( "settings_window" ) )
-    frame:ApplyTheme( theme )
     frame:Center()
     frame:MakePopup()
 
@@ -351,39 +351,44 @@ function Config:OpenFrame()
     self.frame = frame
 
     local L = Glide.GetLanguageText
+    local CreateHeader = StyledTheme.CreateFormHeader
+    local CreateButton = StyledTheme.CreateFormButton
+    local CreateToggle = StyledTheme.CreateFormToggle
+    local CreateSlider = StyledTheme.CreateFormSlider
+    local CreateCombo = StyledTheme.CreateFormCombo
 
     ----- Camera settings -----
 
-    local panelCamera = frame:AddTab( "icon16/camera.png", L"settings.camera" )
+    local panelCamera = frame:AddTab( "styledstrike/icons/camera.png", L"settings.camera" )
 
-    theme:CreateHeader( panelCamera, L"settings.camera" )
+    CreateHeader( panelCamera, L"settings.camera", 0 )
 
-    theme:CreateSlider( panelCamera, L"camera.sensitivity", self.lookSensitivity, 0.01, 5, 2, function( value )
+    CreateSlider( panelCamera, L"camera.sensitivity", self.lookSensitivity, 0.01, 5, 2, function( value )
         self.lookSensitivity = value
         self:Save()
     end )
 
-    theme:CreateToggleButton( panelCamera, L"camera.invert_x", self.cameraInvertX, function( value )
+    CreateToggle( panelCamera, L"camera.invert_x", self.cameraInvertX, function( value )
         self.cameraInvertX = value
         self:Save()
     end )
 
-    theme:CreateToggleButton( panelCamera, L"camera.invert_y", self.cameraInvertY, function( value )
+    CreateToggle( panelCamera, L"camera.invert_y", self.cameraInvertY, function( value )
         self.cameraInvertY = value
         self:Save()
     end )
 
-    theme:CreateSlider( panelCamera, L"camera.distance", self.cameraDistance, 0.5, 3, 2, function( value )
+    CreateSlider( panelCamera, L"camera.distance", self.cameraDistance, 0.5, 3, 2, function( value )
         self.cameraDistance = value
         self:Save()
     end )
 
-    theme:CreateSlider( panelCamera, L"camera.height", self.cameraHeight, 0.25, 2, 2, function( value )
+    CreateSlider( panelCamera, L"camera.height", self.cameraHeight, 0.25, 2, 2, function( value )
         self.cameraHeight = value
         self:Save()
     end )
 
-    theme:CreateSlider( panelCamera, L"camera.fov_internal", self.cameraFOVInternal, 30, 120, 0, function( value )
+    CreateSlider( panelCamera, L"camera.fov_internal", self.cameraFOVInternal, 30, 120, 0, function( value )
         self.cameraFOVInternal = value
         self:Save()
 
@@ -392,7 +397,7 @@ function Config:OpenFrame()
         end
     end )
 
-    theme:CreateSlider( panelCamera, L"camera.fov_external", self.cameraFOVExternal, 30, 120, 0, function( value )
+    CreateSlider( panelCamera, L"camera.fov_external", self.cameraFOVExternal, 30, 120, 0, function( value )
         self.cameraFOVExternal = value
         self:Save()
 
@@ -408,12 +413,12 @@ function Config:OpenFrame()
         if autoCenterSlider then autoCenterSlider:Remove() end
         if self.fixedCameraMode > 2 then return end
 
-        autoCenterButton = theme:CreateToggleButton( panelCamera, L"camera.autocenter", self.enableAutoCenter, function( value )
+        autoCenterButton = CreateToggle( panelCamera, L"camera.autocenter", self.enableAutoCenter, function( value )
             self.enableAutoCenter = value
             self:Save()
         end )
 
-        autoCenterSlider = theme:CreateSlider( panelCamera, L"camera.autocenter_delay", self.autoCenterDelay, 0.1, 5, 2, function( value )
+        autoCenterSlider = CreateSlider( panelCamera, L"camera.autocenter_delay", self.autoCenterDelay, 0.1, 5, 2, function( value )
             self.autoCenterDelay = value
             self:Save()
         end )
@@ -426,7 +431,7 @@ function Config:OpenFrame()
         L"camera.fixed.both"
     }
 
-    theme:CreateComboBox( panelCamera, L"camera.fixed", fixedCameraOptions, self.fixedCameraMode + 1, function( value )
+    CreateCombo( panelCamera, L"camera.fixed", fixedCameraOptions, self.fixedCameraMode + 1, function( value )
         self.fixedCameraMode = value - 1
         self:Save()
         SetupAutoCenterSettings()
@@ -436,9 +441,9 @@ function Config:OpenFrame()
 
     ----- Mouse settings -----
 
-    local panelMouse = frame:AddTab( "icon16/mouse.png", L"settings.mouse" )
+    local panelMouse = frame:AddTab( "styledstrike/icons/mouse.png", L"settings.mouse" )
 
-    theme:CreateHeader( panelMouse, L"settings.mouse" )
+    CreateHeader( panelMouse, L"settings.mouse", 0 )
 
     local mouseModeOptions = {
         L"mouse.mode_aim",
@@ -446,15 +451,9 @@ function Config:OpenFrame()
         L"mouse.mode_camera"
     }
 
-    local mouseAxisOptions = {
-        L"mouse.none",
-        L"mouse.x",
-        L"mouse.y"
-    }
-
     local SetupMouseModeSettings
 
-    theme:CreateComboBox( panelMouse, L"mouse.flying_mode", mouseModeOptions, self.mouseFlyMode + 1, function( value )
+    CreateCombo( panelMouse, L"mouse.flying_mode", mouseModeOptions, self.mouseFlyMode + 1, function( value )
         self.mouseFlyMode = value - 1
         self:Save()
         self:TransmitInputSettings()
@@ -475,6 +474,12 @@ function Config:OpenFrame()
         end
     end
 
+    local mouseAxisOptions = {
+        L"mouse.none",
+        L"mouse.x",
+        L"mouse.y"
+    }
+
     SetupMouseModeSettings = function()
         for _, p in pairs( directMousePanel:GetChildren() ) do
             p:Remove()
@@ -482,48 +487,48 @@ function Config:OpenFrame()
 
         if self.mouseFlyMode ~= Glide.MOUSE_FLY_MODE.DIRECT then return end
 
-        theme:CreateComboBox( directMousePanel, L"mouse.pitch_axis", mouseAxisOptions, self.pitchMouseAxis + 1, function( value )
+        CreateCombo( directMousePanel, L"mouse.pitch_axis", mouseAxisOptions, self.pitchMouseAxis + 1, function( value )
             self.pitchMouseAxis = value - 1
             self:Save()
         end )
 
-        theme:CreateComboBox( directMousePanel, L"mouse.yaw_axis", mouseAxisOptions, self.yawMouseAxis + 1, function( value )
+        CreateCombo( directMousePanel, L"mouse.yaw_axis", mouseAxisOptions, self.yawMouseAxis + 1, function( value )
             self.yawMouseAxis = value - 1
             self:Save()
             self:TransmitInputSettings()
         end )
 
-        theme:CreateComboBox( directMousePanel, L"mouse.roll_axis", mouseAxisOptions, self.rollMouseAxis + 1, function( value )
+        CreateCombo( directMousePanel, L"mouse.roll_axis", mouseAxisOptions, self.rollMouseAxis + 1, function( value )
             self.rollMouseAxis = value - 1
             self:Save()
         end )
 
-        theme:CreateToggleButton( directMousePanel, L"mouse.invert_x", self.mouseInvertX, function( value )
+        CreateToggle( directMousePanel, L"mouse.invert_x", self.mouseInvertX, function( value )
             self.mouseInvertX = value
             self:Save()
         end )
 
-        theme:CreateToggleButton( directMousePanel, L"mouse.invert_y", self.mouseInvertY, function( value )
+        CreateToggle( directMousePanel, L"mouse.invert_y", self.mouseInvertY, function( value )
             self.mouseInvertY = value
             self:Save()
         end )
 
-        theme:CreateSlider( directMousePanel, L"mouse.sensitivity_x", self.mouseSensitivityX, 0.1, 5, 1, function( value )
+        CreateSlider( directMousePanel, L"mouse.sensitivity_x", self.mouseSensitivityX, 0.1, 5, 1, function( value )
             self.mouseSensitivityX = value
             self:Save()
         end )
 
-        theme:CreateSlider( directMousePanel, L"mouse.sensitivity_y", self.mouseSensitivityY, 0.1, 5, 1, function( value )
+        CreateSlider( directMousePanel, L"mouse.sensitivity_y", self.mouseSensitivityY, 0.1, 5, 1, function( value )
             self.mouseSensitivityY = value
             self:Save()
         end )
 
-        theme:CreateSlider( directMousePanel, L"mouse.deadzone", self.mouseDeadzone, 0, 0.5, 2, function( value )
+        CreateSlider( directMousePanel, L"mouse.deadzone", self.mouseDeadzone, 0, 0.5, 2, function( value )
             self.mouseDeadzone = value
             self:Save()
         end )
 
-        theme:CreateToggleButton( directMousePanel, L"mouse.show_hud", self.mouseShow, function( value )
+        CreateToggle( directMousePanel, L"mouse.show_hud", self.mouseShow, function( value )
             self.mouseShow = value
             self:Save()
         end )
@@ -534,7 +539,7 @@ function Config:OpenFrame()
     ----- Keyboard settings -----
 
     local CreateBinderButton = function( parent, text, actionId, defaultKey, callback )
-        local binder = theme:CreateBinderButton( parent, text, defaultKey )
+        local binder = StyledTheme.CreateFormBinder( parent, text, defaultKey )
 
         function binder:OnChange( value )
             if self._ignoreChange then return end
@@ -552,7 +557,7 @@ function Config:OpenFrame()
         end
     end
 
-    local panelKeyboard = frame:AddTab( "icon16/keyboard.png", L"settings.input" )
+    local panelKeyboard = frame:AddTab( "styledstrike/icons/keyboard.png", L"settings.input" )
     local binds = self.binds
 
     local generalBinds = binds["general_controls"]
@@ -563,7 +568,7 @@ function Config:OpenFrame()
         self:TransmitInputSettings()
     end
 
-    theme:CreateHeader( panelKeyboard, L"input.general_controls" )
+    CreateHeader( panelKeyboard, L"input.general_controls", 0 )
     CreateBinderButton( panelKeyboard, L"input.switch_weapon", "switch_weapon", generalBinds.switch_weapon, OnChangeGeneralBind )
     CreateBinderButton( panelKeyboard, L"input.toggle_engine", "toggle_engine", generalBinds.toggle_engine, OnChangeGeneralBind )
 
@@ -575,7 +580,7 @@ function Config:OpenFrame()
         self:TransmitInputSettings()
     end
 
-    theme:CreateHeader( panelKeyboard, L"input.land_controls" )
+    CreateHeader( panelKeyboard, L"input.land_controls" )
     CreateBinderButton( panelKeyboard, L"input.attack", "attack", landBinds.attack, OnChangeLandBind )
 
     CreateBinderButton( panelKeyboard, L"input.steer_left", "steer_left", landBinds.steer_left, OnChangeLandBind )
@@ -595,8 +600,8 @@ function Config:OpenFrame()
     CreateBinderButton( panelKeyboard, L"input.signal_left", "signal_left", landBinds.signal_left, OnChangeLandBind )
     CreateBinderButton( panelKeyboard, L"input.signal_right", "signal_right", landBinds.signal_right, OnChangeLandBind )
 
-    theme:CreateHeader( panelKeyboard, L"input.manual_shift" )
-    theme:CreateToggleButton( panelKeyboard, L"input.manual_shift", self.manualGearShifting, function( value )
+    CreateHeader( panelKeyboard, L"input.manual_shift" )
+    CreateToggle( panelKeyboard, L"input.manual_shift", self.manualGearShifting, function( value )
         self.manualGearShifting = value
         self:Save()
         self:TransmitInputSettings()
@@ -614,7 +619,7 @@ function Config:OpenFrame()
         self:TransmitInputSettings()
     end
 
-    theme:CreateHeader( panelKeyboard, L"input.aircraft_controls" )
+    CreateHeader( panelKeyboard, L"input.aircraft_controls" )
     CreateBinderButton( panelKeyboard, L"input.attack", "attack", airBinds.attack, OnChangeAirBind )
     CreateBinderButton( panelKeyboard, L"input.attack_alt", "attack_alt", airBinds.attack_alt, OnChangeAirBind )
 
@@ -633,49 +638,54 @@ function Config:OpenFrame()
 
     ----- Audio settings -----
 
-    local panelAudio = frame:AddTab( "icon16/sound.png", L"settings.audio" )
+    local panelAudio = frame:AddTab( "styledstrike/icons/speaker.png", L"settings.audio" )
 
-    theme:CreateHeader( panelAudio, L"settings.audio" )
+    CreateHeader( panelAudio, L"settings.audio", 0 )
 
-    theme:CreateSlider( panelAudio, L"audio.car_volume", self.carVolume, 0, 1, 1, function( value )
+    CreateSlider( panelAudio, L"audio.car_volume", self.carVolume, 0, 1, 1, function( value )
         self.carVolume = value
         self:Save()
     end )
 
-    theme:CreateSlider( panelAudio, L"audio.aircraft_volume", self.aircraftVolume, 0, 1, 1, function( value )
+    CreateSlider( panelAudio, L"audio.aircraft_volume", self.aircraftVolume, 0, 1, 1, function( value )
         self.aircraftVolume = value
         self:Save()
     end )
 
-    theme:CreateSlider( panelAudio, L"audio.explosion_volume", self.explosionVolume, 0, 1, 1, function( value )
+    CreateSlider( panelAudio, L"audio.explosion_volume", self.explosionVolume, 0, 1, 1, function( value )
         self.explosionVolume = value
         self:Save()
     end )
 
-    theme:CreateSlider( panelAudio, L"audio.horn_volume", self.hornVolume, 0, 1, 1, function( value )
+    CreateSlider( panelAudio, L"audio.horn_volume", self.hornVolume, 0, 1, 1, function( value )
         self.hornVolume = value
         self:Save()
     end )
 
-    theme:CreateSlider( panelAudio, L"audio.wind_volume", self.windVolume, 0, 1, 1, function( value )
+    CreateSlider( panelAudio, L"audio.wind_volume", self.windVolume, 0, 1, 1, function( value )
         self.windVolume = value
         self:Save()
     end )
 
-    theme:CreateSlider( panelAudio, L"audio.voice_chat_reduction", self.vcVolume, 0, 1, 1, function( value )
+    CreateSlider( panelAudio, L"audio.warning_volume", self.warningVolume, 0, 1, 1, function( value )
+        self.warningVolume = value
+        self:Save()
+    end )
+
+    CreateSlider( panelAudio, L"audio.voice_chat_reduction", self.vcVolume, 0, 1, 1, function( value )
         self.vcVolume = value
         self:Save()
     end )
 
     ----- Misc -----
 
-    local panelMisc = frame:AddTab( "icon16/cog.png", L"settings.misc" )
+    local panelMisc = frame:AddTab( "styledstrike/icons/cog.png", L"settings.misc" )
 
-    theme:CreateHeader( panelMisc, L"settings.skidmarks" )
+    CreateHeader( panelMisc, L"settings.skidmarks", 0 )
 
     local maxSkidSlider
 
-    maxSkidSlider = theme:CreateSlider( panelMisc, L"misc.skid_mark_max", self.maxSkidMarkPieces, 0, 1000, 0, function( value )
+    maxSkidSlider = CreateSlider( panelMisc, L"misc.skid_mark_max", self.maxSkidMarkPieces, 0, 1000, 0, function( value )
         if value < 10 then
             value = 0
             maxSkidSlider:SetValue( value )
@@ -688,7 +698,7 @@ function Config:OpenFrame()
 
     local maxRollSlider
 
-    maxRollSlider = theme:CreateSlider( panelMisc, L"misc.roll_mark_max", self.maxTireRollPieces, 0, 1000, 0, function( value )
+    maxRollSlider = CreateSlider( panelMisc, L"misc.roll_mark_max", self.maxTireRollPieces, 0, 1000, 0, function( value )
         if value < 10 then
             value = 0
             maxRollSlider:SetValue( value )
@@ -699,62 +709,62 @@ function Config:OpenFrame()
         self:ApplySkidMarkLimits()
     end )
 
-    theme:CreateHeader( panelMisc, L"settings.misc" )
+    CreateHeader( panelMisc, L"settings.misc" )
 
-    theme:CreateToggleButton( panelMisc, L"misc.show_hud", self.showHUD, function( value )
+    CreateToggle( panelMisc, L"misc.show_hud", self.showHUD, function( value )
         self.showHUD = value
         self:Save()
     end )
 
-    theme:CreateToggleButton( panelMisc, L"misc.show_passenger_list", self.showPassengerList, function( value )
+    CreateToggle( panelMisc, L"misc.show_passenger_list", self.showPassengerList, function( value )
         self.showPassengerList = value
         self:Save()
     end )
 
-    theme:CreateToggleButton( panelMisc, L"misc.show_health_empty_vehicles", self.showEmptyVehicleHealth, function( value )
+    CreateToggle( panelMisc, L"misc.show_health_empty_vehicles", self.showEmptyVehicleHealth, function( value )
         self.showEmptyVehicleHealth = value
         self:Save()
     end )
 
-    theme:CreateToggleButton( panelMisc, L"misc.show_skybox", self.showSkybox, function( value )
+    CreateToggle( panelMisc, L"misc.show_skybox", self.showSkybox, function( value )
         self.showSkybox = value
         self:Save()
         Glide.EnableSkyboxIndicator()
     end )
 
-    theme:CreateToggleButton( panelMisc, L"misc.reduce_tire_particles", self.reduceTireParticles, function( value )
+    CreateToggle( panelMisc, L"misc.reduce_tire_particles", self.reduceTireParticles, function( value )
         self.reduceTireParticles = value
         self:Save()
     end )
 
-    theme:CreateToggleButton( panelMisc, L"misc.auto_headlights_on", self.autoHeadlightOn, function( value )
+    CreateToggle( panelMisc, L"misc.auto_headlights_on", self.autoHeadlightOn, function( value )
         self.autoHeadlightOn = value
         self:Save()
     end )
 
-    theme:CreateToggleButton( panelMisc, L"misc.auto_headlights_off", self.autoHeadlightOff, function( value )
+    CreateToggle( panelMisc, L"misc.auto_headlights_off", self.autoHeadlightOff, function( value )
         self.autoHeadlightOff = value
         self:Save()
     end )
 
-    theme:CreateToggleButton( panelMisc, L"misc.headlight_shadows", self.headlightShadows, function( value )
+    CreateToggle( panelMisc, L"misc.headlight_shadows", self.headlightShadows, function( value )
         self.headlightShadows = value
         self:Save()
     end )
 
-    theme:CreateToggleButton( panelMisc, L"misc.tips", self.enableTips, function( value )
+    CreateToggle( panelMisc, L"misc.tips", self.enableTips, function( value )
         self.enableTips = value
         self:Save()
     end )
 
-    theme:CreateToggleButton( panelMisc, L"misc.use_kmh", self.useKMH, function( value )
+    CreateToggle( panelMisc, L"misc.use_kmh", self.useKMH, function( value )
         self.useKMH = value
         self:Save()
     end )
 
-    theme:CreateHeader( panelMisc, L"settings.reset" )
+    CreateHeader( panelMisc, L"settings.reset" )
 
-    theme:CreateButton( panelMisc, L"misc.reset_binds", function()
+    CreateButton( panelMisc, L"misc.reset_binds", function()
         Derma_Query( L"misc.reset_binds_query", L"misc.reset_binds", L"yes", function()
             self:CloseFrame()
             self:ResetBinds()
@@ -768,7 +778,7 @@ function Config:OpenFrame()
         end, L"no" )
     end )
 
-    theme:CreateButton( panelMisc, L"misc.reset_settings", function()
+    CreateButton( panelMisc, L"misc.reset_settings", function()
         Derma_Query( L"misc.reset_settings_query", L"misc.reset_settings", L"yes", function()
             self:CloseFrame()
             self:Reset()
@@ -796,7 +806,7 @@ hook.Add( "Tick", "Glide.CheckVoiceActivity", function()
     for i = 1, #players do
         ply = players[i]
 
-        if ply:IsVoiceAudible() and ply:VoiceVolume() > 0.01 then
+        if ply:IsVoiceAudible() and ply:VoiceVolume() > 0.05 then
             isAnyoneTalking = true
             break
         end
@@ -813,7 +823,7 @@ end )
 -- depending on settings and how loud the voice chat is.
 --
 -- audioType must be one of these:
--- "carVolume", "aircraftVolume", "explosionVolume", "hornVolume", "windVolume"
+-- "carVolume", "aircraftVolume", "explosionVolume", "hornVolume", "windVolume", "warningVolume"
 function Config.GetVolume( audioType )
     return Config[audioType] * glideVolume
 end

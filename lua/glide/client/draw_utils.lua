@@ -29,6 +29,16 @@ function Glide.DrawWeaponCrosshair( x, y, icon, size, color )
     DrawTexturedRectRotated( x, y, size, size, 0 )
 end
 
+function Glide.DrawIcon( x, y, icon, size, color, angle )
+    if not cache[icon] then
+        cache[icon] = Material( icon, "smooth" )
+    end
+
+    SetMaterial( cache[icon] )
+    SetColor( color:Unpack() )
+    DrawTexturedRectRotated( x, y, size, size, angle or 0 )
+end
+
 local MAT_BACKGROUND = Material( "glide/weapon_name.png", "smooth" )
 
 function Glide.DrawWeaponSelection( name, icon )
@@ -100,31 +110,136 @@ function Glide.DrawVehicleHealth( x, y, w, h, vehicleType, chassisHealth, engine
     DrawHealthBar( x + w - colW, y, colW, h, engineHealth )
 end
 
-local COLOR_WHITE = Color( 255, 255, 255, 255 )
+do
+    local segments = 64
+    local circleMesh = Mesh()
+    local meshMatrix = Matrix()
+    local meshVector = Vector()
 
-function Glide.DrawRotatedBox( x, y, w, h, ang, color )
-    color = color or COLOR_WHITE
+    mesh.Begin( circleMesh, MATERIAL_POLYGON, segments + 2 )
 
-    draw.NoTexture()
-    SetColor( color:Unpack() )
-    surface.DrawTexturedRectRotated( x, y, w, h, ang )
+    mesh.Position( meshVector )
+    mesh.TexCoord( 0, 0.5, 0.5 )
+    mesh.Color( 255, 255, 255, 255 )
+    mesh.AdvanceVertex()
+
+    for i = 0, segments do
+        local a = math.rad( ( i / segments ) * -360 )
+        local x, y = math.sin( a ), math.cos( a )
+
+        meshVector:SetUnpacked( x, y, 0 )
+
+        mesh.Position( meshVector )
+        mesh.TexCoord( 0, x / 2 + 0.5, y / 2 + 0.5 )
+        mesh.Color( 255, 255, 255, 255 )
+        mesh.AdvanceVertex()
+    end
+
+    mesh.End()
+
+    local meshMaterial = CreateMaterial( "GlideCircleMesh", "UnlitGeneric", {
+        ["$basetexture"] = "color/white",
+        ["$model"] = 1,
+        ["$vertexalpha"] = 1,
+        ["$vertexcolor"] = 1
+    } )
+
+    local PushModelMatrix = cam.PushModelMatrix
+    local PopModelMatrix = cam.PopModelMatrix
+    local SetRenderMaterial = render.SetMaterial
+
+    function Glide.DrawFilledCircle( r, x, y, color )
+        meshVector:SetUnpacked( color.r / 255, color.g / 255, color.b / 255 )
+
+        meshMaterial:SetVector( "$color", meshVector )
+        meshMaterial:SetFloat( "$alpha", color.a / 255 )
+
+        SetRenderMaterial( meshMaterial )
+
+        meshVector:SetUnpacked( x, y, 0 )
+        meshMatrix:SetTranslation( meshVector )
+
+        meshVector:SetUnpacked( r, r, r )
+        meshMatrix:SetScale( meshVector )
+
+        PushModelMatrix( meshMatrix, true )
+        circleMesh:Draw()
+        PopModelMatrix()
+    end
 end
 
-local RoundedBoxEx = draw.RoundedBoxEx
-local DrawSimpleText = draw.SimpleText
+local SetStencilEnable = render.SetStencilEnable
+local ClearStencil = render.ClearStencil
+local SetStencilTestMask = render.SetStencilTestMask
+local SetStencilWriteMask = render.SetStencilWriteMask
+local SetStencilPassOperation = render.SetStencilPassOperation
+local SetStencilZFailOperation = render.SetStencilZFailOperation
+local SetStencilCompareFunction = render.SetStencilCompareFunction
+local SetStencilReferenceValue = render.SetStencilReferenceValue
+local SetStencilFailOperation = render.SetStencilFailOperation
 
-local COLOR_STATUS_BG = Color( 20, 20, 20, 220 )
+local Rad = math.rad
+local Sin = math.sin
+local Cos = math.cos
+local DrawPoly = surface.DrawPoly
+local DrawFilledCircle = Glide.DrawFilledCircle
 
-function Glide.DrawVehicleStatusItem( x, y, w, h, radius, padding, label, value, progress )
-    RoundedBoxEx( radius, x, y, w, h, COLOR_STATUS_BG, true, false, true, false )
+local COLOR_WHITE = Color( 255, 255, 255, 255 )
 
-    if progress then
-        RoundedBoxEx( radius, x + 1, y + 1, w * progress - 2, h - 2, THEME_COLOR, true, false, true, false )
+function Glide.DrawOutlinedCircle( r, x, y, thickness, color, blockStart, blockEnd )
+    SetStencilEnable( true )
+
+    -- Reset stencil state
+    ClearStencil()
+    SetStencilTestMask( 255 )
+    SetStencilWriteMask( 255 )
+
+    -- Don't modify the stencil buffer if the pixel passes or fails
+    SetStencilPassOperation( 1 ) -- STENCILOPERATION_KEEP
+    SetStencilZFailOperation( 1 ) -- STENCILOPERATION_KEEP
+
+    -- Make all pixels we draw now fail the compare function, since we're just doing a mask
+    SetStencilCompareFunction( 1 ) -- STENCILCOMPARISONFUNCTION_NEVER
+
+    -- Replace stencil buffer values with a "1"
+    -- on a filled circle smaller than our main circle.
+    SetStencilReferenceValue( 1 )
+    SetStencilFailOperation( 3 ) -- STENCILOPERATION_REPLACE
+    DrawFilledCircle( r - thickness, x, y, COLOR_WHITE )
+
+    -- Block parts of the outer circle if we have block angles
+    if blockStart and blockEnd then
+        blockStart = Rad( blockStart )
+        blockEnd = Rad( blockEnd )
+
+        SetColor( 255, 255, 255, 255 )
+
+        local a = blockStart
+        local segments = 10
+        local markR = r * 1.1
+        local step = ( blockEnd - blockStart ) / segments
+        local poly = { { x = x, y = y } }
+
+        for i = 0, segments do
+            poly[i + 2] = {
+                x = x - Sin( a ) * markR,
+                y = y + Cos( a ) * markR
+            }
+
+            a = a + step
+        end
+
+        poly[#poly + 1] = { x = x, y = y }
+
+        DrawPoly( poly )
     end
 
-    DrawSimpleText( label, "GlideHUD", x + padding, y + h * 0.5, COLOR_WHITE, 0, 1 )
+    -- We don't want to change the mask anymore
+    SetStencilFailOperation( 1 ) -- STENCILOPERATION_KEEP
 
-    if value then
-        DrawSimpleText( value, "GlideHUD", x + w - padding, y + h * 0.5, COLOR_WHITE, 2, 1 )
-    end
+    -- Only allow pixels that don't match the reference value to pass
+    SetStencilCompareFunction( 6 ) -- STENCILCOMPARISONFUNCTION_NOTEQUAL
+
+    DrawFilledCircle( r, x, y, color )
+    SetStencilEnable( false )
 end

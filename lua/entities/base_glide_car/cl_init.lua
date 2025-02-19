@@ -7,6 +7,7 @@ ENT.AutomaticFrameAdvance = true
 function ENT:OnPostInitialize()
     self.brakePressure = 0
     self.rpmFraction = 0
+    self.streamJSONOverride = nil
 end
 
 function ENT:OnGearChange( _, _, gear )
@@ -46,17 +47,19 @@ function ENT:OnEngineStateChange( _, lastState, state )
     end
 end
 
+local GetVolume = Glide.Config.GetVolume
+
 --- Implement this base class function.
 function ENT:OnTurnOn()
     if self.StartedSound ~= "" then
-        self:EmitSound( self.StartedSound, 85, 100, 1.0 )
+        Glide.PlaySoundSet( self.StartedSound, self, GetVolume( "carVolume" ), nil, 85 )
     end
 end
 
 --- Implement this base class function.
 function ENT:OnTurnOff()
     if self.StoppedSound ~= "" then
-        self:EmitSound( self.StoppedSound, 75, 100, 1.0 )
+        Glide.PlaySoundSet( self.StoppedSound, self, GetVolume( "carVolume" ), nil, 85 )
     end
 
     self:DeactivateSounds()
@@ -86,7 +89,6 @@ end
 
 local Clamp = math.Clamp
 local FrameTime = FrameTime
-local GetVolume = Glide.Config.GetVolume
 
 function ENT:UpdateTurboSound( sounds )
     local volume = self:GetEngineThrottle() * 0.5
@@ -202,7 +204,13 @@ function ENT:OnUpdateSounds()
 
     if not stream then
         self.stream = Glide.CreateEngineStream( self )
-        self:OnCreateEngineStream( self.stream )
+
+        if self.streamJSONOverride then
+            self.stream:LoadJSON( self.streamJSONOverride )
+        else
+            self:OnCreateEngineStream( self.stream )
+        end
+
         self.stream:Play()
 
         return
@@ -329,12 +337,12 @@ do
                 DrawLight( pos + dir * 10, l.color or COLOR_BRAKE, l.lightRadius, l.lightBrightness or DEFAULT_BRIGHTNESS[ltype] )
 
             elseif enable and ltype == "brake" then
-                DrawLightSprite( pos, dir, l.size or 30, COLOR_BRAKE )
-                DrawLight( pos + dir * 10, COLOR_BRAKE, l.lightRadius, l.lightBrightness )
+                DrawLightSprite( pos, dir, l.size or 30, l.color or COLOR_BRAKE )
+                DrawLight( pos + dir * 10, l.color or COLOR_BRAKE, l.lightRadius, l.lightBrightness )
 
             elseif enable and ltype == "reverse" then
-                DrawLightSprite( pos, dir, l.size or 20, COLOR_REV )
-                DrawLight( pos + dir * 10, COLOR_REV, l.lightRadius, l.lightBrightness )
+                DrawLightSprite( pos, dir, l.size or 20, l.color or COLOR_REV )
+                DrawLight( pos + dir * 10, l.color or COLOR_REV, l.lightRadius, l.lightBrightness )
             end
         end
     end
@@ -479,7 +487,7 @@ function ENT:CreateHeadlight( offset, angles, color, texture )
     light:SetBrightness( state > 1 and 8 or 5 )
     light:SetEnableShadows( Glide.Config.headlightShadows )
     light:SetColor( color )
-    light:SetNearZ( 20 )
+    light:SetNearZ( 10 )
     light:SetFarZ( state > 1 and 3000 or 1500 )
     light:SetFOV( fov )
     light:SetPos( self:LocalToWorld( offset ) )
@@ -574,38 +582,63 @@ end
 
 DEFINE_BASECLASS( "base_glide" )
 
-local RealTime = RealTime
 local Floor = math.floor
-local DrawRect = surface.DrawRect
-local SetColor = surface.SetDrawColor
+local SimpleText = draw.SimpleText
+local RoundedBox = draw.RoundedBox
 
 local Config = Glide.Config
-local DrawStatus = Glide.DrawVehicleStatusItem
+local DrawIcon = Glide.DrawIcon
+local DrawFilledCircle = Glide.DrawFilledCircle
+local DrawOutlinedCircle = Glide.DrawOutlinedCircle
+
+local MAX_SPEED = 200 -- Max. indicated speed (MPH)
 
 local GEAR_LABELS = {
     [-1] = "R",
     [0] = "N"
 }
 
+local colors = {
+    bg = Color( 30, 30, 30, 220 ),
+    dataBg = Color( 20, 20, 20, 200 ),
+    icon = Color( 255, 255, 255, 255 ),
+    iconDisabled = Color( 60, 60, 60, 255 ),
+    throttleBar = Glide.THEME_COLOR,
+    speedBars = Color( 220, 220, 220, 255 ),
+}
+
+local function DrawDataPoint( text, radius, x, y, w, h )
+    RoundedBox( radius, x - w * 0.5, y - h * 0.5, w, h, colors.dataBg )
+    SimpleText( text, "GlideHUD", x, y, colors.icon, 1, 1 )
+end
+
 local throttle = 0
-local w, h, x, y
+local speedNeedle = 0
+local size, x, y
 
 --- Override this base class function.
 function ENT:DrawVehicleHUD( screenW, screenH )
-    BaseClass.DrawVehicleHUD( self, screenW, screenH )
+    local playerListWidth = BaseClass.DrawVehicleHUD( self, screenW, screenH )
 
     if not Config.showHUD then return end
 
-    w = Floor( screenH * 0.23 )
-    h = Floor( screenH * 0.035 )
+    size = Floor( screenH * 0.3 )
 
-    local padding = Floor( screenH * 0.008 )
-    local radius = Floor( h * 0.15 )
-    local margin = Floor( screenH * 0.03 )
-    local spacing = Floor( screenH * 0.005 )
+    x = screenW - size - playerListWidth - Floor( screenH * 0.01 )
+    y = screenH - size - Floor( screenH * 0.03 )
 
-    x = screenW - w
-    y = screenH - margin - h
+    local r = size * 0.5
+    local iconSize = size * 0.11
+    local dt = FrameTime()
+
+    -- Throttle/RPM background
+    DrawOutlinedCircle( r, x + r, y + r, size * 0.04, colors.bg, 90, 270 )
+
+    -- Throttle
+    throttle = ExpDecay( throttle, self:GetEngineThrottle(), 20, dt )
+    colors.throttleBar.a = 255
+
+    DrawOutlinedCircle( r * 0.985, x + r, y + r, size * 0.025, colors.throttleBar, 90 * throttle, 361 )
 
     -- RPM
     local rpm = self:GetEngineRPM()
@@ -616,41 +649,42 @@ function ENT:DrawVehicleHUD( screenW, screenH )
         rpm = rpm - math.abs( wave ) * 500
     end
 
-    DrawStatus( x, y, w, h, radius, padding, "#glide.hud.rpm", Floor( rpm ), rpm / self:GetMaxRPM() )
-    y = y - h - spacing
+    rpm = rpm / self:GetMaxRPM()
 
-    -- Throttle
-    DrawStatus( x, y, w, h, radius, padding, "#glide.hud.throttle" )
+    DrawOutlinedCircle( r * 0.985, x + r, y + r, size * 0.025, colors.throttleBar, -1, 360 - 90 * rpm )
+    DrawIcon( x + size - iconSize, y + size - iconSize * 0.5, "glide/icons/engine.png", iconSize, self:IsEngineOn() and colors.icon or colors.iconDisabled )
 
-    throttle = ExpDecay( throttle, self:GetEngineThrottle(), 20, FrameTime() )
+    -- Speedometer
+    local speedR = r * 0.9
 
-    local barSize = Floor( h * 0.65 )
-    local barX = x + w - barSize - padding * 1.3
-    local barY = y + ( h * 0.5 ) - barSize * 0.5
+    DrawFilledCircle( speedR, x + r, y + r, colors.bg )
+    DrawIcon( x + size * 0.5, y + size * 0.5, "glide/speedometer_area.png", speedR * 2, colors.speedBars )
 
-    SetColor( 255, 255, 255, 255 )
-    DrawRect( barX - 2, barY, 2, barSize )
-    DrawRect( barX + barSize, barY, 2, barSize )
+    local speed = self:GetVelocity():Length()
+    local maxSpeed = MAX_SPEED
 
-    surface.DrawCircle( barX + barSize * 0.5, barY + barSize * 0.5, barSize * 0.1, 255, 255, 255, 255 )
-    Glide.DrawRotatedBox( barX + barSize * 0.5, barY + barSize * 0.5, barSize * 0.9, 2, -10 - throttle * 80 )
+    -- Draw speed needle
+    local needle = Clamp( speed / ( maxSpeed / 0.0568182 ), 0, 1 )
+    speedNeedle = ExpDecay( speedNeedle, needle, 10, dt )
 
-    y = y - h - spacing
+    DrawIcon( x + size * 0.5, y + size * 0.5, "glide/speedometer_needle.png", speedR * 2, colors.icon, 120 - speedNeedle * 240 )
 
-    -- Gear
-    DrawStatus( x, y, w, h, radius, padding, "#glide.hud.gear", GEAR_LABELS[self:GetGear()] or self:GetGear() )
+    -- Convert Source units to MPH
+    speed = speed * 0.0568182
 
-    y = y - h - spacing
-
-    -- Speed
-    local velocity = self:GetVelocity()
-    local speed = velocity:Length() -- Obtain the magnitude from the velocity
-    speed = speed * 0.0568182  -- Convert Source units to MPH
+    SimpleText( "0", "GlideHUD", x + size * 0.16, y + size * 0.72, colors.icon, 0, 0 )
 
     if Config.useKMH then
-        speed = speed * 1.60934  -- Convert MPH to km/h
-        DrawStatus( x, y, w, h, radius, padding, "#glide.hud.speed", Floor( speed ) .. " km/h" )
-    else
-        DrawStatus( x, y, w, h, radius, padding, "#glide.hud.speed", Floor( speed ) .. " mph" )
+        speed = speed * 1.60934 -- Convert MPH to km/h
+        maxSpeed = maxSpeed * 1.60934
     end
+
+    local unit = Config.useKMH and " km/h" or " mph"
+    local cornerRadius = Floor( screenH * 0.008 )
+
+    SimpleText( Floor( maxSpeed ), "GlideHUD", x + size * 0.84, y + size * 0.72, colors.icon, 2, 0 )
+    DrawDataPoint( Floor( speed ) .. unit, cornerRadius, x + size * 0.5, y + size * 0.68, size * 0.35, size * 0.1 )
+
+    -- Current gear
+    DrawDataPoint( GEAR_LABELS[self:GetGear()] or self:GetGear(), cornerRadius, x + size * 0.5, y + size * 0.8, size * 0.2, size * 0.1 )
 end

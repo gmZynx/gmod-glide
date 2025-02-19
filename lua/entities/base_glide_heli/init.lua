@@ -152,6 +152,8 @@ function ENT:OnPostThink( dt, selfTbl )
         power = 0
     end
 
+    local isEngineDying = false
+
     if self:IsEngineOn() then
         -- Make sure the physics stay awake,
         -- otherwise the driver's input won't do anything.
@@ -175,6 +177,7 @@ function ENT:OnPostThink( dt, selfTbl )
         elseif selfTbl.altitude > 20 then
             -- Fake auto-rotation
             power = Approach( power, 0.6, dt * 0.1 )
+            isEngineDying = true
         else
             -- Turn off
             power = Approach( power, 0, dt * selfTbl.powerResponse * 0.5 )
@@ -193,6 +196,8 @@ function ENT:OnPostThink( dt, selfTbl )
         power = ( power > 0 ) and ( power - dt * selfTbl.powerResponse * 0.5 ) or 0
         self:SetPower( power )
     end
+
+    self:SetIsEngineDying( isEngineDying and power > 0.1 )
 
     -- Handle out-of-control state
     if self:IsEngineOn() then

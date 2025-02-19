@@ -248,6 +248,11 @@ function ENT:OnPostThink( dt, selfTbl )
     inputSteer = Clamp( inputSteer + counterSteer, -1, 1 )
 
     selfTbl.steerAngle[2] = inputSteer * -selfTbl.MaxSteerAngle
+
+    -- Check if the wings are stalling
+    local controllability = Abs( selfTbl.forwardSpeed ) / self.PlaneParams.controlSpeed
+
+    self:SetIsStalling( controllability < 0.75 and self.altitude > 100 )
 end
 
 --- Implement this base class function.

@@ -82,6 +82,12 @@ if SERVER then
         }
     end
 
+    function ENT:InitializePhysics()
+        self:SetSolid( SOLID_VPHYSICS )
+        self:SetMoveType( MOVETYPE_VPHYSICS )
+        self:PhysicsInit( SOLID_VPHYSICS, Vector( 5, 0, -8 ) )
+    end
+
     ENT.LightBodygroups = {
         { type = "brake", bodyGroupId = 16, subModelId = 1 },
         { type = "reverse", bodyGroupId = 18, subModelId = 1 },
@@ -99,6 +105,9 @@ if SERVER then
         self:SetMaxRPMTorque( 1500 )
 
         self:SetForwardTractionMax( 2500 )
+        self:SetSideTractionMaxAng( 30 )
+        self:SetSideTractionMax( 3000 )
+        self:SetSideTractionMin( 1100 )
 
         self:CreateSeat( Vector( -22, 18, -3 ), Angle( 0, 270, -10 ), Vector( 40, 80, 0 ), true )
         self:CreateSeat( Vector( -8, -18, -3 ), Angle( 0, 270, 5 ), Vector( -40, -80, 0 ), true )

@@ -24,6 +24,8 @@ function ENT:SetupDataTables()
     self:NetworkVar( "Float", "Elevator" )
     self:NetworkVar( "Float", "Rudder" )
     self:NetworkVar( "Float", "Aileron" )
+
+    self:NetworkVar( "Bool", "IsStalling" )
 end
 
 if CLIENT then
@@ -65,6 +67,10 @@ if CLIENT then
 
     -- Play this sound as the engine health gets depleted
     ENT.EngineRattleSound = "glide/aircraft/rattle.wav"
+
+    -- Play this sound (to passengers only) when the wings are stalling
+    ENT.StallHornSound = "glide/ui/stall_beep.wav"
+    ENT.StallHornVolume = 1.0
 
     -- Children classes should override this function
     -- to update animations (the control surfaces for example).

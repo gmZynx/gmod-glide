@@ -6,6 +6,7 @@ ENT.PrintName = "Blazer"
 
 ENT.GlideCategory = "Default"
 ENT.ChassisModel = "models/gta5/vehicles/blazer/chassis.mdl"
+ENT.MaxChassisHealth = 700
 
 DEFINE_BASECLASS( "base_glide_car" )
 
@@ -46,6 +47,7 @@ if CLIENT then
     }
 
     ENT.StartSound = "Glide.Engine.BikeStart1"
+    ENT.StoppedSound = "Glide.Sanchez.EngineStop"
     ENT.HornSound = "glide/horns/car_horn_light_1.wav"
     ENT.ExternalGearSwitchSound = ""
     ENT.InternalGearSwitchSound = ""
@@ -136,7 +138,6 @@ end
 
 if SERVER then
     ENT.ChassisMass = 400
-    ENT.MaxChassisHealth = 700
 
     ENT.FallOnCollision = true
     ENT.SpawnPositionOffset = Vector( 0, 0, 40 )

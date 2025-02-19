@@ -149,6 +149,7 @@ function ENT:DeactivateMisc()
     self:OnDeactivateMisc()
 end
 
+local RealTime = RealTime
 local Effect = util.Effect
 local DEFAULT_FLAME_ANGLE = Angle()
 
@@ -318,7 +319,6 @@ do
     end
 end
 
-local RealTime = RealTime
 local LocalPlayer = LocalPlayer
 
 function ENT:OnWeaponIndexChange( _, _, index )
@@ -347,114 +347,116 @@ function ENT:OnDriverChange( _, _, _ )
     end
 end
 
-do
-    local Config = Glide.Config
-    local DrawWeaponCrosshair = Glide.DrawWeaponCrosshair
-    local DrawWeaponSelection = Glide.DrawWeaponSelection
+local Config = Glide.Config
+local DrawWeaponCrosshair = Glide.DrawWeaponCrosshair
+local DrawWeaponSelection = Glide.DrawWeaponSelection
 
-    function ENT:DrawVehicleHUD( screenW, screenH )
-        if Config.showPassengerList then
-            self:DrawHUDSeats( screenW, screenH )
-        end
+function ENT:DrawVehicleHUD( screenW, screenH )
+    local playerListWidth = 0
 
-        local crosshair = self.crosshair
+    if Config.showPassengerList and hook.Run( "Glide_CanDrawHUDSeats", self ) ~= false then
+        playerListWidth = self:DrawPlayerListHUD( screenW, screenH )
+    end
 
-        if crosshair.enabled then
-            local data = crosshair.origin:ToScreen()
-            if data.visible then
-                DrawWeaponCrosshair( data.x, data.y, crosshair.icon, crosshair.size, crosshair.color )
-            end
-        end
+    local crosshair = self.crosshair
 
-        if self.weaponNotifyTimer then
-            local info = self.WeaponInfo[self:GetWeaponIndex()] or {}
-
-            DrawWeaponSelection( info.name or "MISSING", info.icon or "glide/aim_dot.png" )
-
-            if RealTime() > self.weaponNotifyTimer then
-                self.weaponNotifyTimer = nil
-            end
+    if crosshair.enabled then
+        local data = crosshair.origin:ToScreen()
+        if data.visible then
+            DrawWeaponCrosshair( data.x, data.y, crosshair.icon, crosshair.size, crosshair.color )
         end
     end
+
+    if self.weaponNotifyTimer then
+        local info = self.WeaponInfo[self:GetWeaponIndex()] or {}
+
+        DrawWeaponSelection( info.name or "MISSING", info.icon or "glide/aim_dot.png" )
+
+        if RealTime() > self.weaponNotifyTimer then
+            self.weaponNotifyTimer = nil
+        end
+    end
+
+    return playerListWidth
 end
 
-do
-    local FrameTime = FrameTime
-    local LocalPlayer = LocalPlayer
+local FrameTime = FrameTime
+local LocalPlayer = LocalPlayer
 
-    local Floor = math.floor
-    local ExpDecay = Glide.ExpDecay
+local Floor = math.floor
+local ExpDecay = Glide.ExpDecay
 
-    local RoundedBoxEx = draw.RoundedBoxEx
-    local DrawSimpleText = draw.SimpleText
+local SetColor = surface.SetDrawColor
+local DrawRect = surface.DrawRect
+local DrawSimpleText = draw.SimpleText
 
-    local COLORS = {
-        bg = Color( 20, 20, 20, 255 ),
-        seat = Color( 255, 255, 255 ),
-        nick = Color( 240, 240, 240 ),
-        accent = Glide.THEME_COLOR
-    }
+local colors = {
+    bgAlpha = 255,
+    seat = Color( 255, 255, 255 ),
+    nick = Color( 240, 240, 240 ),
+    accent = Glide.THEME_COLOR
+}
 
-    local expanded = 0
-    local expandTimer = 0
+local expanded = 0
+local expandTimer = 0
 
-    function ENT:DrawHUDSeats( _screenW, screenH )
-        local seats = self.seats
-        if not seats then return end
+function ENT:DrawPlayerListHUD( screenW, screenH )
+    local seats = self.seats
+    if not seats then return 0 end
 
-        if hook.Run( "Glide_CanDrawHUDSeats", self ) == false then return end
+    local t = RealTime()
+    local localPly = LocalPlayer()
 
-        local t = RealTime()
-        local localPly = LocalPlayer()
+    expanded = ExpDecay( expanded, t > expandTimer and 0 or 1, 6, FrameTime() )
 
-        expanded = ExpDecay( expanded, t > expandTimer and 0 or 1, 6, FrameTime() )
+    colors.bgAlpha = 180 + 40 * expanded
+    colors.nick.a = 255 * ( expanded - 0.5 ) * 2
+    colors.accent.a = 150 + 40 * expanded
 
-        COLORS.nick.a = 255 * ( expanded - 0.5 ) * 2
-        COLORS.bg.a = 210 + 30 * expanded
-        COLORS.accent.a = 180 + 40 * expanded
+    local margin = Floor( screenH * 0.03 )
+    local padding = Floor( screenH * 0.006 )
+    local spacing = Floor( screenH * 0.004 )
+    local w, h = screenH * 0.3, Floor( screenH * 0.03 )
 
-        local margin = Floor( screenH * 0.03 )
-        local padding = Floor( screenH * 0.006 )
-        local spacing = Floor( screenH * 0.004 )
+    w = Floor( ( w * 0.15 ) + ( w * 0.85 * expanded ) )
 
-        local w, h = Floor( screenH * 0.3 ), Floor( screenH * 0.035 )
-        local nickOffset = w - padding
-        local cornerRadius = Floor( h * 0.15 )
+    local x = screenW - w
+    local y = screenH - margin - h
 
-        w = ( w * 0.15 ) + ( w * 0.85 * expanded )
+    local nickOffset = w - padding
+    local lastNick = self.lastNick
+    local count = #seats
+    local driver, nick
 
-        local y = screenH - margin - h
+    for i = count, 1, -1 do
+        driver = IsValid( seats[i] ) and seats[i]:GetDriver()
+        nick = IsValid( driver ) and driver:Nick() or "#glide.hud.empty"
 
-        local lastNick = self.lastNick
-        local count = #seats
-        local driver, nick
-
-        for i = count, 1, -1 do
-            driver = IsValid( seats[i] ) and seats[i]:GetDriver()
-            nick = IsValid( driver ) and driver:Nick() or "#glide.hud.empty"
-
-            if lastNick[i] ~= nick then
-                lastNick[i] = nick
-                expandTimer = t + 4
-            end
-
-            if nick:len() > 25 then
-                nick = nick:sub( 1, 22 ) .. "..."
-            end
-
-            RoundedBoxEx( cornerRadius, 0, y, w, h, COLORS.bg, false, true, false, true )
-
-            if driver == localPly then
-                RoundedBoxEx( cornerRadius, 1, y + 1, w - 2, h - 2, COLORS.accent, false, true, false, true )
-            end
-
-            DrawSimpleText( "#" .. i, "GlideHUD", padding, y + h * 0.5, COLORS.seat, 0, 1 )
-
-            if expanded > 0.5 then
-                DrawSimpleText( nick, "GlideHUD", nickOffset * expanded, y + h * 0.5, COLORS.nick, 2, 1 )
-            end
-
-            y = y - h - spacing
+        if lastNick[i] ~= nick then
+            lastNick[i] = nick
+            expandTimer = t + 4
         end
+
+        if nick:len() > 25 then
+            nick = nick:sub( 1, 22 ) .. "..."
+        end
+
+        SetColor( 30, 30, 30, colors.bgAlpha )
+        DrawRect( x, y, w, h )
+
+        if driver == localPly then
+            SetColor( colors.accent:Unpack() )
+            DrawRect( x + 1, y + 1, w - 2, h - 2 )
+        end
+
+        DrawSimpleText( "#" .. i, "GlideHUD", x + padding, y + h * 0.5, colors.seat, 0, 1 )
+
+        if expanded > 0.5 then
+            DrawSimpleText( nick, "GlideHUD", x + nickOffset, y + h * 0.5, colors.nick, 2, 1 )
+        end
+
+        y = y - h - spacing
     end
+
+    return w
 end

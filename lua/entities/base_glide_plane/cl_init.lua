@@ -146,36 +146,84 @@ end
 DEFINE_BASECLASS( "base_glide_aircraft" )
 
 local Floor = math.floor
-local Config = Glide.Config
-local DrawStatus = Glide.DrawVehicleStatusItem
+local ExpDecay = Glide.ExpDecay
+local SimpleText = draw.SimpleText
 
-local w, h, x, y
+local Config = Glide.Config
+local DrawIcon = Glide.DrawIcon
+local DrawFilledCircle = Glide.DrawFilledCircle
+local DrawOutlinedCircle = Glide.DrawOutlinedCircle
+
+local colors = {
+    bg = Color( 30, 30, 30, 220 ),
+    bar = Glide.THEME_COLOR,
+    icon = Color( 255, 255, 255, 255 ),
+    iconDisabled = Color( 60, 60, 60, 255 ),
+    speedBars = Color( 220, 220, 220, 255 )
+}
+
+local size, x, y
+local power = 0
 
 --- Override this base class function.
 function ENT:DrawVehicleHUD( screenW, screenH )
-    BaseClass.DrawVehicleHUD( self, screenW, screenH )
+    local playerListWidth = BaseClass.DrawVehicleHUD( self, screenW, screenH )
 
     if not Config.showHUD then return end
 
-    w = Floor( screenH * 0.23 )
-    h = Floor( screenH * 0.035 )
+    size = Floor( screenH * 0.15 )
 
-    local padding = Floor( screenH * 0.008 )
-    local radius = Floor( h * 0.15 )
-    local margin = Floor( screenH * 0.03 )
+    x = screenW - size - playerListWidth - Floor( screenH * 0.01 )
+    y = screenH - size - Floor( screenH * 0.03 )
 
-    x = screenW - w
-    y = screenH - margin - h
+    local r = size * 0.5
+    local dt = FrameTime()
+
+    -- Throttle
+    power = ExpDecay( power, self:GetPower(), 20, dt )
+    colors.bar.a = 255
+
+    DrawOutlinedCircle( r, x + r, y + r, size * 0.08, colors.bg )
+    DrawOutlinedCircle( r * 0.97, x + r, y + r, size * 0.05, colors.bar, 180 * power, 360 )
 
     -- Speed
-    local velocity = self:GetVelocity()
-    local speed = velocity:Length() -- Obtain the magnitude from the velocity
-    speed = speed * 0.0568182  -- Convert Source units to MPH
+    local speedR = r * 0.8
+
+    DrawFilledCircle( speedR, x + r, y + r, colors.bg )
+    DrawOutlinedCircle( speedR, x + r, y + r, size * 0.02, colors.speedBars )
+
+    local speed = self:GetVelocity():Length()
+
+    -- Convert Source units to MPH
+    speed = speed * 0.0568182
 
     if Config.useKMH then
-        speed = speed * 1.60934  -- Convert MPH to km/h
-        DrawStatus( x, y, w, h, radius, padding, "#glide.hud.speed", Floor( speed ) .. " km/h" )
-    else
-        DrawStatus( x, y, w, h, radius, padding, "#glide.hud.speed", Floor( speed ) .. " mph" )
+        speed = speed * 1.60934 -- Convert MPH to km/h
+    end
+
+    local unit = Config.useKMH and " km/h" or " mph"
+
+    SimpleText( Floor( speed ) .. unit, "GlideHUD", x + size * 0.5, y + size * 0.48, colors.icon, 1, 4 )
+
+    -- Engine state
+    DrawIcon( x + size * 0.5, y + size * 0.65, "glide/icons/engine.png", size * 0.2, self:IsEngineOn() and colors.icon or colors.iconDisabled )
+
+    -- Wing stall warning
+    if self:GetIsStalling() then
+        surface.SetFont( "GlideHUD" )
+
+        local text = Glide.GetLanguageText( "hud.stall" )
+        w, h = surface.GetTextSize( text )
+
+        w = w + screenW * 0.01
+        h = h + screenW * 0.01
+
+        x = x + ( size * 0.5 ) - ( w * 0.5 )
+        y = y - h - size * 0.1
+
+        surface.SetDrawColor( 255, 100, 100, 200 )
+        surface.DrawRect( x, y, w, h )
+
+        SimpleText( text, "GlideHUD", x + w * 0.5, y + h * 0.5, colors.icon, 1, 1 )
     end
 end

@@ -9,19 +9,7 @@
 ]]
 
 local IsValid = IsValid
-
--- Default stream parameters
-local DEFAULT_PARAMS = {
-    pitch = 1,
-    volume = 1,
-    fadeDist = 1500,
-
-    redlineFrequency = 55,
-    wobbleFrequency = 25,
-    wobbleStrength = 0.13
-}
-
-Glide.DEFAULT_STREAM_PARAMS = DEFAULT_PARAMS
+local DEFAULT_STREAM_PARAMS = Glide.DEFAULT_STREAM_PARAMS
 
 local EngineStream = Glide.EngineStream or {}
 EngineStream.__index = EngineStream
@@ -53,7 +41,7 @@ function Glide.CreateEngineStream( parent )
     }
 
     -- Customizable parameters
-    for k, v in pairs( DEFAULT_PARAMS ) do
+    for k, v in pairs( DEFAULT_STREAM_PARAMS ) do
         stream[k] = v
     end
 
@@ -96,46 +84,21 @@ end
 function EngineStream:LoadJSON( data )
     data = Glide.FromJSON( data )
 
-    local keyValues = data.kv or {}
-    local layers = data.layers
+    local success, errorMessage = Glide.ValidateStreamData( data )
 
-    if type( keyValues ) ~= "table" then
-        Glide.Print( "JSON does not have valid key-value data!" )
+    if not success then
+        Glide.Print( errorMessage )
         return
     end
 
-    for k, v in pairs( keyValues ) do
-        if DEFAULT_PARAMS[k] and type( v ) == "number" then
+    if data.kv then
+        for k, v in pairs( data.kv ) do
             self[k] = v
-        else
-            Glide.Print( "Invalid key/value: %s/$s", k, v )
         end
     end
 
-    if type( layers ) ~= "table" then
-        Glide.Print( "JSON does not have valid layer data!" )
-        return
-    end
-
-    for id, layer in SortedPairs( layers ) do
-        if type( layer ) ~= "table" then
-            Glide.Print( "JSON does not look like sound preset data!" )
-            return
-        end
-
-        local p = layer.path
-        local c = layer.controllers
-
-        if
-            type( id ) == "string" and
-            type( p ) == "string" and
-            type( c ) == "table"
-        then
-            self:AddLayer( id, p, c, layer.redline == true )
-        else
-            Glide.Print( "JSON does not look like sound preset data!" )
-            return
-        end
+    for id, layer in SortedPairs( data.layers ) do
+        self:AddLayer( id, layer.path, layer.controllers, layer.redline == true )
     end
 end
 

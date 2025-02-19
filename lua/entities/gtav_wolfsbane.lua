@@ -39,7 +39,7 @@ if CLIENT then
     }
 
     ENT.Headlights = {
-        { offset = Vector( 28, 0, 27 ), texture = "glide/effects/headlight_circle" }
+        { offset = Vector( 28, 0, 27 ), texture = "glide/effects/headlight_circle2" }
     }
 
     function ENT:OnCreateEngineStream( stream )

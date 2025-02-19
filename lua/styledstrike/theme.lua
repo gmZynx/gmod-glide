@@ -5,600 +5,1176 @@
     UI panels and to apply a custom theme to them.
 ]]
 
-local DEFAULT_COLORS = {
-    panelBackground = Color( 20, 20, 20, 200 ),
-    frameBackground = Color( 0, 0, 0, 240 ),
-    frameBorder = Color( 80, 80, 80, 255 ),
-    frameTitleBar = Color( 25, 100, 170 ),
+StyledTheme = StyledTheme or {}
 
-    buttonBorder = Color( 150, 150, 150, 255 ),
-    buttonBackground = Color( 30, 30, 30, 255 ),
-    buttonBackgroundDisabled = Color( 10, 10, 10, 255 ),
-    buttonHover = Color( 255, 255, 255, 30 ),
-    buttonPress = Color( 25, 100, 170 ),
+--[[
+    Setup color constants
+]]
+do
+    StyledTheme.colors = StyledTheme.colors or {}
 
-    buttonText = Color( 255, 255, 255, 255 ),
-    buttonTextDisabled = Color( 180, 180, 180, 255 ),
+    local colors = StyledTheme.colors or {}
 
-    entryBorder = Color( 100, 100, 100, 255 ),
-    entryBackground = Color( 10, 10, 10, 255 ),
-    entryHighlight = Color( 25, 100, 170 ),
-    entryPlaceholder = Color( 150, 150, 150, 255 ),
-    entryText = Color( 255, 255, 255, 255 ),
-    labelText = Color( 255, 255, 255, 255 ),
-}
+    colors.accent = Color( 56, 113, 179 )
+    colors.panelBackground = Color( 46, 46, 46, 240 )
+    colors.panelDisabledBackground = Color( 90, 90, 90, 255 )
+    colors.scrollBackground = Color( 0, 0, 0, 200 )
 
-local StyledTheme = _G.StyledTheme or {}
-local ClassFunctions = StyledTheme.ClassFunctions or {}
+    colors.labelText = Color( 255, 255, 255, 255 )
+    colors.labelTextDisabled = Color( 180, 180, 180, 255 )
 
-_G.StyledTheme = StyledTheme
-StyledTheme.__index = StyledTheme
-StyledTheme.ClassFunctions = ClassFunctions
+    colors.buttonHover = Color( 150, 150, 150, 50 )
+    colors.buttonPress = colors.accent
+    colors.buttonBorder = Color( 32, 32, 32, 255 )
+    colors.buttonText = Color( 255, 255, 255, 255 )
+    colors.buttonTextDisabled = Color( 180, 180, 180, 255 )
 
-function StyledTheme.Create( colors )
-    colors = colors or {}
-
-    for id, color in pairs( DEFAULT_COLORS ) do
-        colors[id] = colors[id] or color
-    end
-
-    return setmetatable( {
-        colors = colors
-    }, StyledTheme )
+    colors.entryBackground = Color( 20, 20, 20, 255 )
+    colors.entryBorder = Color( 80, 80, 80, 255 )
+    colors.entryHighlight = colors.accent
+    colors.entryPlaceholder = Color( 150, 150, 150, 255 )
+    colors.entryText = Color( 255, 255, 255, 255 )
 end
 
-function StyledTheme:Apply( panel, classOverride )
-    local funcs = ClassFunctions[classOverride or panel.ClassName]
-    if not funcs then return end
+--[[
+    Setup fonts
+]]
+do
+    StyledTheme.BASE_FONT_NAME = "Roboto"
+    StyledTheme.fonts = StyledTheme.fonts or {}
 
-    panel.STheme = self
-    panel.SColors = self.colors
+    local fonts = StyledTheme.fonts
 
-    if funcs.Prepare then
-        funcs.Prepare( panel )
-    end
+    fonts["StyledTheme_Small"] = {
+        font = StyledTheme.BASE_FONT_NAME,
+        screenSize = 0.018,
+        weight = 500,
+        blursize = 0,
+        scanlines = 0,
+        extended = false,
+        antialias = true
+    }
 
-    if funcs.Paint then
-        panel.Paint = funcs.Paint
-    end
-
-    if funcs.UpdateColours then
-        panel.UpdateColours = funcs.UpdateColours
-    end
-
-    if funcs.Close then
-        panel.Close = funcs.Close
-    end
+    fonts["StyledTheme_Tiny"] = {
+        font = StyledTheme.BASE_FONT_NAME,
+        screenSize = 0.013,
+        weight = 500,
+        blursize = 0,
+        scanlines = 0,
+        extended = false,
+        antialias = true
+    }
 end
 
------ Theme functions by panel class -----
-
-local Lerp = Lerp
-local FrameTime = FrameTime
-
-local DrawRect = surface.DrawRect
-local DrawRoundedBox = draw.RoundedBox
-local SetDrawColor = surface.SetDrawColor
-
-ClassFunctions["DLabel"] = {
-    Prepare = function( self )
-        self:SetColor( self.SColors.labelText )
+hook.Add( "StyledTheme_OnResolutionChange", "StyledTheme.UpdateFonts", function( _, screenH )
+    for name, data in pairs( StyledTheme.fonts ) do
+        data.size = math.floor( screenH * data.screenSize )
+        surface.CreateFont( name, data )
     end
-}
+end )
 
-ClassFunctions["DPanel"] = {
-    Paint = function( self, w, h )
-        SetDrawColor( self.SColors.panelBackground:Unpack() )
-        DrawRect( 0, 0, w, h )
+--[[
+    Setup dimensions
+]]
+StyledTheme.dimensions = StyledTheme.dimensions or {}
+
+hook.Add( "StyledTheme_OnResolutionChange", "StyledTheme.UpdateDimensions", function()
+    local dimensions = StyledTheme.dimensions
+    local ScaleSize = StyledTheme.ScaleSize
+
+    dimensions.framePadding = ScaleSize( 10 )
+    dimensions.frameButtonSize = ScaleSize( 36 )
+
+    dimensions.buttonHeight = ScaleSize( 40 )
+    dimensions.headerHeight = ScaleSize( 32 )
+
+    dimensions.scrollBarWidth = ScaleSize( 16 )
+    dimensions.scrollPadding = ScaleSize( 8 )
+
+    dimensions.formPadding = ScaleSize( 20 )
+    dimensions.formSeparator = ScaleSize( 6 )
+    dimensions.formLabelWidth = ScaleSize( 300 )
+
+    dimensions.menuPadding = ScaleSize( 6 )
+    dimensions.indicatorSize = ScaleSize( 20 )
+end )
+
+--[[
+    Watch for changes in screen resolution
+]]
+do
+    local Floor = math.floor
+    local screenW, screenH = 0, 0
+
+    --- Scales the given size (in pixels) from a 1080p resolution to 
+    --- the resolution currently being used by the game.
+    function StyledTheme.ScaleSize( size )
+        return Floor( ( size / 1080 ) * screenH )
     end
-}
 
-ClassFunctions["DButton"] = {
-    Prepare = function( self )
-        self._hoverAnim = 0
-    end,
+    hook.Add( "Initialize", "StyledTheme.CreateFonts", function()
+        screenW, screenH = ScrW(), ScrH()
+        hook.Run( "StyledTheme_OnResolutionChange", screenW, screenH )
+    end )
 
-    Paint = function( self, w, h )
-        self._hoverAnim = Lerp( FrameTime() * 10, self._hoverAnim, ( self:IsEnabled() and self.Hovered ) and 1 or 0 )
+    -- Detect resolution changes
+    local ScrW, ScrH = ScrW, ScrH
 
-        local colors = self.SColors
-        local bgColor = self._themeHighlight and colors.buttonPress or colors.buttonBackground
-
-        DrawRoundedBox( 4, 0, 0, w, h, colors.buttonBorder )
-        DrawRoundedBox( 4, 1, 1, w - 2, h - 2, self:IsEnabled() and bgColor or colors.buttonBackgroundDisabled )
-
-        local r, g, b, a = colors.buttonHover:Unpack()
-
-        SetDrawColor( r, g, b, a * self._hoverAnim )
-        DrawRect( 1, 1, w - 2, h - 2 )
-
-        if self:IsDown() or self.m_bSelected then
-            DrawRoundedBox( 4, 1, 1, w - 2, h - 2, self._themeHighlight and colors.buttonBackground or colors.buttonPress )
+    timer.Create( "StyledTheme.CheckResolution", 3, 0, function()
+        if ScrW() ~= screenW or ScrH() ~= screenH then
+            screenW, screenH = ScrW(), ScrH()
+            hook.Run( "StyledTheme_OnResolutionChange", screenW, screenH )
         end
-    end,
+    end )
+end
 
-    UpdateColours = function( self )
-        if self:IsEnabled() then
-            self:SetTextStyleColor( self.SColors.buttonText )
-        else
-            self:SetTextStyleColor( self.SColors.buttonTextDisabled )
+--[[
+    Misc. utility functions
+]]
+do
+    --- Gets a localized language string, with the first character being in uppercase.
+    function StyledTheme.GetUpperLanguagePhrase( text )
+        text = language.GetPhrase( text )
+        return text:sub( 1, 1 ):upper() .. text:sub( 2 )
+    end
+
+    local SetDrawColor = surface.SetDrawColor
+    local DrawRect = surface.DrawRect
+
+    --- Draw box, using the specified background color.
+    --- It allows overriding the alpha while keeping the supplied color table intact.
+    function StyledTheme.DrawRect( x, y, w, h, color, alpha )
+        alpha = alpha or 1
+
+        SetDrawColor( color.r, color.g, color.b, color.a * alpha )
+        DrawRect( x, y, w, h )
+    end
+
+    local SetMaterial = surface.SetMaterial
+    local MAT_BLUR = Material( "pp/blurscreen" )
+
+    --- Blur the background of a panel.
+    function StyledTheme.BlurPanel( panel, alpha, density )
+        SetDrawColor( 255, 255, 255, alpha or panel:GetAlpha() )
+        SetMaterial( MAT_BLUR )
+
+        MAT_BLUR:SetFloat( "$blur", density or 4 )
+        MAT_BLUR:Recompute()
+
+        render.UpdateScreenEffectTexture()
+
+        local x, y = panel:LocalToScreen( 0, 0 )
+        surface.DrawTexturedRect( -x, -y, ScrW(), ScrH() )
+    end
+
+    local cache = {}
+
+    -- Get a material given a path to a material or .png file.
+    function StyledTheme.GetMaterial( path )
+        if cache[path] then
+            return cache[path]
         end
+
+        cache[path] = Material( path, "smooth ignorez" )
+
+        return cache[path]
     end
-}
 
-ClassFunctions["DBinder"] = ClassFunctions["DButton"]
+    local GetMaterial = StyledTheme.GetMaterial
+    local DrawTexturedRect = surface.DrawTexturedRect
+    local COLOR_WHITE = Color( 255, 255, 255, 255 )
 
-ClassFunctions["DTextEntry"] = {
-    Prepare = function( self )
-        self:SetDrawBorder( false )
-        self:SetPaintBackground( false )
+    --- Draw a icon, using the specified image file path and color.
+    --- It allows overriding the alpha while keeping the supplied color table intact.
+    function StyledTheme.DrawIcon( path, x, y, w, h, alpha, color )
+        color = color or COLOR_WHITE
+        alpha = alpha or 1
 
-        self:SetTextColor( self.SColors.entryText )
-        self:SetCursorColor( self.SColors.entryText )
-        self:SetHighlightColor( self.SColors.entryHighlight )
-        self:SetPlaceholderColor( self.SColors.entryPlaceholder )
-    end,
-
-    Paint = function( self, w, h )
-        SetDrawColor( self.SColors.entryBorder:Unpack() )
-        surface.DrawOutlinedRect( 0, 0, w, h, 1 )
-
-        SetDrawColor( self.SColors.entryBackground:Unpack() )
-        DrawRect( 1, 1, w - 2, h - 2 )
-
-        derma.SkinHook( "Paint", "TextEntry", self, w, h )
-    end
-}
-
-ClassFunctions["DComboBox"] = {
-    Prepare = function( self )
-        self:SetTextColor( self.SColors.entryText )
-    end,
-
-    Paint = function( self, w, h )
-        SetDrawColor( self.SColors.entryBorder:Unpack() )
-        surface.DrawOutlinedRect( 0, 0, w, h, 1 )
-
-        SetDrawColor( self.SColors.entryBackground:Unpack() )
-        DrawRect( 1, 1, w - 2, h - 2 )
-    end
-}
-
-ClassFunctions["DNumSlider"] = {
-    Prepare = function( self )
-        self.STheme:Apply( self.TextArea )
-        self.STheme:Apply( self.Label )
-    end
-}
-
-ClassFunctions["DScrollPanel"] = {
-    Prepare = function( self )
-        self.STheme:Apply( self.VBar )
-    end,
-
-    Paint = function( self, w, h )
-        SetDrawColor( self.SColors.panelBackground:Unpack() )
-        DrawRect( 0, 0, w, h )
-    end
-}
-
-local function DrawGrip( self, w, h )
-    local colors = self.SColors
-
-    SetDrawColor( colors.buttonBorder:Unpack() )
-    DrawRect( 0, 0, w, h )
-
-    SetDrawColor( colors.buttonBackground:Unpack() )
-    DrawRect( 1, 1, w - 2, h - 2 )
-
-    if self.Depressed then
-        SetDrawColor( colors.buttonPress:Unpack() )
-        DrawRect( 1, 1, w - 2, h - 2 )
-
-    elseif self.Hovered then
-        SetDrawColor( colors.buttonHover:Unpack() )
-        DrawRect( 1, 1, w - 2, h - 2 )
+        SetMaterial( GetMaterial( path ) )
+        SetDrawColor( color.r, color.g, color.b, 255 * alpha )
+        DrawTexturedRect( x, y, w, h )
     end
 end
 
-ClassFunctions["DVScrollBar"] = {
-    Prepare = function( self )
-        self.btnGrip.SColors = self.SColors
-        self.btnGrip.Paint = DrawGrip
-    end,
+--[[
+    Utility function to apply the theme to existing VGUI panels
+]]
+do
+    local ClassFunctions = {}
 
-    Paint = function( self, w, h )
-        SetDrawColor( self.SColors.entryBackground:Unpack() )
-        DrawRect( 0, 0, w, h )
-    end
-}
+    function StyledTheme.Apply( panel, classOverride )
+        local funcs = ClassFunctions[classOverride or panel.ClassName]
+        if not funcs then return end
 
-local function SlideThink( anim, panel, fraction )
-    if not anim.StartPos then
-        anim.StartPos = Vector( panel.x, panel.y + anim.StartOffset, 0 )
-        anim.TargetPos = Vector( panel.x, panel.y + anim.EndOffset, 0 )
-    end
-
-    panel._animAlpha = Lerp( fraction, anim.StartAlpha, anim.EndAlpha )
-
-    local pos = LerpVector( fraction, anim.StartPos, anim.TargetPos )
-    panel:SetPos( pos.x, pos.y )
-    panel:SetAlpha( 255 * panel._animAlpha )
-end
-
-local function FramePerformLayout( self )
-    local titlePush = 16
-
-    if IsValid( self.imgIcon ) then
-        self.imgIcon:SetPos( 4, 5 )
-        self.imgIcon:SetSize( 16, 16 )
-    end
-
-    self.btnClose:SetPos( self:GetWide() - 28 - 2, 2 )
-    self.btnClose:SetSize( 28, 20 )
-
-    self.lblTitle:SetPos( 8 + titlePush, 2 )
-    self.lblTitle:SetSize( self:GetWide() - 25 - titlePush, 20 )
-end
-
-ClassFunctions["DFrame"] = {
-    Prepare = function( self )
-        self._animAlpha = 0
-        self._OriginalClose = self.Close
-        self.PerformLayout = FramePerformLayout
-
-        self.STheme:Apply( self.btnClose )
-        self.btnClose:SetText( "X" )
-        self.lblTitle:SetColor( self.SColors.labelText )
-
-        if IsValid( self.btnMaxim ) then
-            self.btnMaxim:Remove()
+        if funcs.Prepare then
+            funcs.Prepare( panel )
         end
 
-        if IsValid( self.btnMinim ) then
-            self.btnMinim:Remove()
+        if funcs.Paint then
+            panel.Paint = funcs.Paint
         end
 
-        local anim = self:NewAnimation( 0.4, 0, 0.25 )
-        anim.StartOffset = -80
-        anim.EndOffset = 0
-        anim.StartAlpha = 0
-        anim.EndAlpha = 1
-        anim.Think = SlideThink
-    end,
-
-    Close = function( self )
-        self:SetMouseInputEnabled( false )
-        self:SetKeyboardInputEnabled( false )
-
-        if self.OnStartClosing then
-            self.OnStartClosing()
+        if funcs.UpdateColours then
+            panel.UpdateColours = funcs.UpdateColours
         end
 
-        local anim = self:NewAnimation( 0.2, 0, 0.5, function()
-            self:_OriginalClose()
+        if funcs.Close then
+            panel.Close = funcs.Close
+        end
+    end
+
+    local colors = StyledTheme.colors
+    local dimensions = StyledTheme.dimensions
+    local DrawRect = StyledTheme.DrawRect
+
+    ClassFunctions["DLabel"] = {
+        Prepare = function( self )
+            self:SetColor( colors.labelText )
+            self:SetFont( "StyledTheme_Small" )
+        end
+    }
+
+    ClassFunctions["DPanel"] = {
+        Paint = function( self, w, h )
+            DrawRect( 0, 0, w, h, self:GetBackgroundColor() or colors.panelBackground )
+        end
+    }
+
+    local function CustomMenuAdd( self, class )
+        local pnl = self:OriginalAdd( class )
+
+        if class == "DButton" then
+            StyledTheme.Apply( pnl )
+
+            timer.Simple( 0, function()
+                if not IsValid( pnl ) then return end
+
+                pnl:SetPaintBackground( true )
+                pnl:SizeToContentsX( StyledTheme.ScaleSize( 20 ) )
+                pnl:DockMargin( 0, 0, dimensions.menuPadding, 0 )
+            end )
+        end
+
+        return pnl
+    end
+
+    ClassFunctions["DMenuBar"] = {
+        Prepare = function( self )
+            self:SetTall( dimensions.buttonHeight )
+            self:DockMargin( 0, 0, 0, 0 )
+            self:DockPadding( dimensions.menuPadding, dimensions.menuPadding, dimensions.menuPadding, dimensions.menuPadding )
+
+            self.OriginalAdd = self.Add
+            self.Add = CustomMenuAdd
+        end,
+        Paint = function( self, w, h )
+            DrawRect( 0, 0, w, h, self:GetBackgroundColor() or colors.accent )
+        end
+    }
+
+    local Lerp = Lerp
+    local FrameTime = FrameTime
+
+    ClassFunctions["DButton"] = {
+        Prepare = function( self )
+            self:SetFont( "StyledTheme_Small" )
+            self:SetTall( dimensions.buttonHeight )
+            self.animHover = 0
+            self.animPress = 0
+        end,
+
+        Paint = function( self, w, h )
+            local dt = FrameTime() * 10
+            local enabled = self:IsEnabled()
+
+            self.animHover = Lerp( dt, self.animHover, ( enabled and self.Hovered ) and 1 or 0 )
+            self.animPress = Lerp( dt, self.animPress, ( enabled and ( self:IsDown() or self.m_bSelected ) ) and 1 or 0 )
+
+            DrawRect( 0, 0, w, h, ( self.isToggle and self.isChecked ) and colors.buttonPress or colors.buttonBorder )
+            DrawRect( 1, 1, w - 2, h - 2, enabled and colors.panelBackground or colors.panelDisabledBackground )
+            DrawRect( 1, 1, w - 2, h - 2, colors.buttonHover, self.animHover )
+            DrawRect( 1, 1, w - 2, h - 2, colors.buttonPress, self.animPress )
+        end,
+
+        UpdateColours = function( self )
+            if self:IsEnabled() then
+                self:SetTextStyleColor( colors.buttonText )
+            else
+                self:SetTextStyleColor( colors.buttonTextDisabled )
+            end
+        end
+    }
+
+    ClassFunctions["DBinder"] = ClassFunctions["DButton"]
+
+    ClassFunctions["DTextEntry"] = {
+        Prepare = function( self )
+            self:SetFont( "StyledTheme_Small" )
+            self:SetTall( dimensions.buttonHeight )
+            self:SetDrawBorder( false )
+            self:SetPaintBackground( false )
+
+            self:SetTextColor( colors.entryText )
+            self:SetCursorColor( colors.entryText )
+            self:SetHighlightColor( colors.entryHighlight )
+            self:SetPlaceholderColor( colors.entryPlaceholder )
+        end,
+
+        Paint = function( self, w, h )
+            local enabled = self:IsEnabled()
+
+            DrawRect( 0, 0, w, h, ( self:IsEditing() and enabled ) and colors.entryHighlight or colors.entryBorder )
+            DrawRect( 1, 1, w - 2, h - 2, enabled and colors.entryBackground or colors.panelDisabledBackground )
+
+            derma.SkinHook( "Paint", "TextEntry", self, w, h )
+        end
+    }
+
+    ClassFunctions["DComboBox"] = {
+        Prepare = function( self )
+            self:SetFont( "StyledTheme_Small" )
+            self:SetTall( dimensions.buttonHeight )
+            self:SetTextColor( colors.entryText )
+            self.animHover = 0
+        end,
+
+        Paint = function( self, w, h )
+            local dt = FrameTime() * 10
+            local enabled = self:IsEnabled()
+
+            self.animHover = Lerp( dt, self.animHover, ( enabled and self.Hovered ) and 1 or 0 )
+
+            DrawRect( 0, 0, w, h, ( self:IsMenuOpen() and enabled ) and colors.entryHighlight or colors.buttonBorder )
+            DrawRect( 1, 1, w - 2, h - 2, enabled and colors.panelBackground or colors.panelDisabledBackground )
+            DrawRect( 1, 1, w - 2, h - 2, colors.buttonHover, self.animHover )
+        end
+    }
+
+    ClassFunctions["DNumSlider"] = {
+        Prepare = function( self )
+            StyledTheme.Apply( self.TextArea )
+            StyledTheme.Apply( self.Label )
+        end
+    }
+
+    ClassFunctions["DScrollPanel"] = {
+        Prepare = function( self )
+            StyledTheme.Apply( self.VBar )
+
+            local padding = dimensions.scrollPadding
+            self.pnlCanvas:DockPadding( padding, padding, padding, padding )
+            self:SetPaintBackground( true )
+        end,
+
+        Paint = function( self, w, h )
+            if self:GetPaintBackground() then
+                DrawRect( 0, 0, w, h, colors.scrollBackground )
+            end
+        end
+    }
+
+    local Clamp = math.Clamp
+
+    local function AddScroll( self, delta )
+        local oldScroll = self.animTargetScroll or self:GetScroll()
+        local newScroll = Clamp( oldScroll + delta * 40, 0, self.CanvasSize )
+
+        if oldScroll == newScroll then
+            return false
+        end
+
+        self:Stop()
+        self.animTargetScroll = newScroll
+
+        local anim = self:NewAnimation( 0.4, 0, 0.25, function( _, pnl )
+            pnl.animTargetScroll = nil
         end )
 
-        anim.StartOffset = 0
-        anim.EndOffset = -80
-        anim.StartAlpha = 1
-        anim.EndAlpha = 0
-        anim.Think = SlideThink
-    end,
+        anim.StartPos = oldScroll
+        anim.TargetPos = newScroll
 
-    Paint = function( self, w, h )
-        if self.m_bBackgroundBlur then
-            Derma_DrawBackgroundBlur( self, self.m_fCreateTime )
+        anim.Think = function( a, pnl, fraction )
+            pnl:SetScroll( Lerp( fraction, a.StartPos, a.TargetPos ) )
         end
 
-        local colors = self.SColors
-
-        SetDrawColor( colors.frameBorder:Unpack() )
-        surface.DrawOutlinedRect( 0, 0, w, h, 1 )
-
-        SetDrawColor( colors.frameBackground:Unpack() )
-        DrawRect( 0, 0, w, h )
-
-        SetDrawColor( colors.frameTitleBar:Unpack() )
-        DrawRect( 0, 0, w, 24 )
-    end
-}
-
------ Custom panels -----
-
-function StyledTheme:CreateHeader( parent, text, mleft, mtop, mright, mbottom )
-    mleft = mleft or 0
-    mtop = mtop or 4
-    mright = mright or 0
-    mbottom = mbottom or 4
-
-    local panel = vgui.Create( "DPanel", parent )
-    panel:SetTall( 32 )
-    panel:Dock( TOP )
-    panel:DockMargin( mleft, mtop, mright, mbottom )
-    panel:SetBackgroundColor( color_black )
-
-    local label = vgui.Create( "DLabel", panel )
-    label:SetText( text )
-    label:SetContentAlignment( 5 )
-    label:SizeToContents()
-    label:Dock( FILL )
-
-    self:Apply( label )
-
-    return panel
-end
-
-function StyledTheme:CreatePropertyLabel( parent, text )
-    local label = vgui.Create( "DLabel", parent )
-    label:Dock( TOP )
-    label:DockMargin( 0, 0, 0, 2 )
-    label:SetText( text )
-    label:SetTall( 26 )
-
-    self:Apply( label )
-
-    return label
-end
-
-function StyledTheme:CreateButton( parent, label, callback )
-    local button = vgui.Create( "DButton", parent )
-    button:SetTall( 30 )
-    button:SetText( label )
-    button:Dock( TOP )
-    button:DockMargin( 20, 0, 20, 4 )
-    button.DoClick = callback
-
-    self:Apply( button )
-
-    return button
-end
-
-function StyledTheme:CreateToggleButton( parent, label, isChecked, callback )
-    local button = vgui.Create( "DButton", parent )
-    button:SetTall( 30 )
-    button:SetIcon( isChecked and "icon16/accept.png" or "icon16/cancel.png" )
-    button:SetText( label )
-    button:Dock( TOP )
-    button:DockMargin( 20, 0, 20, 4 )
-    button._isChecked = isChecked
-
-    self:Apply( button )
-
-    button.DoClick = function( s )
-        s._isChecked = not s._isChecked
-        button:SetIcon( s._isChecked and "icon16/accept.png" or "icon16/cancel.png" )
-        callback( s._isChecked )
+        return true
     end
 
-    return button
-end
+    local function DrawGrip( self, w, h )
+        local dt = FrameTime() * 10
 
-function StyledTheme:CreateSlider( parent, label, default, min, max, decimals, callback )
-    local slider = vgui.Create( "DNumSlider", parent )
-    slider:SetTall( 36 )
-    slider:SetText( label )
-    slider:SetMin( min )
-    slider:SetMax( max )
-    slider:SetValue( default )
-    slider:SetDecimals( decimals )
-    slider:Dock( TOP )
-    slider:DockMargin( 20, 0, 20, 6 )
+        self.animHover = Lerp( dt, self.animHover, self.Hovered and 1 or 0 )
+        self.animPress = Lerp( dt, self.animPress, self.Depressed and 1 or 0 )
 
-    self:Apply( slider )
-
-    slider.OnValueChanged = function( _, value )
-        callback( decimals == 0 and math.floor( value ) or math.Round( value, decimals ) )
+        DrawRect( 0, 0, w, h, colors.buttonBorder )
+        DrawRect( 1, 1, w - 2, h - 2, colors.panelBackground )
+        DrawRect( 1, 1, w - 2, h - 2, colors.buttonHover, self.animHover )
+        DrawRect( 1, 1, w - 2, h - 2, colors.buttonPress, self.animPress )
     end
 
-    return slider
-end
+    ClassFunctions["DVScrollBar"] = {
+        Prepare = function( self )
+            self:SetWide( dimensions.scrollBarWidth )
+            self:SetHideButtons( true )
+            self.AddScroll = AddScroll
 
-function StyledTheme:CreateComboBox( parent, text, options, defaultIndex, callback )
-    local panel = vgui.Create( "DPanel", parent )
-    panel:SetTall( 30 )
-    panel:SetPaintBackground( false )
-    panel:Dock( TOP )
-    panel:DockMargin( 20, 0, 20, 4 )
+            self.btnGrip.animHover = 0
+            self.btnGrip.animPress = 0
+            self.btnGrip.Paint = DrawGrip
+        end,
 
-    local label = vgui.Create( "DLabel", panel )
-    label:Dock( LEFT )
-    label:DockMargin( 0, 0, 0, 0 )
-    label:SetText( text )
-    label:SetWide( 190 )
+        Paint = function( _, w, h )
+            DrawRect( 0, 0, w, h, colors.scrollBackground )
+        end
+    }
 
-    self:Apply( label )
+    local function FrameSlideAnim( anim, panel, fraction )
+        if not anim.StartPos then
+            anim.StartPos = Vector( panel.x, panel.y + anim.StartOffset, 0 )
+            anim.TargetPos = Vector( panel.x, panel.y + anim.EndOffset, 0 )
+        end
 
-    local combo = vgui.Create( "DComboBox", panel )
-    combo:Dock( FILL )
-    combo:SetSortItems( false )
-
-    for _, v in ipairs( options ) do
-        combo:AddChoice( v )
+        local pos = LerpVector( fraction, anim.StartPos, anim.TargetPos )
+        panel:SetPos( pos.x, pos.y )
+        panel:SetAlpha( 255 * Lerp( fraction, anim.StartAlpha, anim.EndAlpha ) )
     end
 
-    combo:ChooseOptionID( defaultIndex )
+    local function FramePerformLayout( self, w )
+        local padding = dimensions.framePadding
+        local buttonSize = dimensions.frameButtonSize
 
-    self:Apply( combo )
+        self.btnClose:SetSize( buttonSize, buttonSize )
+        self.btnClose:SetPos( w - self.btnClose:GetWide() - padding, padding )
 
-    combo.OnSelect = function( _, index )
-        callback( index )
-    end
-end
+        local iconMargin = 0
 
-function StyledTheme:CreateBinderButton( parent, text, defaultKey )
-    local panel = vgui.Create( "DPanel", parent )
-    panel:SetTall( 30 )
-    panel:SetPaintBackground( false )
-    panel:Dock( TOP )
-    panel:DockMargin( 20, 0, 20, 4 )
+        if IsValid( self.imgIcon ) then
+            local iconSize = buttonSize * 0.6
 
-    local label = vgui.Create( "DLabel", panel )
-    label:Dock( LEFT )
-    label:DockMargin( 0, 0, 0, 0 )
-    label:SetText( text )
-    label:SetWide( 190 )
+            self.imgIcon:SetPos( padding, padding + ( buttonSize * 0.5 ) - ( iconSize * 0.5 ) )
+            self.imgIcon:SetSize( iconSize, iconSize )
 
-    self:Apply( label )
+            iconMargin = iconSize + padding * 0.5
+        end
 
-    local binder = vgui.Create( "DBinder", panel )
-    binder:SetValue( defaultKey or KEY_NONE )
-    binder:Dock( FILL )
-
-    self:Apply( binder )
-
-    return binder
-end
-
------ Custom DFrame with tabs -----
-
-local TabButton = {}
-
-function TabButton:Init()
-    self:SetCursor( "hand" )
-    self.icon = vgui.Create( "DImage", self )
-
-    self.isSelected = false
-    self.notificationCount = 0
-    self.SColors = DEFAULT_COLORS
-end
-
-function TabButton:SetIcon( path )
-    self.icon:SetImage( path )
-end
-
-function TabButton:PerformLayout( w, h )
-    local size = math.max( w, h ) * 0.4
-
-    self.icon:SetSize( size, size )
-    self.icon:Center()
-end
-
-local COLOR_INDICATOR = Color( 200, 0, 0, 255 )
-
-function TabButton:Paint( w, h )
-    local colors = self.SColors
-
-    if self.isSelected then
-        SetDrawColor( colors.buttonPress:Unpack() )
-        DrawRect( 0, 0, w, h )
+        self.lblTitle:SetPos( padding + iconMargin, padding )
+        self.lblTitle:SetSize( w - ( padding * 2 ) - iconMargin, buttonSize )
     end
 
-    if self:IsHovered() then
-        SetDrawColor( colors.buttonHover:Unpack() )
-        DrawRect( 0, 0, w, h )
-    end
+    ClassFunctions["DFrame"] = {
+        Prepare = function( self )
+            self._OriginalClose = self.Close
+            self.PerformLayout = FramePerformLayout
 
-    if self.notificationCount > 0 then
-        local size = 14
-        local x = w - size - 2
-        local y = h - size - 2
+            StyledTheme.Apply( self.btnClose )
+            StyledTheme.Apply( self.lblTitle )
 
-        DrawRoundedBox( size * 0.5, x, y, size, size, COLOR_INDICATOR )
-        draw.SimpleText( self.notificationCount, "TargetIDSmall", x + size * 0.5, y + size * 0.5, colors.buttonText, 1, 1 )
-    end
+            local padding = dimensions.framePadding
+            local buttonSize = dimensions.frameButtonSize
+
+            self:DockPadding( padding, buttonSize + padding * 2, padding, padding )
+            self.btnClose:SetText( "X" )
+
+            if IsValid( self.btnMaxim ) then
+                self.btnMaxim:Remove()
+            end
+
+            if IsValid( self.btnMinim ) then
+                self.btnMinim:Remove()
+            end
+
+            local anim = self:NewAnimation( 0.4, 0, 0.25 )
+            anim.StartOffset = -80
+            anim.EndOffset = 0
+            anim.StartAlpha = 0
+            anim.EndAlpha = 1
+            anim.Think = FrameSlideAnim
+        end,
+
+        Close = function( self )
+            self:SetMouseInputEnabled( false )
+            self:SetKeyboardInputEnabled( false )
+
+            if self.OnStartClosing then
+                self.OnStartClosing()
+            end
+
+            local anim = self:NewAnimation( 0.2, 0, 0.5, function()
+                self:_OriginalClose()
+            end )
+
+            anim.StartOffset = 0
+            anim.EndOffset = -80
+            anim.StartAlpha = 1
+            anim.EndAlpha = 0
+            anim.Think = FrameSlideAnim
+        end,
+
+        Paint = function( self, w, h )
+            if self.m_bBackgroundBlur then
+                Derma_DrawBackgroundBlur( self, self.m_fCreateTime )
+            else
+                StyledTheme.BlurPanel( self )
+            end
+
+            DrawRect( 0, 0, w, h, colors.panelBackground, self:GetAlpha() / 255 )
+        end
+    }
 end
 
-function TabButton:OnMousePressed( keyCode )
-    if keyCode == MOUSE_LEFT then
-        self:GetParent():GetParent():SetActiveTab( self.tab )
-    end
-end
+--[[
+    Utility functions to create frequently used panels.
+]]
+do
+    local colors = StyledTheme.colors
+    local dimensions = StyledTheme.dimensions
 
-vgui.Register( "Styled_TabButton", TabButton, "DPanel" )
+    function StyledTheme.CreateFormHeader( parent, text, mtop, mbottom )
+        mtop = mtop or dimensions.formSeparator
+        mbottom = mbottom or dimensions.formSeparator
 
-local PANEL = {}
+        local panel = vgui.Create( "DPanel", parent )
+        panel:SetTall( dimensions.headerHeight )
+        panel:Dock( TOP )
+        panel:DockMargin( 0, mtop, 0, mbottom )
+        panel:SetBackgroundColor( colors.scrollBackground )
 
-function PANEL:Init()
-    local w = math.max( ScrH() * 0.7, 600 )
-    local h = math.max( ScrH() * 0.45, 400 )
+        StyledTheme.Apply( panel )
 
-    self:SetPos( 0, 0 )
-    self:SetSize( w, h )
-    self:SetSizable( true )
-    self:SetDraggable( true )
-    self:SetDeleteOnClose( true )
-    self:SetScreenLock( true )
-    self:SetMinWidth( 600 )
-    self:SetMinHeight( 400 )
-    self:DockPadding( 4, 28, 4, 4 )
+        local label = vgui.Create( "DLabel", panel )
+        label:SetText( text )
+        label:SetContentAlignment( 5 )
+        label:SizeToContents()
+        label:Dock( FILL )
 
-    self.tabList = vgui.Create( "DPanel", self )
-    self.tabList:SetWide( 48 )
-    self.tabList:Dock( LEFT )
-    self.tabList:DockPadding( 2, 2, 2, 2 )
+        StyledTheme.Apply( label )
 
-    self.tabContainer = vgui.Create( "DPanel", self )
-    self.tabContainer:Dock( FILL )
-    self.tabContainer:DockMargin( 4, 0, 0, 0 )
-    self.tabContainer:DockPadding( 0, 0, 0, 0 )
-    self.tabContainer:SetPaintBackground( false )
-
-    self.tabs = {}
-end
-
-function PANEL:ApplyTheme( theme )
-    self.tabList:SetBackgroundColor( theme.colors.panelBackground )
-
-    theme:Apply( self, "DFrame" )
-
-    for _, t in ipairs( self.tabs ) do
-        t.button.SColors = theme.colors
-    end
-end
-
-function PANEL:AddTab( icon, tooltip )
-    local tab = {}
-
-    tab.button = vgui.Create( "Styled_TabButton", self.tabList )
-    tab.button:SetIcon( icon )
-    tab.button:SetTall( 44 )
-    tab.button:SetTooltip( tooltip )
-    tab.button:Dock( TOP )
-    tab.button:DockMargin( 0, 0, 0, 2 )
-    tab.button.tab = tab
-    tab.button.SColors = self.SColors or DEFAULT_COLORS
-
-    tab.panel = vgui.Create( "DScrollPanel", self.tabContainer )
-    tab.panel:Dock( FILL )
-    tab.panel:DockMargin( 0, 0, 0, 0 )
-    tab.panel:DockPadding( 0, 0, 0, 0 )
-    tab.panel:SetPaintBackground( false )
-    tab.panel:SetVisible( false )
-    tab.panel.pnlCanvas:DockPadding( 0, -4, 4, 0 )
-
-    self.tabs[#self.tabs + 1] = tab
-
-    if #self.tabs == 1 then
-        self:SetActiveTab( tab )
+        return panel
     end
 
-    return tab.panel
-end
+    function StyledTheme.CreateFormLabel( parent, text )
+        local label = vgui.Create( "DLabel", parent )
+        label:Dock( TOP )
+        label:DockMargin( dimensions.formPadding, 0, dimensions.formPadding, dimensions.formSeparator )
+        label:SetText( text )
+        label:SetTall( dimensions.buttonHeight )
 
-function PANEL:SetActiveTab( tab )
-    for i, t in ipairs( self.tabs ) do
-        local isThisOne = t == tab
+        StyledTheme.Apply( label )
 
-        t.button.isSelected = isThisOne
-        t.panel:SetVisible( isThisOne )
+        return label
+    end
 
-        if isThisOne then
-            self.lastTabIndex = i
+    function StyledTheme.CreateFormButton( parent, label, callback )
+        local button = vgui.Create( "DButton", parent )
+        button:SetText( label )
+        button:Dock( TOP )
+        button:DockMargin( dimensions.formPadding, 0, dimensions.formPadding, dimensions.formSeparator )
+        button.DoClick = callback
+
+        StyledTheme.Apply( button )
+
+        return button
+    end
+
+    function StyledTheme.CreateFormToggle( parent, label, isChecked, callback )
+        local button = vgui.Create( "DButton", parent )
+        button:SetIcon( isChecked and "icon16/accept.png" or "icon16/cancel.png" )
+        button:SetText( label )
+        button:Dock( TOP )
+        button:DockMargin( dimensions.formPadding, 0, dimensions.formPadding, dimensions.formSeparator )
+        button.isToggle = true
+        button.isChecked = isChecked
+
+        StyledTheme.Apply( button )
+
+        button.SetChecked = function( s, value )
+            value = value == true
+            s.isChecked = value
+            button:SetIcon( value and "icon16/accept.png" or "icon16/cancel.png" )
+            callback( value )
+        end
+
+        button.DoClick = function( s )
+            s:SetChecked( not s.isChecked )
+        end
+
+        return button
+    end
+
+    function StyledTheme.CreateFormSlider( parent, label, default, min, max, decimals, callback )
+        local slider = vgui.Create( "DNumSlider", parent )
+        slider:SetText( label )
+        slider:SetMin( min )
+        slider:SetMax( max )
+        slider:SetValue( default )
+        slider:SetDecimals( decimals )
+        slider:Dock( TOP )
+        slider:DockMargin( dimensions.formPadding, 0, dimensions.formPadding, dimensions.formSeparator )
+
+        slider.PerformLayout = function( s )
+            s.Label:SetWide( dimensions.formLabelWidth )
+        end
+
+        StyledTheme.Apply( slider )
+
+        slider.OnValueChanged = function( _, value )
+            callback( decimals == 0 and math.floor( value ) or math.Round( value, decimals ) )
+        end
+
+        return slider
+    end
+
+    function StyledTheme.CreateFormCombo( parent, text, options, defaultIndex, callback )
+        local panel = vgui.Create( "DPanel", parent )
+        panel:SetTall( dimensions.buttonHeight )
+        panel:SetPaintBackground( false )
+        panel:Dock( TOP )
+        panel:DockMargin( dimensions.formPadding, 0, dimensions.formPadding, dimensions.formSeparator )
+
+        local label = vgui.Create( "DLabel", panel )
+        label:Dock( LEFT )
+        label:DockMargin( 0, 0, 0, 0 )
+        label:SetText( text )
+        label:SetWide( dimensions.formLabelWidth )
+
+        StyledTheme.Apply( label )
+
+        local combo = vgui.Create( "DComboBox", panel )
+        combo:Dock( FILL )
+        combo:SetSortItems( false )
+
+        for _, v in ipairs( options ) do
+            combo:AddChoice( v )
+        end
+
+        if defaultIndex then
+            combo:ChooseOptionID( defaultIndex )
+        end
+
+        StyledTheme.Apply( combo )
+
+        combo.OnSelect = function( _, index )
+            callback( index )
         end
     end
-end
 
-function PANEL:SetActiveTabByIndex( index )
-    if self.tabs[index] then
-        self:SetActiveTab( self.tabs[index] )
+    function StyledTheme.CreateFormBinder( parent, text, defaultKey )
+        local panel = vgui.Create( "DPanel", parent )
+        panel:SetTall( dimensions.buttonHeight )
+        panel:SetPaintBackground( false )
+        panel:Dock( TOP )
+        panel:DockMargin( dimensions.formPadding, 0, dimensions.formPadding, dimensions.formSeparator )
+
+        local label = vgui.Create( "DLabel", panel )
+        label:Dock( LEFT )
+        label:DockMargin( 0, 0, 0, 0 )
+        label:SetText( text )
+        label:SetWide( dimensions.formLabelWidth )
+
+        StyledTheme.Apply( label )
+
+        local binder = vgui.Create( "DBinder", panel )
+        binder:SetValue( defaultKey or KEY_NONE )
+        binder:Dock( FILL )
+
+        StyledTheme.Apply( binder )
+
+        return binder
     end
 end
 
-function PANEL:SetTabNotificationCountByIndex( index, count )
-    if self.tabs[index] then
-        self.tabs[index].button.notificationCount = count
+--[[
+    Custom tabbed frame
+]]
+do
+    local colors = StyledTheme.colors
+    local dimensions = StyledTheme.dimensions
+
+    local TAB_BUTTON = {}
+
+    AccessorFunc( TAB_BUTTON, "iconPath", "Icon", FORCE_STRING )
+
+    function TAB_BUTTON:Init()
+        self:SetCursor( "hand" )
+        self:SetIcon( "icon16/bricks.png" )
+
+        self.isSelected = false
+        self.notificationCount = 0
+        self.animHover = 0
     end
+
+    function TAB_BUTTON:OnMousePressed( keyCode )
+        if keyCode == MOUSE_LEFT then
+            self:GetParent():GetParent():SetActiveTab( self.tab )
+        end
+    end
+
+    local Lerp = Lerp
+    local FrameTime = FrameTime
+    local DrawRect = StyledTheme.DrawRect
+    local DrawIcon = StyledTheme.DrawIcon
+
+    local COLOR_INDICATOR = Color( 200, 0, 0, 255 )
+
+    function TAB_BUTTON:Paint( w, h )
+        self.animHover = Lerp( FrameTime() * 10, self.animHover, self:IsHovered() and 1 or 0 )
+
+        DrawRect( 0, 0, w, h, colors.buttonBorder )
+        DrawRect( 1, 1, w - 2, h - 2, colors.panelBackground )
+        DrawRect( 1, 1, w - 2, h - 2, colors.buttonHover, self.animHover )
+
+        if self.isSelected then
+            DrawRect( 1, 1, w - 2, h - 2, colors.buttonPress )
+        end
+
+        local iconSize = math.floor( math.max( w, h ) * 0.5 )
+        DrawIcon( self.iconPath, ( w * 0.5 ) - ( iconSize * 0.5 ), ( h * 0.5 ) - ( iconSize * 0.5 ), iconSize, iconSize )
+
+        if self.notificationCount > 0 then
+            local size = dimensions.indicatorSize
+            local margin = math.floor( h * 0.05 )
+            local x = w - size - margin
+            local y = h - size - margin
+
+            draw.RoundedBox( size * 0.5, x, y, size, size, COLOR_INDICATOR )
+            draw.SimpleText( self.notificationCount, "StyledTheme_Tiny", x + size * 0.5, y + size * 0.5, colors.buttonText, 1, 1 )
+        end
+    end
+
+    vgui.Register( "Styled_TabButton", TAB_BUTTON, "DPanel" )
+
+    local TABBED_FRAME = {}
+    local ScaleSize = StyledTheme.ScaleSize
+
+    function TABBED_FRAME:Init()
+        StyledTheme.Apply( self, "DFrame" )
+
+        local w = ScaleSize( 850 )
+        local h = ScaleSize( 600 )
+
+        self:SetSize( w, h )
+        self:SetSizable( true )
+        self:SetDraggable( true )
+        self:SetDeleteOnClose( true )
+        self:SetScreenLock( true )
+        self:SetMinWidth( w )
+        self:SetMinHeight( h )
+
+        self.tabList = vgui.Create( "DPanel", self )
+        self.tabList:SetWide( ScaleSize( 64 ) )
+        self.tabList:Dock( LEFT )
+        self.tabList:DockPadding( 0, 0, 0, 0 )
+        self.tabList:SetPaintBackground( false )
+        --StyledTheme.Apply( self.tabList )
+
+        self.contentContainer = vgui.Create( "DPanel", self )
+        self.contentContainer:Dock( FILL )
+        self.contentContainer:DockMargin( ScaleSize( 4 ), 0, 0, 0 )
+        self.contentContainer:DockPadding( 0, 0, 0, 0 )
+        self.contentContainer:SetPaintBackground( false )
+
+        self.tabs = {}
+    end
+
+    function TABBED_FRAME:AddTab( icon, tooltip )
+        local tab = {}
+
+        tab.button = vgui.Create( "Styled_TabButton", self.tabList )
+        tab.button:SetIcon( icon )
+        tab.button:SetTall( ScaleSize( 64 ) )
+        tab.button:SetTooltip( tooltip )
+        tab.button:Dock( TOP )
+        tab.button:DockMargin( 0, 0, 0, 2 )
+        tab.button.tab = tab
+
+        tab.panel = vgui.Create( "DScrollPanel", self.contentContainer )
+        tab.panel:Dock( FILL )
+        tab.panel:DockMargin( 0, 0, 0, 0 )
+        tab.panel:DockPadding( 0, 0, 0, 0 )
+        tab.panel:SetPaintBackground( false )
+        tab.panel:SetVisible( false )
+
+        StyledTheme.Apply( tab.panel )
+
+        self.tabs[#self.tabs + 1] = tab
+
+        if #self.tabs == 1 then
+            self:SetActiveTab( tab )
+        end
+
+        return tab.panel
+    end
+
+    function TABBED_FRAME:SetActiveTab( tab )
+        for i, t in ipairs( self.tabs ) do
+            local isThisOne = t == tab
+
+            t.button.isSelected = isThisOne
+            t.panel:SetVisible( isThisOne )
+
+            if isThisOne then
+                self.lastTabIndex = i
+            end
+        end
+    end
+
+    function TABBED_FRAME:SetActiveTabByIndex( index )
+        if self.tabs[index] then
+            self:SetActiveTab( self.tabs[index] )
+        end
+    end
+
+    function TABBED_FRAME:SetTabNotificationCountByIndex( index, count )
+        if self.tabs[index] then
+            self.tabs[index].button.notificationCount = count
+        end
+    end
+
+    vgui.Register( "Styled_TabbedFrame", TABBED_FRAME, "DFrame" )
 end
 
-vgui.Register( "Styled_TabbedFrame", PANEL, "DFrame" )
+--[[
+    Custom file open/save frame
+]]
+do
+    function StyledTheme.CreateFileBrowser()
+        local frame = vgui.Create( "Styled_FileBrowser" )
+        frame:Center()
+        frame:MakePopup()
+
+        return frame
+    end
+
+    local FILE_ICONS = {
+        ["default"] = "icon16/page_white.png",
+        ["lua"] = "icon16/page_white_code.png",
+
+        ["mdl"] = "icon16/page_white_powerpoint.png",
+        ["vtf"] = "icon16/page_white_swoosh.png",
+        ["vmt"] = "icon16/page_white_code.png",
+
+        ["png"] = "icon16/page_white_picture.png",
+        ["jpg"] = "icon16/page_white_picture.png",
+        ["gif"] = "icon16/page_white_picture.png",
+
+        ["txt"] = "icon16/page_white_text.png",
+        ["md"] = "icon16/page_white_text.png",
+
+        ["conf"] = "icon16/page_white_gear.png",
+        ["ini"] = "icon16/page_white_gear.png",
+        ["properties"] = "icon16/page_white_gear.png",
+
+        ["wav"] = "icon16/sound.png",
+        ["ogg"] = "icon16/sound.png",
+        ["mp3"] = "icon16/sound.png",
+    }
+
+    local L = StyledTheme.GetUpperLanguagePhrase
+    local ScaleSize = StyledTheme.ScaleSize
+    local BROWSER = {}
+
+    function BROWSER:Init()
+        local w, h = ScaleSize( 800 ), ScaleSize( 600 )
+
+        self:SetIcon( "icon16/folder.png" )
+        self:SetTitle( L"file" )
+        self:SetSize( w, h )
+        self:SetMinWidth( w )
+        self:SetMinHeight( h )
+        self:SetSizable( true )
+        self:SetDraggable( true )
+        self:SetDeleteOnClose( true )
+        self:SetScreenLock( true )
+        self:SetBackgroundBlur( true )
+
+        local separator = ScaleSize( 8 )
+
+        self.panelHeader = vgui.Create( "DPanel", self )
+        self.panelHeader:SetTall( ScaleSize( 40 ) )
+        self.panelHeader:Dock( TOP )
+        self.panelHeader:DockMargin( 0, 0, 0, separator )
+        self.panelHeader:DockPadding( separator, separator, separator, separator )
+        self.panelHeader:SetBackgroundColor( StyledTheme.colors.accent )
+
+        self.panelHeader.PerformLayout = function( s )
+            local extraNavWidth = ScaleSize( 10 )
+
+            for _, child in ipairs( s:GetChildren() ) do
+                child:SizeToContentsX( extraNavWidth )
+            end
+        end
+
+        self.scrollFiles = vgui.Create( "DScrollPanel", self )
+        self.scrollFiles:Dock( FILL )
+
+        self.panelOptions = vgui.Create( "DPanel", self )
+        self.panelOptions:SetTall( ScaleSize( 50 ) )
+        self.panelOptions:Dock( BOTTOM )
+        self.panelOptions:DockMargin( 0, separator, 0, 0 )
+        self.panelOptions:DockPadding( separator, separator, separator, separator )
+        self.panelOptions:SetPaintBackground( false )
+
+        self.buttonCancel = vgui.Create( "DButton", self.panelOptions )
+        self.buttonCancel:SetText( L"cancel" )
+        self.buttonCancel:SizeToContentsX( ScaleSize( 60 ) )
+        self.buttonCancel:Dock( RIGHT )
+        self.buttonCancel:DockMargin( separator, 0, 0, 0 )
+
+        self.buttonCancel.DoClick = function()
+            self:Close()
+        end
+
+        self:SetBasePath( "/" )
+        self:NavigateTo( "/" )
+        self:SetExtensionFilter( nil )
+
+        self.OnConfirmPath = function( _path ) end
+
+        StyledTheme.Apply( self, "DFrame" )
+        StyledTheme.Apply( self.panelHeader )
+        StyledTheme.Apply( self.scrollFiles )
+        StyledTheme.Apply( self.buttonCancel )
+    end
+
+    function BROWSER:EnableSaveMode( defaultFileName )
+        self.saveMode = true
+        self.updateFiles = true
+
+        self.entryName = vgui.Create( "DTextEntry", self.panelOptions )
+        self.entryName:SetText( defaultFileName or "untitled.txt" )
+        self.entryName:Dock( FILL )
+
+        local DoSave = function()
+            local path = self.basePath .. table.concat( self.currentNavigation, "/" ) .. "/" .. self.entryName:GetValue()
+            self.OnConfirmPath( self:NormalizePath( path ) )
+            self:Close()
+        end
+
+        self.entryName.OnEnter = DoSave
+        StyledTheme.Apply( self.entryName )
+
+        self.buttonSave = vgui.Create( "DButton", self.panelOptions )
+        self.buttonSave:SetText( L"preset.okay" )
+        self.buttonSave:SizeToContentsX( ScaleSize( 60 ) )
+        self.buttonSave:Dock( RIGHT )
+        self.buttonSave:DockMargin( ScaleSize( 8 ), 0, 0, 0 )
+        self.buttonSave.DoClick = DoSave
+
+        StyledTheme.Apply( self.buttonSave )
+    end
+
+    function BROWSER:SetBasePath( path )
+        self.basePath = path
+        self.updateFiles = true
+    end
+
+    function BROWSER:SetExtensionFilter( extensionFilter )
+        if extensionFilter then
+            local filter = {}
+
+            for _, ext in ipairs( extensionFilter ) do
+                filter[ext] = true
+            end
+
+            self.extensionFilter = filter
+        else
+            self.extensionFilter = nil
+        end
+
+        self.updateFiles = true
+    end
+
+    function BROWSER:NormalizePath( path )
+        path = string.gsub( path, "/+", "/" )
+
+        if path:sub( 1, 1 ) == "/" then
+            path = path:sub( 2 )
+        end
+
+        return path
+    end
+
+    function BROWSER:NavigateTo( dir )
+        dir = self:NormalizePath( dir )
+
+        local nav = { "/" }
+
+        for _, part in ipairs( string.Explode( "/", dir, false ) ) do
+            if part ~= "" then
+                nav[#nav + 1] = part
+            end
+        end
+
+        self.updateFiles = true
+        self.currentNavigation = nav
+    end
+
+    local BaseClass = baseclass.Get( "DFrame" )
+
+    function BROWSER:Think()
+        BaseClass.Think( self )
+
+        if not self.updateFiles then return end
+
+        self.updateFiles = false
+
+        -- Update navigation header
+        self.panelHeader:Clear()
+
+        local OnClickNav = function( s )
+            self:NavigateTo( s._path )
+        end
+
+        local pathSoFar = ""
+        local separator = ScaleSize( 4 )
+
+        for i, piece in ipairs( self.currentNavigation ) do
+            pathSoFar = pathSoFar .. "/" .. piece
+
+            if i == 1 then
+                piece = self.basePath
+            end
+
+            local item = vgui.Create( "DButton", self.panelHeader )
+            item:SetText( piece )
+            item:Dock( LEFT )
+            item:DockMargin( 0, 0, separator, 0 )
+            item.DoClick = OnClickNav
+            item._path = pathSoFar
+
+            StyledTheme.Apply( item )
+        end
+
+        -- Update file list
+        self.scrollFiles:Clear()
+
+        local currentDir = self:NormalizePath( table.concat( self.currentNavigation, "/" ) .. "/" )
+        local normalizedDir = self:NormalizePath( self.basePath .. currentDir .. "*" )
+        local files, dirs = file.Find( normalizedDir, "GAME", "nameasc" )
+
+        if #self.currentNavigation > 1 then
+            local itemUpDir = self.scrollFiles:Add( "Styled_FileBrowserItem" )
+            itemUpDir:SetItemName( ".." )
+            itemUpDir:SetIconPath( "icon16/arrow_up.png" )
+            itemUpDir:SetTall( 28 )
+            itemUpDir:Dock( TOP )
+            itemUpDir:DockMargin( 0, separator, 0, 0 )
+            itemUpDir.onClick = OnClickNav
+
+            local upNavigation = table.Copy( self.currentNavigation )
+            table.remove( upNavigation, #upNavigation )
+            itemUpDir._path = self:NormalizePath( table.concat( upNavigation, "/" ) .. "/" )
+        end
+
+        if dirs then
+            for _, name in ipairs( dirs ) do
+                local item = self.scrollFiles:Add( "Styled_FileBrowserItem" )
+                item:SetItemName( name )
+                item:SetTall( 28 )
+                item:Dock( TOP )
+                item:DockMargin( 0, separator, 0, 0 )
+                item.onClick = OnClickNav
+                item._path = currentDir .. name
+            end
+        end
+
+        local OnClickOpen = function( s )
+            if self.saveMode then
+                self.entryName:SetText( s:GetItemName() )
+                return
+            end
+
+            local path = self:NormalizePath( s._path )
+
+            self:Close()
+            self.OnConfirmPath( self:NormalizePath( self.basePath .. path ) )
+        end
+
+        if files then
+            local filter = self.extensionFilter
+            local itemHeight = ScaleSize( 40 )
+
+            for _, name in ipairs( files ) do
+                local ext = string.GetExtensionFromFilename( name )
+
+                if filter == nil or filter[ext] then
+                    local item = self.scrollFiles:Add( "Styled_FileBrowserItem" )
+                    item:SetItemName( name )
+                    item:SetIconPath( FILE_ICONS[ext] or FILE_ICONS.default )
+                    item:SetTall( itemHeight )
+                    item:Dock( TOP )
+                    item:DockMargin( 0, separator, 0, 0 )
+
+                    item.onClick = OnClickOpen
+                    item._path = currentDir .. name
+                end
+            end
+        end
+    end
+
+    vgui.Register( "Styled_FileBrowser", BROWSER, "DFrame" )
+
+    local ITEM = {}
+
+    AccessorFunc( ITEM, "itemName", "ItemName", FORCE_STRING )
+    AccessorFunc( ITEM, "iconPath", "IconPath", FORCE_STRING )
+    AccessorFunc( ITEM, "iconScale", "IconScale", FORCE_NUMBER )
+
+    function ITEM:Init()
+        self:SetItemName( "Item" )
+        self:SetIconPath( "icon16/folder.png" )
+        self:SetIconScale( 0.7 )
+
+        self.isPressed = false
+        self.animHover = 0
+        self.animPress = 0
+    end
+
+    function ITEM:OnMousePressed( keyCode )
+        if keyCode == MOUSE_LEFT then
+            self.isPressed = true
+        end
+    end
+
+    function ITEM:OnMouseReleased( keyCode )
+        if keyCode == MOUSE_LEFT and self.isPressed and self.onClick then
+            self:onClick()
+        end
+
+        self.isPressed = false
+    end
+
+    function ITEM:OnCursorExited()
+        self.isPressed = false
+    end
+
+    local Lerp = Lerp
+    local FrameTime = FrameTime
+
+    function ITEM:Think()
+        local dt = FrameTime()
+
+        self.animHover = Lerp( dt * 10, self.animHover, self:IsHovered() and 1 or 0 )
+        self.animPress = Lerp( dt * 20, self.animPress, self.isPressed and 1 or 0 )
+    end
+
+    local Floor = math.floor
+    local SimpleText = draw.SimpleText
+    local DrawIcon = StyledTheme.DrawIcon
+    local DrawRect = StyledTheme.DrawRect
+    local colors = StyledTheme.colors
+
+    function ITEM:Paint( w, h )
+        DrawRect( 0, 0, w, h, colors.buttonBorder )
+        DrawRect( 1, 1, w - 2, h - 2, colors.panelBackground )
+        DrawRect( 1, 1, w - 2, h - 2, colors.buttonHover, self.animHover )
+        DrawRect( 1, 1, w - 2, h - 2, colors.buttonPress, self.animPress )
+
+        local iconSize = Floor( h * self.iconScale )
+
+        DrawIcon( self.iconPath, h * 0.1, ( h * 0.5 ) - ( iconSize * 0.5 ), iconSize, iconSize )
+        SimpleText( self.itemName, "DermaDefault", iconSize * 1.3, h * 0.5, colors.buttonText, 0, 1 )
+    end
+
+    vgui.Register( "Styled_FileBrowserItem", ITEM, "Panel" )
+end

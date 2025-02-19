@@ -56,8 +56,8 @@ function ENT:Initialize()
         isDebugging = Glide.GetDevMode()
     }
 
-    self.downSoundCD = 0
-    self.upSoundCD = 0
+    self.contractSoundCD = 0
+    self.expandSoundCD = 0
 
     self:SetupWheel()
 end
@@ -87,6 +87,20 @@ function ENT:SetupWheel( t )
 
     self:SetModelAngle( t.modelAngle or Angle( 0, 0, 0 ) )
     self:SetModelOffset( t.modelOffset or Vector( 0, 0, 0 ) )
+
+    -- Should this wheel have the same size/radius as the model?
+    -- If you use this, the `radius` and `modelScale` parameters are going to be overritten.
+    -- Requires the `model` parameter to be set previously.
+    params.useModelSize = params.model and t.useModelSize == true
+
+    if params.useModelSize then
+        self:SetModel( params.model )
+
+        local obbSize = self:OBBMaxs() - self:OBBMins()
+        params.baseModelRadius = obbSize[3] * 0.5
+        params.radius = params.baseModelRadius
+        params.modelScale = Vector( 1, 1, 1 )
+    end
 
     -- Should forces be applied at the axle position?
     -- (Recommended for small vehicles like the Blazer)
@@ -133,8 +147,15 @@ function ENT:ChangeRadius( radius )
     radius = radius or self.params.radius
 
     local size = self.params.modelScale * radius * 2
-    local bounds = self:OBBMaxs() - self:OBBMins()
-    local scale = Vector( size[1] / bounds[1], size[2] / bounds[2], size[3] / bounds[3] )
+    local obbSize = self:OBBMaxs() - self:OBBMins()
+    local scale = Vector( size[1] / obbSize[1], size[2] / obbSize[2], size[3] / obbSize[3] )
+
+    if self.params.useModelSize then
+        local s = radius / self.params.baseModelRadius
+        scale[1] = s
+        scale[2] = s
+        scale[3] = s
+    end
 
     self:SetRadius( radius )
     self:SetModelScale2( scale )
@@ -200,15 +221,15 @@ do
 
         local t = CurTime()
 
-        if change > 0.01 and t > self.upSoundCD then
-            self.upSoundCD = t + 0.3
+        if change > 0.01 and t > self.expandSoundCD then
+            self.expandSoundCD = t + 0.3
             PlaySoundSet( vehicle.SuspensionUpSound, self, Clamp( Abs( change ) * 15, 0, 0.5 ) )
         end
 
-        if change < -0.01 and t > self.downSoundCD then
+        if change < -0.01 and t > self.contractSoundCD then
             change = Abs( change )
 
-            self.downSoundCD = t + 0.3
+            self.contractSoundCD = t + 0.3
             PlaySoundSet( change > 0.03 and vehicle.SuspensionHeavySound or vehicle.SuspensionDownSound, self, Clamp( change * 20, 0, 1 ) )
         end
     end

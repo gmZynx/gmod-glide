@@ -27,11 +27,14 @@ function ENT:OnPostInitialize()
     self:SetSideTractionMax( 1800 )
 end
 
-function ENT:SetStaySpright( toggle )
+function ENT:SetStaySpright( toggle, dontWakePhys )
     self.stayUpright = toggle
 
     local phys = self:GetPhysicsObject()
-    if IsValid( phys ) then phys:Wake() end
+
+    if not dontWakePhys and IsValid( phys ) then
+        phys:Wake()
+    end
 end
 
 --- Override this base class function.
@@ -46,7 +49,7 @@ function ENT:TurnOff()
 
     local driver = self:GetDriver()
 
-    if not IsValid( driver ) then
+    if not IsValid( driver ) and math.abs( self.totalSpeed ) > 100 then
         self:SetStaySpright( false )
     end
 end
@@ -81,6 +84,7 @@ function ENT:Use( activator )
     activator:EnterVehicle( freeSeat )
 end
 
+local IsValid = IsValid
 local Abs = math.abs
 local Clamp = math.Clamp
 local ExpDecay = Glide.ExpDecay
@@ -119,6 +123,16 @@ function ENT:UpdateSteering( dt )
         self:SetIsBraking( false )
     else
         self.reverseInput = 0
+    end
+
+    -- Allow the motorcycle to fall if the physobj goes asleep without a driver
+    if not self.stayUpright then return end
+
+    local driver = self:GetDriver()
+    local phys = self:GetPhysicsObject()
+
+    if not IsValid( driver ) and IsValid( phys ) and phys:IsAsleep() then
+        self:SetStaySpright( false, true )
     end
 end
 

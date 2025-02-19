@@ -6,6 +6,7 @@ ENT.PrintName = "Gib"
 
 ENT.Spawnable = false
 ENT.AdminOnly = false
+ENT.VJ_ID_Attackable = true
 
 ENT.PhysgunDisabled = true
 ENT.DoNotDuplicate = true

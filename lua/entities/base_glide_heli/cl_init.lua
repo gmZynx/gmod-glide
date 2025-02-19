@@ -86,6 +86,19 @@ function ENT:OnUpdateSounds()
         sounds.tail:ChangeVolume( Clamp( power - 0.1, 0, 1 ) * 0.6 * vol )
     end
 
+    local isEngineDying = self:GetIsEngineDying() and LocalPlayer():GlideGetVehicle() == self
+
+    if isEngineDying then
+        if not sounds.engineWarning and self.EngineFailSound ~= "" then
+            local snd = self:CreateLoopingSound( "engineWarning", self.EngineFailSound, 130, self )
+            snd:PlayEx( self.EngineFailVolume, 130 )
+        end
+
+    elseif sounds.engineWarning then
+        sounds.engineWarning:Stop()
+        sounds.engineWarning = nil
+    end
+
     local t = RealTime()
     if t < self.nextBeat then return end
 
