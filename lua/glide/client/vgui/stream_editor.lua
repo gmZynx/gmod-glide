@@ -453,7 +453,7 @@ function PANEL:OnClickAddLayer()
 
     self.fileBrowser.OnConfirmPath = function( path )
         path = string.sub( path, 7 ) -- remove "sound/"
-        self.lastAudioFolderPath = string.GetPathFromFilename( path )
+        Glide.lastAudioFolderPath = string.GetPathFromFilename( path )
 
         panel = self:GetActiveTab()
         if panel then
@@ -461,8 +461,8 @@ function PANEL:OnClickAddLayer()
         end
     end
 
-    if self.lastAudioFolderPath then
-        self.fileBrowser:NavigateTo( self.lastAudioFolderPath )
+    if Glide.lastAudioFolderPath then
+        self.fileBrowser:NavigateTo( Glide.lastAudioFolderPath )
     end
 end
 
@@ -547,7 +547,7 @@ function PANEL:SetActiveTabById( targetId )
 
     if activePanel then
         activePanel:UpdateStats()
-        activePanel:RecaulculateEngineSimPanel()
+        activePanel:InvalidateEnginePanel()
     else
         self:UpdateStats( 0, 0 )
     end

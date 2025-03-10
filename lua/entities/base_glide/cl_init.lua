@@ -1,6 +1,5 @@
 include( "shared.lua" )
 
-ENT.RenderGroup = RENDERGROUP_OPAQUE
 ENT.AutomaticFrameAdvance = true
 
 function ENT:Initialize()
@@ -125,6 +124,11 @@ function ENT:ActivateMisc()
 
     -- Let children classes create their own stuff
     self:OnActivateMisc()
+
+    -- Let children classes setup wheels clientside
+    for i, w in ipairs( self.wheels ) do
+        self:OnActivateWheel( w, i )
+    end
 end
 
 function ENT:DeactivateMisc()

@@ -416,7 +416,7 @@ function ENT:SimulateHelicopter( phys, params, effective, outLin, outAng )
 
     -- Drag
     AddForce( outLin,
-        ( -fw * Clamp( localVel[1], -params.maxFowardDrag, params.maxFowardDrag ) * params.drag[1] ) +
+        ( -fw * Clamp( localVel[1], -params.maxForwardDrag, params.maxForwardDrag ) * params.drag[1] ) +
         ( rt * Clamp( localVel[2], -params.maxSideDrag, params.maxSideDrag ) * params.drag[2] ) +
         ( -up * localVel[3] * params.drag[3] )
     )
@@ -581,7 +581,7 @@ function ENT:TriggerInput( name, value )
     if name == "Ignition" then
         local isOn = value > 0
 
-        -- Avoid continous triggers
+        -- Avoid continuous triggers
         if self.wireIsOn ~= isOn then
             self.wireIsOn = isOn
 

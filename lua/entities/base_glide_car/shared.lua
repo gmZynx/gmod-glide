@@ -258,7 +258,7 @@ if SERVER then
     --- existing keys if this list was defined on the ENT table.
     function ENT:GetGears()
         return {
-            [-1] = 2.9, -- Reverse
+            [-1] = 2.5, -- Reverse
             [0] = 0, -- Neutral (this number has no effect)
             [1] = 2.8,
             [2] = 1.7,

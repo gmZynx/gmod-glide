@@ -137,7 +137,7 @@ function PANEL:Init()
     end
 
     self.engineControls = engineControls
-    self:RecaulculateEngineSimPanel()
+    self:InvalidateEnginePanel()
 
     -- Layers list panel
     self.scrollLayers = vgui.Create( "DScrollPanel", self )
@@ -202,10 +202,10 @@ function PANEL:UpdateStats()
     self.mainEditor:UpdateStats( dataSize, layerCount )
 end
 
-function PANEL:RecaulculateEngineSimPanel()
+function PANEL:InvalidateEnginePanel()
     local panel = self.engineControls
 
-    timer.Simple( 0, function()
+    timer.Simple( 0.1, function()
         if IsValid( panel ) then
             panel:SizeToChildren( false, true )
         end

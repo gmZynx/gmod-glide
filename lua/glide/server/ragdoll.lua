@@ -58,7 +58,7 @@ do
         end
     end
 
-    --- Retores health, armor and inventory previously stored on
+    --- Restores health, armor and inventory previously stored on
     --- `Glide.StoreSpawnInfo`. Does nothing if there is no data from that function.
     function Glide.RestoreSpawnInfo( ply, restoreCallback )
         ply:Spawn()

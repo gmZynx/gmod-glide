@@ -136,7 +136,7 @@ if SERVER then
         self:SetMaxSteerAngle( 25 )
 
         self:SetMaxRPM( 15000 )
-        self:SetMinRPMTorque( 500 )
+        self:SetMinRPMTorque( 400 )
         self:SetMaxRPMTorque( 600 )
 
         self:SetSuspensionLength( 8 )

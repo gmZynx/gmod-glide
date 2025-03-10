@@ -47,6 +47,7 @@ do
         playerSettings[ply] = {
             binds = binds,
             manualGearShifting = data.manualGearShifting == true,
+            autoTurnOffLights = data.autoTurnOffLights == true,
             mouseFlyMode = math.Round( Glide.ValidateNumber( data.mouseFlyMode, 0, 2, 0 ) )
         }
 
@@ -109,6 +110,8 @@ do
         if seatIndex == 1 then
             vehicle.inputFlyMode = settings.mouseFlyMode
             vehicle.inputManualShift = settings.manualGearShifting
+            vehicle.autoTurnOffLights = settings.autoTurnOffLights
+            vehicle:ResetInputs( 1 )
         end
 
         -- Separate actions for each button, and filter only the
@@ -135,7 +138,14 @@ function Glide.DeactivateInput( ply )
     local active = activeData[ply]
 
     if active and IsValid( active.vehicle ) then
+        local inputSteer = active.vehicle:GetInputFloat( 1, "steer" )
+
         active.vehicle:ResetInputs( active.seatIndex )
+
+        -- Keep steering input for now
+        if active.seatIndex == 1 then
+            active.vehicle:SetInputFloat( 1, "steer", inputSteer )
+        end
     end
 
     activeData[ply] = nil
@@ -268,6 +278,16 @@ hook.Add( "PlayerButtonUp", "Glide.VehicleInput", function( ply, button )
     local active = activeData[ply]
     if active then
         HandleInput( ply, button, active, false )
+    end
+end )
+
+hook.Add( "StartCommand", "Glide.MouseWheelInput", function( ply, cmd )
+    if cmd:GetMouseWheel() ~= 0 then
+        local active = activeData[ply]
+
+        if active and IsValid( active.vehicle ) then
+            active.vehicle:OnInputMouseWheel( active.seatIndex, cmd:GetMouseWheel() )
+        end
     end
 end )
 

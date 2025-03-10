@@ -281,6 +281,7 @@ function ENT:DoPhysics( vehicle, phys, traceData, outLin, outAng, dt )
     traceData.endpos = pos - up * maxLen
     traceData.mins = state.traceMins
     traceData.maxs = state.traceMaxs
+    traceData.collisiongroup = 20 -- COLLISION_GROUP_WORLD
 
     ray = TraceHull( traceData )
     fraction = Clamp( ray.Fraction, radius / maxLen, 1 )
@@ -310,6 +311,7 @@ function ENT:DoPhysics( vehicle, phys, traceData, outLin, outAng, dt )
         return
     end
 
+    fw = ray.HitNormal:Cross( rt )
     pos = params.enableAxleForces and pos or contactPos
 
     -- Get the velocity at the wheel position

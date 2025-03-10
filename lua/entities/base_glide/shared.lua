@@ -129,6 +129,7 @@ if CLIENT then
     function ENT:OnDeactivateMisc() end
     function ENT:OnUpdateMisc() end
     function ENT:OnUpdateParticles() end
+    function ENT:OnActivateWheel( _wheel, _index ) end
 
     function ENT:GetSeatBoneManipulations( _seatIndex ) end
     function ENT:AllowFirstPersonMuffledSound( _seatIndex ) return true end
@@ -136,6 +137,14 @@ if CLIENT then
 
     function ENT:GetCameraType( _seatIndex )
         return 0 -- Glide.CAMERA_TYPE.CAR
+    end
+
+    --- Given a `soundType` and surface material ID,
+    --- you can override the wheel roll/skid sound.
+    ---
+    --- Sound types: "fastRoll", "slowRoll", "sideSlip", "forwardSlip"
+    function ENT:OverrideWheelSound( _soundType, _surfaceType )
+        return nil
     end
 end
 
@@ -237,6 +246,7 @@ if SERVER then
     function ENT:OnDriverExit() end
     function ENT:OnSeatInput( _seatIndex, _action, _pressed ) end
     function ENT:OnWeaponFire( _weapon, _weaponIndex ) end
+    function ENT:OnWeaponStart( _weapon, _weaponIndex ) end
     function ENT:OnWeaponStop( _weapon, _weaponIndex ) end
 
     function ENT:OnPostThink( _dt, _selfTbl ) end

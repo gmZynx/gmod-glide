@@ -77,6 +77,8 @@ function TOOL:LeftClick( trace )
     end
 
     if CLIENT then
+        if not game.SinglePlayer() and not IsFirstTimePredicted() then return end
+
         local data = util.Compress( Glide.ToJSON( presetData ) )
         local size = #data
 
@@ -105,6 +107,8 @@ function TOOL:RightClick( trace )
     end
 
     if CLIENT then
+        if not game.SinglePlayer() and not IsFirstTimePredicted() then return end
+
         for _, key in ipairs( Glide.GetAllMiscSoundKeys() ) do
             SetPresetData( key, veh[key] )
         end

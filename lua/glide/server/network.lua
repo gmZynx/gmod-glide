@@ -124,31 +124,6 @@ net.Receive( "glide.command", function( _, ply )
     commands[cmd]( ply )
 end )
 
-local ReadFloat = net.ReadFloat
-
-net.Receive( "glide.camdata", function( _, ply )
-    local data = ply.GlideCam
-
-    if not data then
-        ply.GlideCam = {
-            origin = Vector(),
-            angle = Angle()
-        }
-
-        data = ply.GlideCam
-    end
-
-    local origin = data.origin
-    origin[1] = ReadFloat()
-    origin[2] = ReadFloat()
-    origin[3] = ReadFloat()
-
-    local angle = data.angle
-    angle[1] = ReadFloat()
-    angle[2] = ReadFloat()
-    angle[3] = ReadFloat()
-end )
-
 -- Cleanup cooldown/last aim entity entries for this player
 hook.Add( "PlayerDisconnected", "Glide.NetCleanup", function( ply )
     local id = ply:SteamID()

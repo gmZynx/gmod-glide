@@ -12,8 +12,8 @@ if CLIENT then
     ENT.CameraOffset = Vector( -270, 0, 50 )
 
     ENT.ExhaustOffsets = {
-        { pos = Vector( -128, 22, -7 ) },
-        { pos = Vector( -128, -22, -7 ) }
+        { pos = Vector( -128, 22, -7 ), angle = Angle( 0, -10, 0 ) },
+        { pos = Vector( -128, -22, -7 ), angle = Angle( 0, 10, 0 ) }
     }
 
     ENT.EngineSmokeStrips = {

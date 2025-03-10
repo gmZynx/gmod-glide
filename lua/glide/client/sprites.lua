@@ -37,9 +37,9 @@ end )
 local sprites = {}
 local spriteCount = 0
 
-function Glide.DrawLightSprite( pos, dir, size, color )
+function Glide.DrawLightSprite( pos, dir, size, color, material )
     spriteCount = spriteCount + 1
-    sprites[spriteCount] = { pos, size, color, dir }
+    sprites[spriteCount] = { pos, size, color, dir, material }
 end
 
 local Max = math.max
@@ -50,12 +50,10 @@ local DrawSprite = render.DrawSprite
 local DepthRange = render.DepthRange
 
 local GetLocalViewLocation = Glide.GetLocalViewLocation
-local matLight = Material( "glide/effects/light_glow" )
+local DEFAULT_MAT = Material( "glide/effects/light_glow" )
 
 hook.Add( "PreDrawEffects", "Glide.DrawSprites", function()
     if spriteCount < 1 then return end
-
-    SetMaterial( matLight )
 
     local pos, ang = GetLocalViewLocation()
     local dir = -ang:Forward()
@@ -73,6 +71,7 @@ hook.Add( "PreDrawEffects", "Glide.DrawSprites", function()
         dot = ( dot - 0.5 ) * 2
         s[2] = s[2] * Max( 0, dot )
 
+        SetMaterial( s[5] or DEFAULT_MAT )
         DrawSprite( s[1], s[2], s[2], s[3] )
 
         sprites[i] = nil

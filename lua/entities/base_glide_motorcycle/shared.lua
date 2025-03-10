@@ -65,11 +65,11 @@ if SERVER then
         return {
             [0] = 0, -- Neutral (this number has no effect)
             [1] = 3.0,
-            [2] = 1.78,
-            [3] = 1.2,
+            [2] = 1.55,
+            [3] = 1.1,
             [4] = 0.9,
             [5] = 0.75,
-            [6] = 0.65
+            [6] = 0.68
         }
     end
 end

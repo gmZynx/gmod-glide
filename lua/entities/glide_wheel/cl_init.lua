@@ -10,6 +10,9 @@ function ENT:Initialize()
 
     self.sounds = {}
     self.soundSurface = {}
+
+    self.enableParticles = true
+    self.enableSkidmarks = true
 end
 
 function ENT:OnRemove()
@@ -30,10 +33,10 @@ end
 
 local Clamp = math.Clamp
 
-function ENT:ProcessSound( id, surfaceId, soundSet, altSurface, volume, pitch )
+function ENT:ProcessSound( vehicle, id, surfaceId, soundSet, altSurface, volume, pitch )
     if not self:GetSoundsEnabled() then return end
 
-    local path = soundSet[surfaceId]
+    local path = vehicle:OverrideWheelSound( id, surfaceId ) or soundSet[surfaceId]
     local snd = self.sounds[id]
 
     -- Remove the sound if we're on the air, or the volume is too low,
@@ -130,13 +133,13 @@ function ENT:Think()
     -- Fast roll sound
     local fastFactor = speed / 600
 
-    self:ProcessSound( "fastRoll", surfaceId, WHEEL_SOUNDS.ROLL, nil,
+    self:ProcessSound( parent, "fastRoll", surfaceId, WHEEL_SOUNDS.ROLL, nil,
         Clamp( fastFactor * 0.75, 0, ROLL_VOLUME[surfaceId] or 0.4 ), 70 + 25 * fastFactor )
 
     -- Slow roll sound
     local slowFactor = muteRollSound and 0 or 1.02 - fastFactor
 
-    self:ProcessSound( "slowRoll", surfaceId, WHEEL_SOUNDS.ROLL_SLOW, 88,
+    self:ProcessSound( parent, "slowRoll", surfaceId, WHEEL_SOUNDS.ROLL_SLOW, 88,
         slowFactor * fastFactor * 2, 110 - 30 * slowFactor )
 
     -- Side slip sound
@@ -144,14 +147,14 @@ function ENT:Think()
 
     sideSlipFactor = Clamp( sideSlipFactor * 1.5, 0, 0.8 )
 
-    self:ProcessSound( "sideSlip", surfaceId, WHEEL_SOUNDS.SIDE_SLIP, nil,
+    self:ProcessSound( parent, "sideSlip", surfaceId, WHEEL_SOUNDS.SIDE_SLIP, nil,
         sideSlipFactor, 110 - 30 * sideSlipFactor )
 
     -- Forward slip sound
     local forwardSlip = self:GetForwardSlip() * 0.04
     local forwardSlipFactor = Clamp( Abs( forwardSlip ) - 0.1, 0, 1 )
 
-    self:ProcessSound( "forwardSlip", surfaceId, WHEEL_SOUNDS.FORWARD_SLIP, 88,
+    self:ProcessSound( parent, "forwardSlip", surfaceId, WHEEL_SOUNDS.FORWARD_SLIP, 88,
         forwardSlipFactor, 100 - forwardSlipFactor * 10 )
 
     if muteRollSound then
@@ -175,7 +178,7 @@ function ENT:Think()
         rollFactor = rollFactor + fastFactor
     end
 
-    if rollFactor > 0.1 then
+    if rollFactor > 0.1 and selfTbl.enableParticles then
         rollFactor = Clamp( rollFactor, 0, 0.5 )
 
         local eff = EffectData()
@@ -187,7 +190,7 @@ function ENT:Think()
         Effect( "glide_tire_roll", eff )
     end
 
-    if forwardSlipFactor > 0.2 then
+    if forwardSlipFactor > 0.2 and selfTbl.enableParticles then
         forwardSlipFactor = Clamp( forwardSlipFactor, 0, 1 )
 
         local eff = EffectData()
@@ -204,6 +207,8 @@ function ENT:Think()
         selfTbl.lastRollId = nil
         return true
     end
+
+    if not selfTbl.enableSkidmarks then return true end
 
     -- Create skidmarks
     local skidmarkSize = self:GetRadius() * parent.WheelSkidmarkScale

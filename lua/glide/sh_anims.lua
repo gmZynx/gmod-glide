@@ -1,4 +1,6 @@
 local IsValid = IsValid
+local LocalPlayer = LocalPlayer
+local NormalizeAngle = math.NormalizeAngle
 
 local EntityMeta = FindMetaTable( "Entity" )
 local getTable = EntityMeta.GetTable
@@ -8,6 +10,26 @@ hook.Add( "UpdateAnimation", "Glide.OverridePlayerAnim", function( ply )
     if not IsValid( vehicle ) then return end
     if not vehicle.UpdatePlayerPoseParameters then return end
 
+    -- Workarond to fix head angles
+    if CLIENT then
+        local parent = ply:GetParent()
+
+        if IsValid( parent ) then
+            local ang = parent:WorldToLocalAngles( ply:EyeAngles() )
+
+            -- For other clients, EyeAngles seems to have
+            -- "local-to-world" applied twice somehow
+            if ply ~= LocalPlayer() then
+                ang = parent:WorldToLocalAngles( ang )
+            end
+
+            ang[2] = NormalizeAngle( ang[2] - 90 )
+
+            ply:SetPoseParameter( "head_pitch", ang[1] )
+            ply:SetPoseParameter( "head_yaw", ang[2] )
+        end
+    end
+
     local updated = vehicle:UpdatePlayerPoseParameters( ply )
 
     if updated then
@@ -16,9 +38,9 @@ hook.Add( "UpdateAnimation", "Glide.OverridePlayerAnim", function( ply )
         if CLIENT then
             GAMEMODE:MouthMoveAnimation( ply )
         end
-
-        return false
     end
+
+    return false
 end )
 
 local holdTypeSequences = {

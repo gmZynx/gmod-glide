@@ -189,9 +189,11 @@ function ENT:TurnOff()
     self.startupTimer = nil
 
     self.clutch = 1
-    self.frontBrake = 0.2
-    self.rearBrake = 0.2
     self.reducedThrottle = false
+
+    if self.autoTurnOffLights then
+        self:ChangeHeadlightState( 0, true )
+    end
 end
 
 --- Override this base class function.
@@ -335,9 +337,11 @@ do
 
     --- Update out model's bodygroups depending on which lights are on.
     function ENT:UpdateBodygroups()
+        local headlightState = self:GetHeadlightState()
+
         lightState.brake = self:GetIsBraking()
         lightState.reverse = self:GetGear() == -1
-        lightState.headlight = self:GetHeadlightState() > 0
+        lightState.headlight = headlightState > 0
 
         local signal = self:GetTurnSignalState()
         local signalBlink = ( CurTime() % self.TurnSignalCycle ) > self.TurnSignalCycle * 0.5
@@ -363,6 +367,15 @@ do
                 elseif l.signal == "right" and lightState.signal_right then
                     enable = signalBlink
                 end
+            end
+
+            -- If the light has a `beamType` key, only enable the bodygroup
+            -- if the value of `beamType` matches the current headlight state.
+            if
+                ( l.beamType == "low" and headlightState ~= 1 ) or
+                ( l.beamType == "high" and headlightState ~= 2 )
+            then
+                enable = false
             end
 
             self:SetBodygroup( l.bodyGroupId, enable and l.subModelId or 0 )
@@ -518,10 +531,22 @@ function ENT:OnPostThink( dt, selfTbl )
     else
         selfTbl.availableFrontTorque = 0
         selfTbl.availableRearTorque = 0
+
+        local brake = self:GetInputFloat( 1, "brake" )
+
+        if self:GetInputBool( 1, "handbrake" ) then
+            brake = 0.5
+        end
+
+        brake = Clamp( 0.05 + brake, 0, 1 )
+
+        selfTbl.frontBrake = brake
+        selfTbl.rearBrake = brake
     end
 
     -- Update driver inputs
     self:UpdateSteering( dt )
+    self:SetIsBraking( self:GetInputBool( 1, "handbrake" ) or self:GetInputFloat( 1, "brake" ) > 0.1 )
 
     local phys = self:GetPhysicsObject()
 
@@ -700,7 +725,7 @@ function ENT:TriggerInput( name, value )
     BaseClass.TriggerInput( self, name, value )
 
     if name == "Ignition" then
-        -- Avoid continous triggers
+        -- Avoid continuous triggers
         self.wireSetEngineOn = value > 0
 
     elseif name == "Throttle" then

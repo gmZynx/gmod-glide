@@ -16,6 +16,38 @@ local TriggerOutput = WireLib and WireLib.TriggerOutput or nil
 
 function ENT:OnEntityCopyTableFinish( data )
     Glide.FilterEntityCopyTable( data, self.DuplicatorNetworkVariables )
+
+    -- Save radius for every individual wheel
+    local wheelRadius = {}
+    local wheelCount = 0
+
+    for i, w in ipairs( self.wheels ) do
+        if IsValid( w ) then
+            wheelRadius[i] = w:GetRadius()
+            wheelCount = wheelCount + 1
+        end
+    end
+
+    if wheelCount > 0 then
+        data["WheelRadius"] = wheelRadius
+    end
+end
+
+function ENT:OnDuplicated( data )
+    -- Restore radius for every individual wheel
+    local wheelRadius = data["WheelRadius"]
+    if type( wheelRadius ) ~= "table" then return end
+
+    local wheels = self.wheels
+    local w
+
+    for i, radius in pairs( wheelRadius ) do
+        w = wheels[i]
+
+        if IsValid( w ) and type( radius ) == "number" then
+            w:ChangeRadius( radius )
+        end
+    end
 end
 
 function ENT:PreEntityCopy()
@@ -46,8 +78,9 @@ function ENT:Initialize()
 
     self.inputBools = {}        -- Per-seat bool inputs
     self.inputFloats = {}       -- Per-seat float inputs
-    self.inputFlyMode = 0           -- Current mouse flying mode
-    self.inputManualShift = false   -- Current manual gear shifting setting
+    self.inputFlyMode = 0           -- User mouse flying mode
+    self.inputManualShift = false   -- User manual gear shifting setting
+    self.autoTurnOffLights = false  -- User "turn off headlights" setting
 
     -- Setup collision variables
     self.collisionShakeCooldown = 0
@@ -400,9 +433,10 @@ function ENT:CreateSeat( offset, angle, exitPos, isHidden )
     seat:SetAngles( self:LocalToWorldAngles( angle or Angle( 0, 270, 10 ) ) )
     seat:SetMoveType( MOVETYPE_NONE )
     seat:SetOwner( self )
-    seat:SetCreator( self:GetCreator() )
     seat:Spawn()
     seat:Activate()
+
+    Glide.CopyEntityCreator( self, seat )
 
     seat:SetKeyValue( "limitview", 0 )
     seat:SetNotSolid( true )

@@ -57,6 +57,7 @@ function Config:Reset()
     self.autoHeadlightOn = true
     self.autoHeadlightOff = true
     self.headlightShadows = true
+    self.autoTurnOffLights = true
     self.enableTips = true
 end
 
@@ -143,6 +144,7 @@ function Config:Save( immediate )
         autoHeadlightOn = self.autoHeadlightOn,
         autoHeadlightOff = self.autoHeadlightOff,
         headlightShadows = self.headlightShadows,
+        autoTurnOffLights = self.autoTurnOffLights,
         enableTips = self.enableTips,
 
         -- Category-action-button dictionary
@@ -234,6 +236,7 @@ function Config:Load()
     LoadBool( "autoHeadlightOn", true )
     LoadBool( "autoHeadlightOff", true )
     LoadBool( "headlightShadows", true )
+    LoadBool( "autoTurnOffLights", true )
     LoadBool( "enableTips", true )
 
     -- Category-action-button dictionary
@@ -272,6 +275,9 @@ function Config:TransmitInputSettings( immediate )
 
         -- Keyboard settings
         manualGearShifting = self.manualGearShifting,
+
+        -- Misc. settings
+        autoTurnOffLights = self.autoTurnOffLights,
 
         -- Action-key dictionary
         binds = self.binds
@@ -750,6 +756,12 @@ function Config:OpenFrame()
     CreateToggle( panelMisc, L"misc.headlight_shadows", self.headlightShadows, function( value )
         self.headlightShadows = value
         self:Save()
+    end )
+
+    CreateToggle( panelMisc, L"misc.turn_off_headlights", self.autoTurnOffLights, function( value )
+        self.autoTurnOffLights = value
+        self:Save()
+        self:TransmitInputSettings()
     end )
 
     CreateToggle( panelMisc, L"misc.tips", self.enableTips, function( value )

@@ -19,8 +19,8 @@ function ENT:EngineInit()
     self.groundedCount = 0
     self.burnout = 0
 
-    self.frontBrake = 0.2
-    self.rearBrake = 0.2
+    self.frontBrake = 0
+    self.rearBrake = 0
     self.availableFrontTorque = 0
     self.availableRearTorque = 0
 
@@ -184,14 +184,14 @@ function ENT:AutoGearSwitch( throttle )
     local currentGear = self:GetGear()
     local gear = Clamp( currentGear, 1, self.maxGear )
 
-    -- Switch up early while on 1st gear and the throttle is high
-    if currentGear == 1 or self.reducedThrottle then
-        maxRPM = maxRPM * ( 1 - throttle * 0.2 )
+    -- Switch up early while using reduced throttle
+    if self.reducedThrottle then
+        maxRPM = maxRPM * ( 1 - throttle * 0.3 )
     end
 
     local gearRPM
 
-    -- Pick the gear that matches better the engine-to-transmittion RPM
+    -- Pick the gear that matches better the engine-to-transmission RPM
     for i = 1, self.maxGear do
         gearRPM = self:TransmissionToEngineRPM( i )
 
@@ -337,11 +337,11 @@ function ENT:EngineThink( dt )
     else
         -- Automatically apply brakes when not accelerating, on first gear, with low engine RPM
         if inputThrottle < 0.05 and inputBrake < 0.1 and gear < 2 and rpm < self:GetMinRPM() * 1.2 then
-            inputBrake = 0.2
+            inputBrake = 0.15
         end
 
-        self.frontBrake = inputBrake * 0.3
-        self.rearBrake = inputBrake * 0.7
+        self.frontBrake = inputBrake * 0.5
+        self.rearBrake = inputBrake * 0.5
 
         self.frontTractionMult = 1
         self.rearTractionMult = 1
@@ -416,6 +416,5 @@ function ENT:EngineThink( dt )
 
     self:EngineAccelerate( self.flywheelFriction + self.flywheelTorque * throttle, dt )
     self:SetEngineThrottle( throttle )
-    self:SetIsBraking( inputBrake > 0.1 or inputHandbrake )
     self:SetIsRedlining( isRedlining and inputThrottle > 0 )
 end

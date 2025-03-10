@@ -12,7 +12,6 @@ end )
 
 Camera.lastAimEntity = NULL
 Camera.lastAimPos = Vector()
-Camera.lastAimUpdate = 0
 
 Camera.viewAngles = Angle()
 Camera.isInFirstPerson = false
@@ -96,7 +95,7 @@ function Camera:Deactivate()
     end
 
     if IsValid( self.user ) then
-        self.user:SetDSP( 0 )
+        self.user:SetDSP( 1 )
         self.user:SetEyeAngles( Angle() )
     end
 
@@ -146,7 +145,7 @@ function Camera:SetFirstPerson( enable )
     end
 
     if IsValid( self.user ) then
-        self.user:SetDSP( muffleSound and self.FIRST_PERSON_DSP or 0 )
+        self.user:SetDSP( muffleSound and self.FIRST_PERSON_DSP or 1 )
     end
 end
 
@@ -239,7 +238,7 @@ function Camera:Think()
     end
 
     -- Toggle first person
-    local isSwitchKeyDown = IsKeyDown( KEY_LCONTROL ) and not vgui.CursorVisible()
+    local isSwitchKeyDown = self.user:KeyDown( IN_DUCK ) and not vgui.CursorVisible()
 
     if self.isSwitchKeyDown ~= isSwitchKeyDown then
         self.isSwitchKeyDown = isSwitchKeyDown
@@ -322,9 +321,6 @@ function Camera:Think()
     end
 end
 
-local Start = net.Start
-local WriteFloat = net.WriteFloat
-local SendToServer = net.SendToServer
 local TraceLine = util.TraceLine
 
 function Camera:CalcView()
@@ -388,28 +384,10 @@ function Camera:CalcView()
     self.lastAimEntity = tr.Entity
     self.lastAimPos = tr.HitPos
 
-    local t = RealTime()
-
-    -- Let the server know where the camera is
-    if t > self.lastAimUpdate then
-        self.lastAimUpdate = t + 0.03
-
-        Start( "glide.camdata", true )
-        WriteFloat( origin[1] )
-        WriteFloat( origin[2] )
-        WriteFloat( origin[3] )
-        WriteFloat( angles[1] )
-        WriteFloat( angles[2] )
-        WriteFloat( angles[3] )
-        SendToServer()
-    end
-
-    -- Convert the view angles to be relative to the seat
-    local seat = user:GetVehicle()
-
-    if IsValid( seat ) then
-        self.viewAngles = seat:WorldToLocalAngles( angles )
-    end
+    -- Make the player's EyeAngles look at the same spot as the camera
+    local aimDir = self.lastAimPos - user:EyePos()
+    aimDir:Normalize()
+    self.viewAngles = aimDir:Angle()
 
     return {
         origin = origin,
@@ -420,7 +398,6 @@ function Camera:CalcView()
 end
 
 function Camera:CreateMove( cmd )
-    -- Use the angles from the camera trace
     cmd:SetViewAngles( self.viewAngles )
 end
 

@@ -79,9 +79,19 @@ if SERVER then
         for _, w in ipairs( wheels ) do
             if not w.GlideIsHidden then
                 w.params.model = model
-                w.params.modelScale = scale
                 w:SetModel( model )
-                w:ChangeRadius()
+
+                local radius = w:GetRadius()
+
+                -- Unset `useModelSize`
+                if w.params.useModelSize then
+                    w.params.useModelSize = nil
+                    w.params.baseModelRadius = nil
+                    w.params.radius = radius
+                end
+
+                w.params.modelScale = scale
+                w:ChangeRadius( radius )
 
                 if w.params.basePos[2] < 0 then
                     w:SetModelOffset( -offset )

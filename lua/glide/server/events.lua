@@ -77,8 +77,6 @@ hook.Add( "PlayerLeaveVehicle", "Glide.OnExitSeat", function( ply )
     ply:DrawShadow( true )
 
     if IsValid( vehicle ) then
-        vehicle:ResetInputs( seatIndex )
-
         ply:SetPos( vehicle:GetSeatExitPos( seatIndex ) )
         ply:SetVelocity( vehicle:GetPhysicsObject():GetVelocity() )
         ply:SetEyeAngles( Angle( 0, vehicle:GetAngles().y, 0 ) )

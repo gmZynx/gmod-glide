@@ -86,7 +86,7 @@ function LockOnHandler:Think()
     local missiles = self.missiles
     local t = RealTime()
 
-    -- Try to find the closest missile targetting us
+    -- Try to find the closest missile targeting us
     local myPos = self.vehicle:GetPos()
     local dist, closest = 9999999999, nil
 

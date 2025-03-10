@@ -86,3 +86,9 @@ function ENT:SetInputFloat( seatIndex, action, value )
         floats[action] = value
     end
 end
+
+function ENT:OnInputMouseWheel( seatIndex, value )
+    if seatIndex < 2 then
+        self:SelectWeaponIndex( self:GetWeaponIndex() + ( value > 0 and -1 or 1 ) )
+    end
+end

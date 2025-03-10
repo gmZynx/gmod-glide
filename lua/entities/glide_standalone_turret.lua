@@ -152,8 +152,8 @@ function ENT:Initialize()
 
     if WireLib then
         WireLib.CreateSpecialInputs( self,
-            { "Fire", "Delay", "Damage", "Spread" },
-            { "NORMAL", "NORMAL", "NORMAL", "NORMAL" }
+            { "Fire", "Delay", "Damage", "Spread", "TraceColor", "LoopSound", "StopSound" },
+            { "NORMAL", "NORMAL", "NORMAL", "NORMAL", "VECTOR", "STRING", "STRING" }
         )
     end
 end
@@ -209,6 +209,28 @@ function ENT:SetTracerColor( r, g, b )
     color.b = math.Clamp( b, 0, 255 )
 end
 
+local VALID_AUDIO_EXT = {
+    ["wav"] = true,
+    ["mp3"] = true,
+    ["ogg"] = true,
+}
+
+local function IsValidSoundPath( path )
+    path = string.Trim( path )
+
+    local ext = string.GetExtensionFromFilename( path )
+
+    if not VALID_AUDIO_EXT[ext] then
+        return false
+    end
+
+    if not file.Exists( "sound/" .. path, "GAME" ) then
+        return false
+    end
+
+    return true
+end
+
 function ENT:TriggerInput( name, value )
     if name == "Fire" then
         self:SetIsFiring( value > 0 )
@@ -221,5 +243,18 @@ function ENT:TriggerInput( name, value )
 
     elseif name == "Spread" then
         self:SetTurretSpread( value )
+
+    elseif name == "TraceColor" then
+        self:SetTracerColor( value[1], value[2], value[3] )
+
+    elseif name == "LoopSound" then
+        if IsValidSoundPath( value ) then
+            self:SetShootLoopSound( value )
+        end
+
+    elseif name == "StopSound" then
+        if IsValidSoundPath( value ) then
+            self:SetShootStopSound( value )
+        end
     end
 end

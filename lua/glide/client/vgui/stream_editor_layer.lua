@@ -40,7 +40,6 @@ function PANEL:Init()
     local buttonAdd = vgui.Create( "DButton", panelFooter )
     buttonAdd:SetText( L"stream_editor.add_controller" )
     buttonAdd:SetIcon( "icon16/cog_add.png" )
-    buttonAdd:SizeToContents()
     buttonAdd:Dock( RIGHT )
     buttonAdd:DockMargin( 0, 0, self.padding, 0 )
 
@@ -50,6 +49,20 @@ function PANEL:Init()
 
     buttonAdd.DoClick = function()
         self:OnClickAddController()
+    end
+
+    local buttonChange = vgui.Create( "DButton", panelFooter )
+    buttonChange:SetText( L"stream_editor.change_audio" )
+    buttonChange:SetIcon( "icon16/sound_add.png" )
+    buttonChange:Dock( RIGHT )
+    buttonChange:DockMargin( 0, 0, self.padding, 0 )
+
+    self.buttonChange = buttonChange
+    ApplyTheme( buttonChange )
+    buttonChange:SetFont( "StyledTheme_Tiny" )
+
+    buttonChange.DoClick = function()
+        self:OnClickChangeAudio()
     end
 
     local checkRevLimiter = StyledTheme.CreateFormToggle( panelFooter, L"stream_editor.rev_limiter", false, function( value )
@@ -63,6 +76,17 @@ function PANEL:Init()
     checkRevLimiter:Dock( LEFT )
     checkRevLimiter:DockMargin( 0, 0, 0, 0 )
     self.checkRevLimiter = checkRevLimiter
+
+    local checkMute = StyledTheme.CreateFormToggle( panelFooter, L"stream_editor.mute", false, function( value )
+        if self.layerData then
+            self.layerData.isMuted = value
+        end
+    end )
+
+    checkMute:SetFont( "StyledTheme_Tiny" )
+    checkMute:Dock( LEFT )
+    checkMute:DockMargin( self.padding, 0, 0, 0 )
+    self.checkMute = checkMute
 end
 
 function PANEL:OnChanged()
@@ -93,6 +117,38 @@ function PANEL:OnClickRemoveController( index )
         table.remove( controllers, index )
         self:SetControllers( controllers )
         self:OnChanged()
+    end
+end
+
+function PANEL:OnClickChangeAudio()
+    local fileBrowser = StyledTheme.CreateFileBrowser()
+    fileBrowser:SetTitle( L"stream_editor.open_audio" )
+    fileBrowser:SetIcon( "icon16/sound.png" )
+    fileBrowser:SetExtensionFilter( { "ogg", "wav", "mp3" } )
+    fileBrowser:SetBasePath( "sound/" )
+
+    fileBrowser.OnConfirmPath = function( path )
+        if not IsValid( self ) then return end
+
+        path = string.sub( path, 7 ) -- remove "sound/"
+        Glide.lastAudioFolderPath = string.GetPathFromFilename( path )
+
+        local layer = self.layerData
+
+        if IsValid( layer.channel ) then
+            layer.channel:Stop()
+        end
+
+        layer.path = path
+        layer.channel = nil
+        layer.isLoaded = false
+
+        self.path = path
+        self:OnChanged()
+    end
+
+    if Glide.lastAudioFolderPath then
+        fileBrowser:NavigateTo( Glide.lastAudioFolderPath )
     end
 end
 
@@ -163,7 +219,7 @@ function PANEL:SetControllers( controllers )
         local sliderIMin = vgui.Create( "DNumSlider", panel )
         sliderIMin:SetMin( 0 )
         sliderIMin:SetMax( 1 )
-        sliderIMin:SetDecimals( 2 )
+        sliderIMin:SetDecimals( 3 )
         sliderIMin:Dock( LEFT )
         sliderIMin.Label:SetVisible( false )
         sliderIMin:SetValue( params[2] )
@@ -171,7 +227,7 @@ function PANEL:SetControllers( controllers )
         ApplyTheme( sliderIMin )
 
         sliderIMin.OnValueChanged = function( _, value )
-            params[2] = math.Round( value, 2 )
+            params[2] = math.Round( value, 3 )
             self:OnChanged()
         end
 
@@ -186,7 +242,7 @@ function PANEL:SetControllers( controllers )
         local sliderIMax = vgui.Create( "DNumSlider", panel )
         sliderIMax:SetMin( 0 )
         sliderIMax:SetMax( 1 )
-        sliderIMax:SetDecimals( 2 )
+        sliderIMax:SetDecimals( 3 )
         sliderIMax:Dock( LEFT )
         sliderIMax.Label:SetVisible( false )
         sliderIMax:SetValue( params[3] )
@@ -194,7 +250,7 @@ function PANEL:SetControllers( controllers )
         ApplyTheme( sliderIMax )
 
         sliderIMax.OnValueChanged = function( _, value )
-            params[3] = math.Round( value, 2 )
+            params[3] = math.Round( value, 3 )
             self:OnChanged()
         end
 
@@ -223,8 +279,8 @@ function PANEL:SetControllers( controllers )
         -- Controller output minimum value
         local sliderOMin = vgui.Create( "DNumSlider", panel )
         sliderOMin:SetMin( 0 )
-        sliderOMin:SetMax( 2 )
-        sliderOMin:SetDecimals( 2 )
+        sliderOMin:SetMax( 2.5 )
+        sliderOMin:SetDecimals( 3 )
         sliderOMin:Dock( LEFT )
         sliderOMin.Label:SetVisible( false )
         sliderOMin:SetValue( params[5] )
@@ -232,7 +288,7 @@ function PANEL:SetControllers( controllers )
         ApplyTheme( sliderOMin )
 
         sliderOMin.OnValueChanged = function( _, value )
-            params[5] = math.Round( value, 2 )
+            params[5] = math.Round( value, 3 )
             self:OnChanged()
         end
 
@@ -245,8 +301,8 @@ function PANEL:SetControllers( controllers )
         -- Controller input maximum value
         local sliderOMax = vgui.Create( "DNumSlider", panel )
         sliderOMax:SetMin( 0 )
-        sliderOMax:SetMax( 2 )
-        sliderOMax:SetDecimals( 2 )
+        sliderOMax:SetMax( 2.5 )
+        sliderOMax:SetDecimals( 3 )
         sliderOMax:Dock( LEFT )
         sliderOMax.Label:SetVisible( false )
         sliderOMax:SetValue( params[6] )
@@ -254,7 +310,7 @@ function PANEL:SetControllers( controllers )
         ApplyTheme( sliderOMax )
 
         sliderOMax.OnValueChanged = function( _, value )
-            params[6] = math.Round( value, 2 )
+            params[6] = math.Round( value, 3 )
             self:OnChanged()
         end
 
@@ -285,9 +341,13 @@ function PANEL:SetControllers( controllers )
 end
 
 function PANEL:PerformLayout( w )
-    self.buttonRemove:SizeToContentsX( ScaleSize( 8 ) )
-    self.buttonAdd:SizeToContentsX( ScaleSize( 8 ) )
-    self.checkRevLimiter:SizeToContentsX( ScaleSize( 8 ) )
+    local buttonPadding = ScaleSize( 8 )
+
+    self.buttonRemove:SizeToContentsX( buttonPadding )
+    self.buttonAdd:SizeToContentsX( buttonPadding )
+    self.checkRevLimiter:SizeToContentsX( buttonPadding )
+    self.buttonChange:SizeToContentsX( buttonPadding )
+    self.checkMute:SizeToContentsX( buttonPadding )
 
     -- panelWidth - leftPadding - removeControllerButton - layerPadding
     local listW = w - 2 - ScaleSize( 28 ) - self.padding * 2

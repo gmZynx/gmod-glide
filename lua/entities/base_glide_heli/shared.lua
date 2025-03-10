@@ -98,7 +98,7 @@ if SERVER then
         basePower = 0,
 
         drag = Vector( 0.3, 0.5, 0.5 ),     -- Forward, right, up
-        maxFowardDrag = 200,                -- Limit "forward" drag force
+        maxForwardDrag = 200,               -- Limit "forward" drag force
         maxSideDrag = 300,                  -- Limit "right" drag force
 
         turbulanceForce = 50,   -- Force to wobble the helicopter

@@ -1,6 +1,5 @@
 include( "shared.lua" )
 
-ENT.RenderGroup = RENDERGROUP_OPAQUE
 ENT.AutomaticFrameAdvance = true
 
 --- Implement this base class function.
@@ -294,10 +293,12 @@ do
 
     --- Update out model's bodygroups depending on which lights are on.
     function ENT:DrawLights()
+        local headlightState = self:GetHeadlightState()
+
         lightState.brake = self:GetIsBraking()
         lightState.reverse = self:GetGear() == -1
-        lightState.headlight = self:GetHeadlightState() > 0
-        lightState.taillight = lightState.headlight
+        lightState.headlight = headlightState > 0
+        lightState.taillight = headlightState > 0
 
         local signal = self:GetTurnSignalState()
         local signalBlink = ( CurTime() % self.TurnSignalCycle ) > self.TurnSignalCycle * 0.5
@@ -329,19 +330,28 @@ do
                 end
             end
 
+            -- If the light has a `beamType` key, only draw the sprite
+            -- if the value of `beamType` matches the current headlight state.
+            if
+                ( l.beamType == "low" and headlightState ~= 1 ) or
+                ( l.beamType == "high" and headlightState ~= 2 )
+            then
+                enable = false
+            end
+
             if enable and ltype == "headlight" then
-                DrawLightSprite( pos, dir, l.size or 30, COLOR_HEADLIGHT )
+                DrawLightSprite( pos, dir, l.size or 30, COLOR_HEADLIGHT, l.spriteMaterial )
 
             elseif enable and ( ltype == "taillight" or ltype == "signal_left" or ltype == "signal_right" ) then
-                DrawLightSprite( pos, dir, l.size or 30, l.color or COLOR_BRAKE )
+                DrawLightSprite( pos, dir, l.size or 30, l.color or COLOR_BRAKE, l.spriteMaterial )
                 DrawLight( pos + dir * 10, l.color or COLOR_BRAKE, l.lightRadius, l.lightBrightness or DEFAULT_BRIGHTNESS[ltype] )
 
             elseif enable and ltype == "brake" then
-                DrawLightSprite( pos, dir, l.size or 30, l.color or COLOR_BRAKE )
+                DrawLightSprite( pos, dir, l.size or 30, l.color or COLOR_BRAKE, l.spriteMaterial )
                 DrawLight( pos + dir * 10, l.color or COLOR_BRAKE, l.lightRadius, l.lightBrightness )
 
             elseif enable and ltype == "reverse" then
-                DrawLightSprite( pos, dir, l.size or 20, l.color or COLOR_REV )
+                DrawLightSprite( pos, dir, l.size or 20, l.color or COLOR_REV, l.spriteMaterial )
                 DrawLight( pos + dir * 10, l.color or COLOR_REV, l.lightRadius, l.lightBrightness )
             end
         end
@@ -350,6 +360,7 @@ end
 
 local IsValid = IsValid
 local ExpDecay = Glide.ExpDecay
+local DEFAULT_SIREN_COLOR = Color( 255, 255, 255, 255 )
 
 --- Implement this base class function.
 function ENT:OnUpdateMisc()
@@ -358,7 +369,7 @@ function ENT:OnUpdateMisc()
     local dt = FrameTime()
     local rpmFraction = ( self:GetEngineRPM() - self:GetMinRPM() ) / ( self:GetMaxRPM() - self:GetMinRPM() )
 
-    self.rpmFraction = ExpDecay( self.rpmFraction, rpmFraction, 7, dt )
+    self.rpmFraction = ExpDecay( self.rpmFraction, rpmFraction, rpmFraction > self.rpmFraction and 7 or 4, dt )
 
     local headlightState = self:GetHeadlightState()
     local isHeadlightOn = headlightState > 0
@@ -452,11 +463,11 @@ function ENT:OnUpdateMisc()
             radius = v.lightRadius or 150
 
             if radius > 0 then
-                DrawLight( pos, v.color or color_white, radius )
+                DrawLight( pos, v.color or DEFAULT_SIREN_COLOR, radius )
             end
 
             dir = v.dir and self:LocalToWorld( v.dir ) - myPos or nil
-            DrawLightSprite( pos, dir, v.size or 30, v.color or color_white )
+            DrawLightSprite( pos, dir, v.size or 30, v.color or DEFAULT_SIREN_COLOR, v.spriteMaterial )
         end
 
         -- Merge multiple bodygroup entries so that any one of them can "enable" a bodygroup
@@ -525,7 +536,7 @@ function ENT:DoExhaustPop()
 
     for _, v in ipairs( self.ExhaustOffsets ) do
         local pos = self:LocalToWorld( v.pos )
-        local dir = -self:LocalToWorldAngles( v.ang or DEFAULT_EXHAUST_ANG ):Forward()
+        local dir = -self:LocalToWorldAngles( v.ang or v.angle or DEFAULT_EXHAUST_ANG ):Forward()
 
         eff:SetOrigin( pos )
         eff:SetStart( pos + dir * 10 )
@@ -552,7 +563,7 @@ function ENT:OnUpdateParticles()
         for _, v in ipairs( self.ExhaustOffsets ) do
             local eff = EffectData()
             eff:SetOrigin( self:LocalToWorld( v.pos ) )
-            eff:SetAngles( self:LocalToWorldAngles( v.ang or DEFAULT_EXHAUST_ANG ) )
+            eff:SetAngles( self:LocalToWorldAngles( v.ang or v.angle or DEFAULT_EXHAUST_ANG ) )
             eff:SetStart( velocity )
             eff:SetScale( v.scale or 1 )
             eff:SetColor( self.ExhaustAlpha )
@@ -635,7 +646,7 @@ function ENT:DrawVehicleHUD( screenW, screenH )
     DrawOutlinedCircle( r, x + r, y + r, size * 0.04, colors.bg, 90, 270 )
 
     -- Throttle
-    throttle = ExpDecay( throttle, self:GetEngineThrottle(), 20, dt )
+    throttle = ExpDecay( throttle, Clamp( self:GetEngineThrottle(), 0, 1 ), 20, dt )
     colors.throttleBar.a = 255
 
     DrawOutlinedCircle( r * 0.985, x + r, y + r, size * 0.025, colors.throttleBar, 90 * throttle, 361 )

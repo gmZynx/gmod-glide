@@ -161,7 +161,9 @@ function ENT:WeaponThink()
     if weapon.isFiring ~= isFiring then
         weapon.isFiring = isFiring
 
-        if not isFiring then
+        if isFiring then
+            self:OnWeaponStart( weapon, weaponIndex )
+        else
             self:OnWeaponStop( weapon, weaponIndex )
         end
     end

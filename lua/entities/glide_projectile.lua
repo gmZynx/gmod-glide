@@ -169,6 +169,7 @@ function ENT:Think()
     end
 
     if tr.Hit then
+        self:SetPos( tr.HitPos )
         self:Explode()
         return
     end

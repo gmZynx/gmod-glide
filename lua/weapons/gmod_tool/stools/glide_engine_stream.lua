@@ -38,6 +38,8 @@ function TOOL:CanSendData( veh )
 end
 
 function TOOL:LeftClick( trace )
+    if not game.SinglePlayer() and not IsFirstTimePredicted() then return end
+
     local veh = GetGlideVehicle( trace )
     if not veh then return false end
     if not self:CanSendData( veh ) then return end
@@ -80,6 +82,8 @@ function TOOL:LeftClick( trace )
 end
 
 function TOOL:RightClick( _trace )
+    if not game.SinglePlayer() and not IsFirstTimePredicted() then return end
+
     if SERVER and game.SinglePlayer() then
         self:GetOwner():SendLua( "LocalPlayer():GetTool():RightClick()" )
     end

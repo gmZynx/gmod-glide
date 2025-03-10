@@ -22,11 +22,12 @@ function ENT:CreateWheel( offset, params )
     wheel:SetAngles( ang )
     wheel:SetOwner( self )
     wheel:SetParent( self )
-    wheel:SetCreator( self:GetCreator() )
     wheel:Spawn()
     wheel:SetupWheel( params )
 
     self:DeleteOnRemove( wheel )
+
+    Glide.CopyEntityCreator( self, wheel )
 
     local index = self.wheelCount + 1
 

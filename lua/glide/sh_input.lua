@@ -41,7 +41,7 @@ InputCategories["land_controls"] = {
     ["shift_neutral"] = KEY_N
 }
 
--- Inputs that only apply to aicraft vehicle types
+-- Inputs that only apply to aircraft vehicle types
 InputCategories["aircraft_controls"] = {
     ["attack"] = MOUSE_LEFT,
     ["attack_alt"] = KEY_SPACE,
