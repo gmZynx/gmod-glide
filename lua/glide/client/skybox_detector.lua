@@ -46,7 +46,7 @@ local SetMaterial = render.SetMaterial
 local SetColorModulation = render.SetColorModulation
 
 local function DetectSkybox( isDrawingDepth, isDrawSkybox, isDraw3DSkybox )
-    if isDrawSkybox or isDraw3DSkybox then return end
+    if isDrawingDepth or isDrawSkybox or isDraw3DSkybox then return end
 
     -- Draw planes where traces have hit the skybox previously
     SetBlend( 1 )
@@ -64,8 +64,6 @@ local function DetectSkybox( isDrawingDepth, isDrawSkybox, isDraw3DSkybox )
             DrawQuad( origin + plane.v1, origin + plane.v2, origin + plane.v3, origin + plane.v4, planeColor )
         end
     end
-
-    if isDrawingDepth then return end
 
     -- Check one direction per frame
     dirIndex = dirIndex + 1

@@ -389,7 +389,9 @@ if SERVER then
     IncludeDir( "glide/server/", true, false )
 
     -- Client-only files
-    AddCSLuaFile( "styledstrike/theme.lua" )
+    AddCSLuaFile( "includes/modules/styled_theme.lua" )
+    AddCSLuaFile( "includes/modules/styled_theme_tabbed_frame.lua" )
+    AddCSLuaFile( "includes/modules/styled_theme_file_browser.lua" )
 
     IncludeDir( "glide/client/", false, true )
     IncludeDir( "glide/client/vgui/", false, true )
@@ -399,40 +401,25 @@ if CLIENT then
     -- Shared files
     IncludeDir( "glide/", true, false )
 
-    -- Setup UI theme
-    hook.Add( "StyledTheme_OnSetupFonts", "Glide.SetupFonts", function( fonts )
-        fonts["GlideSelectedWeapon"] = {
-            screenSize = 0.018,
-            font = "Roboto",
-            extended = false,
-            weight = 500,
-            blursize = 0,
-            scanlines = 0,
-            antialias = true
-        }
+    -- UI theme library
+    require( "styled_theme" )
+    require( "styled_theme_tabbed_frame" )
+    require( "styled_theme_file_browser" )
 
-        fonts["GlideNotification"] = {
-            screenSize = 0.022,
-            font = "Roboto",
-            extended = false,
-            weight = 500,
-            blursize = 0,
-            scanlines = 0,
-            antialias = true
-        }
+    StyledTheme.RegisterFont( "GlideSelectedWeapon", 0.018, {
+        font = "Roboto",
+        weight = 500,
+    } )
 
-        fonts["GlideHUD"] = {
-            screenSize = 0.022,
-            font = "Roboto",
-            extended = false,
-            weight = 400,
-            blursize = 0,
-            scanlines = 0,
-            antialias = true
-        }
-    end )
+    StyledTheme.RegisterFont( "GlideNotification", 0.022, {
+        font = "Roboto",
+        weight = 500,
+    } )
 
-    include( "styledstrike/theme.lua" )
+    StyledTheme.RegisterFont( "GlideHUD", 0.022, {
+        font = "Roboto",
+        weight = 400,
+    } )
 
     -- Client-only files
     IncludeDir( "glide/client/", true, false )

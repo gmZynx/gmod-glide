@@ -149,8 +149,8 @@ hook.Add( "PostCleanupMap", "Glide.RecreateSkidMarkMeshes", Glide.SetupSkidMarkM
 local SetBlend = render.SetBlend
 local SetColorModulation = render.SetColorModulation
 
-hook.Add( "PreDrawTranslucentRenderables", "Glide.RenderSkidMarks", function( _, isDrawSkybox, isDraw3DSkybox )
-    if isDrawSkybox or isDraw3DSkybox then return end
+hook.Add( "PreDrawTranslucentRenderables", "Glide.RenderSkidMarks", function( isDrawDepth, isDrawSkybox, isDraw3DSkybox )
+    if isDrawDepth or isDrawSkybox or isDraw3DSkybox then return end
 
     SetBlend( 1 )
     SetColorModulation( 1, 1, 1 )
