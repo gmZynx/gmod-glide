@@ -169,7 +169,7 @@ if SERVER then
     ENT.CollisionDamageMultiplier = 0.5
 
     -- How much of the chassis damage is also applied to the engine?
-    ENT.EngineDamageMultiplier = 1.2
+    ENT.EngineDamageMultiplier = 1.3
 
     -- How much of the blast damage force should be applied to the vehicle?
     ENT.BlastForceMultiplier = 0.01

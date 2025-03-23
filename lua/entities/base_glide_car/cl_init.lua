@@ -242,7 +242,7 @@ function ENT:OnUpdateSounds()
     if health < 0.4 then
         if sounds.runDamaged then
             sounds.runDamaged:ChangePitch( 100 + self.rpmFraction * 20 )
-            sounds.runDamaged:ChangeVolume( Clamp( ( 0.6 - health ) + inputs.throttle, 0, 1 ) * 0.8 )
+            sounds.runDamaged:ChangeVolume( Clamp( ( 0.75 - health ) + inputs.throttle, 0, 1 ) * 0.8 )
         else
             local snd = self:CreateLoopingSound( "runDamaged", "glide/engines/run_damaged_1.wav", 75, self )
             snd:PlayEx( 0.5, 100 )
@@ -253,9 +253,9 @@ function ENT:OnUpdateSounds()
         sounds.runDamaged = nil
     end
 
-    if health < 0.5 then
+    if health < 0.6 then
         if sounds.rattle then
-            sounds.rattle:ChangeVolume( Clamp( self.rpmFraction - inputs.throttle, 0, 1 ) * ( 1 - health ) * 0.8 )
+            sounds.rattle:ChangeVolume( Clamp( self.rpmFraction - inputs.throttle, 0, 1 ) * ( 1 - health ) * 0.9 )
         else
             local snd = self:CreateLoopingSound( "rattle", "glide/engines/exhaust_rattle.wav", 75, self )
             snd:PlayEx( 0.5, 100 )
@@ -573,7 +573,7 @@ function ENT:OnUpdateParticles()
     end
 
     local health = self:GetEngineHealth()
-    if health > 0.5 then return end
+    if health > 0.6 then return end
 
     local color = Clamp( health * 255, 0, 255 )
     local scale = 2 - health * 2
@@ -602,8 +602,6 @@ local DrawIcon = Glide.DrawIcon
 local DrawFilledCircle = Glide.DrawFilledCircle
 local DrawOutlinedCircle = Glide.DrawOutlinedCircle
 
-local MAX_SPEED = 200 -- Max. indicated speed (MPH)
-
 local GEAR_LABELS = {
     [-1] = "R",
     [0] = "N"
@@ -618,14 +616,13 @@ local colors = {
     speedBars = Color( 220, 220, 220, 255 ),
 }
 
-local function DrawDataPoint( text, radius, x, y, w, h )
+local function DrawDataBox( text, radius, x, y, w, h )
     RoundedBox( radius, x - w * 0.5, y - h * 0.5, w, h, colors.dataBg )
     SimpleText( text, "GlideHUD", x, y, colors.icon, 1, 1 )
 end
 
-local throttle = 0
-local speedNeedle = 0
 local size, x, y
+local throttle, needle, speedLerp = 0, 0, 0
 
 --- Override this base class function.
 function ENT:DrawVehicleHUD( screenW, screenH )
@@ -634,68 +631,57 @@ function ENT:DrawVehicleHUD( screenW, screenH )
     if not Config.showHUD then return end
 
     size = Floor( screenH * 0.3 )
-
     x = screenW - size - playerListWidth - Floor( screenH * 0.01 )
     y = screenH - size - Floor( screenH * 0.03 )
 
-    local r = size * 0.5
-    local iconSize = size * 0.11
     local dt = FrameTime()
-
-    -- Throttle/RPM background
-    DrawOutlinedCircle( r, x + r, y + r, size * 0.04, colors.bg, 90, 270 )
+    local r = size * 0.5
 
     -- Throttle
+    DrawOutlinedCircle( r, x + r, y + r, size * 0.04, colors.bg, 90, 360 )
+
     throttle = ExpDecay( throttle, Clamp( self:GetEngineThrottle(), 0, 1 ), 20, dt )
     colors.throttleBar.a = 255
 
-    DrawOutlinedCircle( r * 0.985, x + r, y + r, size * 0.025, colors.throttleBar, 90 * throttle, 361 )
+    DrawOutlinedCircle( r * 0.985, x + r, y + r, size * 0.025, colors.throttleBar, 89 * throttle, 361 )
 
-    -- RPM
-    local rpm = self:GetEngineRPM()
-    local stream = self.stream
-
-    if stream and stream.isRedlining then
-        local wave = Clamp( math.cos( RealTime() * stream.redlineFrequency * 0.5 ), -1, 1 )
-        rpm = rpm - math.abs( wave ) * 500
-    end
-
-    rpm = rpm / self:GetMaxRPM()
-
-    DrawOutlinedCircle( r * 0.985, x + r, y + r, size * 0.025, colors.throttleBar, -1, 360 - 90 * rpm )
+    -- Engine state
+    local iconSize = size * 0.11
     DrawIcon( x + size - iconSize, y + size - iconSize * 0.5, "glide/icons/engine.png", iconSize, self:IsEngineOn() and colors.icon or colors.iconDisabled )
 
-    -- Speedometer
-    local speedR = r * 0.9
+    -- Engine RPM
+    local stream = self.stream
+    local meterR = r * 0.9
+    local maxRPM = self:GetMaxRPM()
 
-    DrawFilledCircle( speedR, x + r, y + r, colors.bg )
-    DrawIcon( x + size * 0.5, y + size * 0.5, "glide/speedometer_area.png", speedR * 2, colors.speedBars )
+    needle = ExpDecay( needle, self:GetEngineRPM() / maxRPM, 10, dt )
 
-    local speed = self:GetVelocity():Length()
-    local maxSpeed = MAX_SPEED
+    if stream and stream.isRedlining then
+        needle = needle - math.abs( Clamp( math.cos( RealTime() * stream.redlineFrequency ), 0, 1 ) * 0.01 )
+    end
 
-    -- Draw speed needle
-    local needle = Clamp( speed / ( maxSpeed / 0.0568182 ), 0, 1 )
-    speedNeedle = ExpDecay( speedNeedle, needle, 10, dt )
-
-    DrawIcon( x + size * 0.5, y + size * 0.5, "glide/speedometer_needle.png", speedR * 2, colors.icon, 120 - speedNeedle * 240 )
-
-    -- Convert Source units to MPH
-    speed = speed * 0.0568182
+    DrawFilledCircle( meterR, x + r, y + r, colors.bg )
+    DrawIcon( x + size * 0.5, y + size * 0.5, "glide/speedometer_area.png", meterR * 2, colors.speedBars )
+    DrawIcon( x + size * 0.5, y + size * 0.5, "glide/speedometer_needle.png", meterR * 2, colors.icon, 120 - needle * 240 )
 
     SimpleText( "0", "GlideHUD", x + size * 0.16, y + size * 0.72, colors.icon, 0, 0 )
+    SimpleText( Floor( maxRPM ), "GlideHUD", x + size * 0.84, y + size * 0.72, colors.icon, 2, 0 )
+
+    -- Speed
+    speedLerp = ExpDecay( speedLerp, self:GetVelocity():Length(), 20, dt )
+
+    -- Convert Source units to MPH
+    local speed = speedLerp * 0.0568182
 
     if Config.useKMH then
         speed = speed * 1.60934 -- Convert MPH to km/h
-        maxSpeed = maxSpeed * 1.60934
     end
 
     local unit = Config.useKMH and " km/h" or " mph"
     local cornerRadius = Floor( screenH * 0.008 )
 
-    SimpleText( Floor( maxSpeed ), "GlideHUD", x + size * 0.84, y + size * 0.72, colors.icon, 2, 0 )
-    DrawDataPoint( Floor( speed ) .. unit, cornerRadius, x + size * 0.5, y + size * 0.68, size * 0.35, size * 0.1 )
+    DrawDataBox( Floor( speed ) .. unit, cornerRadius, x + size * 0.5, y + size * 0.67, size * 0.35, size * 0.1 )
 
     -- Current gear
-    DrawDataPoint( GEAR_LABELS[self:GetGear()] or self:GetGear(), cornerRadius, x + size * 0.5, y + size * 0.8, size * 0.2, size * 0.1 )
+    DrawDataBox( GEAR_LABELS[self:GetGear()] or self:GetGear(), cornerRadius, x + size * 0.5, y + size * 0.78, size * 0.2, size * 0.1 )
 end

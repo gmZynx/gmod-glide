@@ -250,6 +250,8 @@ list.Set( "GlideWheelModels", "models/gta5/vehicles/dukes/wheel.mdl", { angle = 
 list.Set( "GlideWheelModels", "models/gta5/vehicles/gauntlet_classic/wheel.mdl", { angle = Angle( 0, 90, 0 ), scale = Vector( 0.35, 1, 1 ) } )
 list.Set( "GlideWheelModels", "models/gta5/vehicles/speedo/wheel.mdl", { angle = Angle( 0, 90, 0 ), scale = Vector( 0.35, 1, 1 ) } )
 list.Set( "GlideWheelModels", "models/gta5/vehicles/stunt/stunt_wheel.mdl", { angle = Angle( 0, 180, 0 ), scale = Vector( 1, 0.6, 1 ) } )
+list.Set( "GlideWheelModels", "models/gta5/vehicles/infernus/wheel.mdl", { angle = Angle( 0, 90, 0 ), scale = Vector( 0.4, 1, 1 ) } )
+list.Set( "GlideWheelModels", "models/gta5/vehicles/jb700/wheel.mdl", { angle = Angle( 0, 90, 0 ), scale = Vector( 0.35, 1, 1 ) } )
 
 list.Set( "GlideWheelModels", "models/mechanics/wheels/bmw.mdl", {} )
 list.Set( "GlideWheelModels", "models/mechanics/wheels/rim_1.mdl", {} )

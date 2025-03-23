@@ -61,7 +61,7 @@ end
 if SERVER then
     ENT.SpawnPositionOffset = Vector( 0, 0, 50 )
     ENT.ChassisMass = 900
-    ENT.BurnoutForce = 35
+    ENT.BurnoutForce = 13
 
     ENT.AirControlForce = Vector( 0.4, 0.2, 0.1 ) -- Roll, pitch, yaw
     ENT.AirMaxAngularVelocity = Vector( 200, 200, 150 ) -- Roll, pitch, yaw

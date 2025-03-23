@@ -8,6 +8,12 @@ ENT.GlideCategory = "Default"
 ENT.ChassisModel = "models/gta5/vehicles/police/chassis.mdl"
 ENT.CanSwitchSiren = true
 
+function ENT:GetFirstPersonOffset( _, localEyePos )
+    localEyePos[1] = localEyePos[1] + 5
+    localEyePos[3] = localEyePos[3] + 10
+    return localEyePos
+end
+
 if CLIENT then
     ENT.CameraOffset = Vector( -270, 0, 58 )
 

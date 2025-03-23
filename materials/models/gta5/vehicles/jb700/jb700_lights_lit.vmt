@@ -1,0 +1,13 @@
+"VertexLitGeneric"
+{
+	"$basetexture" "models/gta5/vehicles/jb700/jb700_lights"
+	"$allowdiffusemodulation" "false"
+
+	$emissiveBlendEnabled "1"
+	$emissiveBlendStrength "1"
+	$emissiveBlendTexture "vgui/white"
+	$emissiveBlendBaseTexture "models/gta5/vehicles/jb700/jb700_lights"
+	$emissiveBlendFlowTexture "vgui/white"
+	$emissiveBlendTint "[ 5 5 3 ]"
+	$emissiveBlendScrollVector "[ 0 0 ]"
+}

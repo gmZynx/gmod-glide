@@ -109,6 +109,7 @@ function ENT:Initialize()
         return
     end
 
+    phys:AddGameFlag( FVPHYSICS_NO_PLAYER_PICKUP )
     phys:SetMaterial( "metalvehicle" )
     phys:SetMass( self.ChassisMass )
     phys:EnableDrag( false )

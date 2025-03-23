@@ -1,0 +1,13 @@
+"VertexLitGeneric"
+{
+	"$basetexture" "models/gta5/vehicles/pcj_lights_glass"
+	"$allowdiffusemodulation" "false"
+
+	$emissiveBlendEnabled "1"
+	$emissiveBlendStrength "1"
+	$emissiveBlendTexture "vgui/white"
+	$emissiveBlendBaseTexture "models/gta5/vehicles/pcj_lights_glass"
+	$emissiveBlendFlowTexture "vgui/white"
+	$emissiveBlendTint "[ 8 8 8 ]"
+	$emissiveBlendScrollVector "[ 0 0 ]"
+}

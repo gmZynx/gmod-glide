@@ -68,7 +68,7 @@ if SERVER then
     ENT.ChassisMass = 1800
     ENT.IsHeavyVehicle = true
 
-    ENT.BurnoutForce = 15
+    ENT.BurnoutForce = 13
     ENT.UnflipForce = 4
 
     ENT.AirControlForce = Vector( 0.1, 0.05, 0.1 ) -- Roll, pitch, yaw

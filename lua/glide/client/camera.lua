@@ -287,14 +287,14 @@ function Camera:Think()
         if self.isInFirstPerson then
             self.allowRolling = true
 
-            decay = Clamp( ( speed - 5 ) * 0.002, 0, 1 ) * 7 * self.centerStrength
+            decay = Clamp( ( speed - 5 ) * 0.002, 0, 1 ) * 8 * self.centerStrength
             rollDecay = 8
         else
             self.allowRolling = false
 
             vehicleAngles = velocity:Angle()
             vehicleAngles[3] = 0
-            decay = Clamp( ( speed - 10 ) * 0.002, 0, 1 ) * 3 * self.centerStrength
+            decay = Clamp( ( speed - 10 ) * 0.002, 0, 1 ) * 4 * self.centerStrength
         end
     end
 

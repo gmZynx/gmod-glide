@@ -1,0 +1,5 @@
+"VertexlitGeneric"
+{
+	"$basetexture" "models/gta5/vehicles/sportsbike_hd_detail"
+	"$allowdiffusemodulation" "false"
+}

@@ -19,6 +19,10 @@ function ENT:OnPostInitialize()
     self.inputAirPitch = 0
     self.inputAirYaw = 0
 
+    self.jTurnMultiplier = 0
+    self.frontSideTractionMult = 1
+    self.rearSideTractionMult = 1
+
     -- Initialize the engine
     self:EngineInit()
 
@@ -190,6 +194,8 @@ function ENT:TurnOff()
 
     self.clutch = 1
     self.reducedThrottle = false
+    self.availableFrontTorque = 0
+    self.availableRearTorque = 0
 
     if self.autoTurnOffLights then
         self:ChangeHeadlightState( 0, true )
@@ -475,7 +481,7 @@ function ENT:OnPostThink( dt, selfTbl )
                 end
             end
         else
-            local startupTime = health < 0.5 and math.Rand( 1, 2 ) or selfTbl.StartupTime
+            local startupTime = health < 0.6 and math.Rand( 1, 2 ) or selfTbl.StartupTime
             selfTbl.startupTimer = CurTime() + startupTime
         end
 
@@ -546,7 +552,7 @@ function ENT:OnPostThink( dt, selfTbl )
 
     -- Update driver inputs
     self:UpdateSteering( dt )
-    self:SetIsBraking( self:GetInputBool( 1, "handbrake" ) or self:GetInputFloat( 1, "brake" ) > 0.1 )
+    self:SetIsBraking( self:GetInputBool( 1, "handbrake" ) or ( self.frontBrake + self.rearBrake ) > 0.3 )
 
     local phys = self:GetPhysicsObject()
 
@@ -591,6 +597,39 @@ function ENT:UpdateSteering( dt )
     inputSteer = Clamp( inputSteer + counterSteer, -1, 1 )
 
     self.steerAngle[2] = -inputSteer * self:GetMaxSteerAngle()
+
+    -- Reduce front wheel sideways friction when trying to do a J-turn 
+    if self.forwardSpeed < -100 then
+        self.jTurnMultiplier = 0.5
+    else
+        self.jTurnMultiplier = ExpDecay( self.jTurnMultiplier, 1, 2, dt )
+    end
+
+    -- Reduce wheel sideways friction when doing a burnout
+    if self.burnout > 0.1 then
+        local frontBurnout = self:GetPowerDistribution() > 0
+        self.frontSideTractionMult = frontBurnout and 0.5 or 1
+        self.rearSideTractionMult = frontBurnout and 1 or 0.5
+    else
+        self.frontSideTractionMult = self.jTurnMultiplier
+        self.rearSideTractionMult = 1
+    end
+end
+
+--- Override this base class function.
+function ENT:GetYawDragMultiplier()
+    if self.groundedCount < 1 then
+        -- Keep normal yaw drag while this vehicle is not grounded
+        return 1
+    end
+
+    -- Don't apply yaw drag when going backwards, to allow for easier J-turns
+    if self.forwardSpeed < 0 then
+        return 0
+    end
+
+    -- Apply more yaw drag when going faster
+    return Clamp( self.totalSpeed / 1000, 0, 1 )
 end
 
 --- Let the driver unflip the vehicle when it is upside down.
@@ -639,6 +678,8 @@ end
 
 --- Override this base class function.
 function ENT:CreateWheel( offset, params )
+    params = params or {}
+
     local wheel = BaseClass.CreateWheel( self, offset, params )
 
     -- If the `isFrontWheel` param is not forced, figure it out now
@@ -694,6 +735,7 @@ function ENT:WheelThink( dt )
         state.torque = w.distributionFactor * ( w.isFrontWheel and frontTorque or rearTorque )
         state.brake = w.isFrontWheel and frontBrake or rearBrake
         state.forwardTractionMult = w.isFrontWheel and tractionFront or tractionRear
+        state.sideTractionMult = w.isFrontWheel and selfTbl.frontSideTractionMult or selfTbl.rearSideTractionMult
 
         if inputHandbrake and not w.isFrontWheel then
             state.angularVelocity = 0

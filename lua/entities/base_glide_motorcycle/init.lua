@@ -15,10 +15,10 @@ function ENT:OnPostInitialize()
 
     -- Change steering parameters to better suit bikes
     self:SetMaxSteerAngle( 30 )
-    self:SetSteerConeChangeRate( 10 )
+    self:SetSteerConeChangeRate( 12 )
     self:SetSteerConeMaxSpeed( 1200 )
-    self:SetSteerConeMaxAngle( 0.15 )
-    self:SetCounterSteer( 0.5 )
+    self:SetSteerConeMaxAngle( 0.3 )
+    self:SetCounterSteer( 0.75 )
     self:SetPowerDistribution( -1 )
 
     -- Change traction parameters to better suit bikes
@@ -84,6 +84,16 @@ function ENT:Use( activator )
     activator:EnterVehicle( freeSeat )
 end
 
+--- Override this base class function.
+function ENT:GetYawDragMultiplier()
+    if self.groundedCount < 1 then
+        -- Reduce yaw drag while this vehicle is not grounded
+        return 0.1
+    end
+
+    return BaseClass.GetYawDragMultiplier( self )
+end
+
 local IsValid = IsValid
 local Abs = math.abs
 local Clamp = math.Clamp
@@ -94,7 +104,6 @@ function ENT:UpdateSteering( dt )
     BaseClass.UpdateSteering( self, dt )
 
     local isAnyWheelGrounded = self.groundedCount > 0
-    local invSpeedOverFactor = 1 - Clamp( self.totalSpeed / self:GetSteerConeMaxSpeed(), 0, 1 )
     local inputSteer = Clamp( self:GetInputFloat( 1, "steer" ), -1, 1 )
     local sideSlip = Clamp( self.avgSideSlip, -1, 1 )
     local tilt = Clamp( sideSlip * -2, -0.5, 0.5 )
@@ -107,7 +116,7 @@ function ENT:UpdateSteering( dt )
         end
     end
 
-    self.steerTilt = ExpDecay( self.steerTilt, tilt, 8 + invSpeedOverFactor * 2, dt )
+    self.steerTilt = ExpDecay( self.steerTilt, tilt, 10, dt )
 
     if
         isAnyWheelGrounded and
@@ -150,10 +159,7 @@ function ENT:OnSimulatePhysics( phys, _, outLin, outAng )
     local angVel = phys:GetAngleVelocity()
     local mass = phys:GetMass()
 
-    -- Apply an extra yaw angular drag
-    if isAnyWheelGrounded then
-        outAng[3] = outAng[3] + angVel[3] * mass * self.YawDrag
-    else
+    if not isAnyWheelGrounded then
         self.steerTilt = 0
     end
 
@@ -169,7 +175,7 @@ function ENT:OnSimulatePhysics( phys, _, outLin, outAng )
         strength = strength * Clamp( self.totalSpeed / 200, 0, 1 )
         strength = strength * Clamp( 1 - self.frontBrake - self.rearBrake, 0, 1 )
 
-        -- Drag
+        -- Wheelie angular drag
         outAng[2] = outAng[2] + angVel[2] * mass * self.WheelieDrag * strength
 
         local frontPos = self.wheels[1]:GetPos()

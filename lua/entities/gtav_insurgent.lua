@@ -144,7 +144,10 @@ if CLIENT then
             return Vector( -30, 0, 115 )
         end
 
-        return BaseClass.GetFirstPersonOffset( self, seatIndex, localEyePos )
+        localEyePos[1] = localEyePos[1] + 5
+        localEyePos[3] = localEyePos[3] + 10
+
+        return localEyePos
     end
 
     function ENT:GetCameraType( seatIndex )
@@ -182,7 +185,7 @@ if SERVER then
     ENT.BulletDamageMultiplier = 0.5
 
     ENT.FallOnCollision = true
-    ENT.BurnoutForce = 30
+    ENT.BurnoutForce = 12
     ENT.AirControlForce = Vector( 0.3, 0.2, 0.2 )
 
     ENT.LightBodygroups = {

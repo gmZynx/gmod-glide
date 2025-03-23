@@ -146,7 +146,7 @@ if SERVER then
     ENT.StartupTime = 0.4
 
     ENT.UnflipForce = 20
-    ENT.BurnoutForce = 130
+    ENT.BurnoutForce = 30
 
     ENT.AirControlForce = Vector( 3, 2, 0.2 ) -- Roll, pitch, yaw
     ENT.AirMaxAngularVelocity = Vector( 400, 400, 150 ) -- Roll, pitch, yaw

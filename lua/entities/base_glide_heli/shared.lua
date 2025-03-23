@@ -114,4 +114,38 @@ if SERVER then
         maxPitch = 70,          -- Don't let the helicopter pitch more than this
         maxRoll = 85            -- Don't let the helicopter roll more than this
     }
+
+    -- You can override these functions on your children classes.
+    -- `selfTbl` is a more efficient way to access variables on the entity.
+
+    function ENT:ShouldAllowRotorSpin( selfTbl )
+        if selfTbl.MainRotorModel == "" then return true end
+        return IsValid( selfTbl.mainRotor )
+    end
+
+    function ENT:ShouldGoOutOfControl( selfTbl )
+        return not IsValid( selfTbl.tailRotor ) and selfTbl.TailRotorModel ~= ""
+    end
+
+    function ENT:HandleOutOfControl( power, dt )
+        local phys = self:GetPhysicsObject()
+        local force = self:GetRight() * power * phys:GetMass() * -100
+
+        phys:ApplyForceOffset( force * dt, self:LocalToWorld( self.TailRotorOffset ) )
+    end
+
+    function ENT:CreateRotors()
+        -- Create main rotor, if it doesn't exist
+        if not IsValid( self.mainRotor ) and self.MainRotorModel ~= "" then
+            self.mainRotor = self:CreateRotor( self.MainRotorOffset, self.MainRotorRadius, self.MainRotorModel, self.MainRotorFastModel )
+            self.mainRotor:SetBaseAngles( self.MainRotorAngle )
+        end
+
+        -- Create tail rotor, if it doesn't exist and we have a model for it
+        if not IsValid( self.tailRotor ) and self.TailRotorModel ~= "" then
+            self.tailRotor = self:CreateRotor( self.TailRotorOffset, self.TailRotorRadius, self.TailRotorModel, self.TailRotorFastModel )
+            self.tailRotor:SetBaseAngles( self.TailRotorAngle )
+            self.tailRotor:SetSpinAxis( "Right" )
+        end
+    end
 end

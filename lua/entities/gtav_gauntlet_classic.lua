@@ -68,7 +68,8 @@ end
 
 if SERVER then
     ENT.SpawnPositionOffset = Vector( 0, 0, 30 )
-    ENT.BurnoutForce = 80
+    ENT.AngularDrag = Vector( -0.5, -0.5, -5 ) -- Roll, pitch, yaw
+    ENT.BurnoutForce = 28
 
     function ENT:GetGears()
         return {
@@ -104,13 +105,12 @@ if SERVER then
         self:SetMinRPMTorque( 1300 )
         self:SetMaxRPMTorque( 1500 )
 
-        self:SetForwardTractionMax( 2500 )
         self:SetSideTractionMaxAng( 30 )
         self:SetSideTractionMax( 3000 )
         self:SetSideTractionMin( 1100 )
 
-        self:CreateSeat( Vector( -22, 18, -3 ), Angle( 0, 270, -10 ), Vector( 40, 80, 0 ), true )
-        self:CreateSeat( Vector( -8, -18, -3 ), Angle( 0, 270, 5 ), Vector( -40, -80, 0 ), true )
+        self:CreateSeat( Vector( -22, 18, -3 ), Angle( 0, 270, -10 ), Vector( 20, 80, 0 ), true )
+        self:CreateSeat( Vector( -8, -18, -3 ), Angle( 0, 270, 5 ), Vector( 20, -80, 0 ), true )
 
         -- Front left
         self:CreateWheel( Vector( 69, 36, 5 ), {

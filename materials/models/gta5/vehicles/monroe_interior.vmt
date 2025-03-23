@@ -1,0 +1,5 @@
+"VertexlitGeneric"
+{
+	"$basetexture" "models/gta5/vehicles/monroe_interior"
+	"$allowdiffusemodulation" "false"
+}

@@ -1,0 +1,6 @@
+"VertexlitGeneric"
+{
+	"$basetexture" "models/gta5/vehicles/infernus/infernus_lights"
+	"$nodecal" "1"
+	"$allowdiffusemodulation" "false"
+}

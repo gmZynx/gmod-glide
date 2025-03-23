@@ -37,7 +37,7 @@ if SERVER then
     -- Change default car variables
     ENT.ChassisMass = 300
 
-    ENT.AngularDrag = Vector( 0, -2, -0.5 ) -- Roll, pitch, yaw
+    ENT.AngularDrag = Vector( 0, -2, -6 ) -- Roll, pitch, yaw
     ENT.FallOnCollision = true
     ENT.SuspensionHeavySound = "Glide.Suspension.CompressBike"
 
@@ -46,8 +46,6 @@ if SERVER then
 
     -- Bike-specific variables
     ENT.TiltForce = 550
-    ENT.YawDrag = -5
-
     ENT.KeepUprightForce = 1500
     ENT.KeepUprightDrag = -3
 

@@ -164,15 +164,6 @@ function ENT:AutoGearSwitch( throttle )
         return
     end
 
-    -- While not on ground, first gear
-    if self.groundedCount < self.wheelCount then
-        if self:GetGear() < 1 then
-            self:SwitchGear( 1, 0 )
-        end
-
-        return
-    end
-
     if self.forwardSpeed < 0 and throttle < 0.1 then return end
     if Abs( self.avgForwardSlip ) > 10 then return end
 
@@ -294,7 +285,7 @@ function ENT:EngineThink( dt )
 
     -- Do a burnout when holding down the throttle and brake inputs
     if inputThrottle > 0.1 and inputBrake > 0.1 and Abs( self.forwardSpeed ) < 50 then
-        self.burnout = Approach( self.burnout, 1, dt )
+        self.burnout = Approach( self.burnout, 1, dt * 2 )
 
         clutch = 0
 
@@ -308,8 +299,8 @@ function ENT:EngineThink( dt )
         local frontBurnout = self:GetPowerDistribution() > 0
         local dir = frontBurnout and self:GetRight() or -self:GetRight()
 
-        self.frontBrake = frontBurnout and 0 or 0.5
-        self.rearBrake = frontBurnout and 0.5 or 0
+        self.frontBrake = frontBurnout and 0 or 0.25
+        self.rearBrake = frontBurnout and 0.25 or 0
 
         self.frontTractionMult = frontBurnout and 0.25 or 2
         self.rearTractionMult = frontBurnout and 2 or 0.25

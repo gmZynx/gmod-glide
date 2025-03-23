@@ -121,7 +121,7 @@ if SERVER then
     ENT.SpawnPositionOffset = Vector( 0, 0, 30 )
     ENT.StartupTime = 0.5
 
-    ENT.BurnoutForce = 160
+    ENT.BurnoutForce = 55
     ENT.WheelieForce = 400
 
     ENT.LightBodygroups = {
@@ -148,18 +148,11 @@ if SERVER then
 
         -- Front
         self:CreateWheel( Vector( 39, 0, -1 ), {
-            model = "models/gta5/vehicles/blazer/wheel.mdl",
-            modelScale = Vector( 0.4, 1, 1 ),
-            modelAngle = Angle( 0, 90, 0 ),
             steerMultiplier = 1
         } )
 
         -- Rear
-        self:CreateWheel( Vector( -32, 0, -1 ), {
-            model = "models/gta5/vehicles/blazer/wheel.mdl",
-            modelScale = Vector( 0.4, 1, 1 ),
-            modelAngle = Angle( 0, 90, 0 )
-        } )
+        self:CreateWheel( Vector( -32, 0, -1 ) )
 
         for _, w in ipairs( self.wheels ) do
             Glide.HideEntity( w, true )

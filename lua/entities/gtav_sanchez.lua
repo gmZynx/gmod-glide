@@ -9,6 +9,12 @@ ENT.ChassisModel = "models/gta5/vehicles/sanchez/chassis.mdl"
 
 DEFINE_BASECLASS( "base_glide_motorcycle" )
 
+function ENT:GetFirstPersonOffset( _, localEyePos )
+    --localEyePos[1] = localEyePos[1] + 15
+    --localEyePos[3] = localEyePos[3] + 8
+    return localEyePos
+end
+
 if CLIENT then
     ENT.CameraOffset = Vector( -170, 0, 50 )
 
@@ -77,7 +83,7 @@ end
 if SERVER then
     ENT.SpawnPositionOffset = Vector( 0, 0, 40 )
     ENT.StartupTime = 0.4
-    ENT.BurnoutForce = 220
+    ENT.BurnoutForce = 50
 
     ENT.LightBodygroups = {
         { type = "headlight", bodyGroupId = 6, subModelId = 1 }, -- Headlight
@@ -102,18 +108,11 @@ if SERVER then
 
         -- Front
         self:CreateWheel( Vector( 36, 0, -1 ), {
-            model = "models/gta5/vehicles/blazer/wheel.mdl",
-            modelScale = Vector( 0.4, 1, 1 ),
-            modelAngle = Angle( 0, 90, 0 ),
             steerMultiplier = 1
         } )
 
         -- Rear
-        self:CreateWheel( Vector( -29, 0, -1 ), {
-            model = "models/gta5/vehicles/blazer/wheel.mdl",
-            modelScale = Vector( 0.4, 1, 1 ),
-            modelAngle = Angle( 0, 90, 0 )
-        } )
+        self:CreateWheel( Vector( -29, 0, -1 ) )
 
         for _, w in ipairs( self.wheels ) do
             Glide.HideEntity( w, true )

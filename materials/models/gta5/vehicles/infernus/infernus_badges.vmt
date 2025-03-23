@@ -1,0 +1,7 @@
+"VertexlitGeneric"
+{
+	"$basetexture" "models/gta5/vehicles/infernus/infernus_badges"
+	"$bumpmap" "models/gta5/vehicles/infernus/infernus_badges_n"
+	"$allowdiffusemodulation" "false"
+	"$translucent" "1"
+}

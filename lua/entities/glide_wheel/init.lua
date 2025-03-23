@@ -44,6 +44,9 @@ function ENT:Initialize()
         -- Forward traction multiplier
         forwardTractionMult = 1,
 
+        -- Side traction multiplier
+        sideTractionMult = 1,
+
         isOnGround = false,
         lastFraction = 1,
         lastSpringOffset = 0,
@@ -311,7 +314,6 @@ function ENT:DoPhysics( vehicle, phys, traceData, outLin, outAng, dt )
         return
     end
 
-    fw = ray.HitNormal:Cross( rt )
     pos = params.enableAxleForces and pos or contactPos
 
     -- Get the velocity at the wheel position
@@ -321,6 +323,9 @@ function ENT:DoPhysics( vehicle, phys, traceData, outLin, outAng, dt )
     velF = fw:Dot( vel )
     velR = rt:Dot( vel )
     absVelR = Abs( velR )
+
+    -- Make forward forces be perpendicular to the surface normal
+    fw = ray.HitNormal:Cross( rt )
 
     -- Suspension spring force & damping
     offset = maxLen - ( fraction * maxLen )
@@ -369,19 +374,19 @@ function ENT:DoPhysics( vehicle, phys, traceData, outLin, outAng, dt )
     slipAngle = ( Atan2( velR, Abs( velF ) ) / PI ) * 2
     self:SetSideSlip( slipAngle * Clamp( vehicle.totalSpeed * 0.005, 0, 1 ) * 2 )
 
-    -- Reduce sideways traction as the suspension spring applies less force
-    surfaceGrip = surfaceGrip * Clamp( ( springForce * 0.5 ) / params.springStrength, 0, 1 )
-
     -- Sideways traction ramp
     slipAngle = Abs( slipAngle * slipAngle )
     maxTraction = TractionRamp( slipAngle, params.sideTractionMaxAng, params.sideTractionMax, params.sideTractionMin ) * surfaceGrip
-    sideForce = -rt:Dot( vel * params.sideTractionMultiplier )
+    sideForce = -rt:Dot( vel * params.sideTractionMultiplier * state.sideTractionMult )
 
     -- Reduce sideways traction force as the wheel slips forward
     sideForce = sideForce * ( 1 - Clamp( Abs( gripLoss ) * 0.1, 0, 1 ) * 0.9 )
 
+    -- Reduce sideways force as the suspension spring applies less force
+    surfaceGrip = Clamp( springForce / params.springStrength, 0, 1 )
+
     -- Apply sideways traction force
-    force:Add( Clamp( sideForce, -maxTraction, maxTraction ) * rt )
+    force:Add( Clamp( sideForce, -maxTraction, maxTraction ) * surfaceGrip * rt )
 
     -- Apply an extra, small sideways force that is not clamped by maxTraction.
     -- This helps at lot with cornering at high speed.

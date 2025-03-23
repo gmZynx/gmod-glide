@@ -1,0 +1,5 @@
+"VertexlitGeneric"
+{
+	"$baseTexture" "models/gta5/vehicles/coment_new_interior"
+	"$allowdiffusemodulation" "false"
+}

@@ -48,6 +48,12 @@ function ENT:ChangeWheelRadius( radius )
     end
 end
 
+--- The returned value from this function is multiplied with
+--- the yaw angle from `ENT.AngularDrag` before appling it to the vehicle.
+function ENT:GetYawDragMultiplier()
+    return 1
+end
+
 local GetDevMode = Glide.GetDevMode
 
 function ENT:WheelThink( dt )
@@ -81,7 +87,7 @@ function ENT:PhysicsSimulate( phys, dt )
 
     angForce[1] = angVel[1] * drag[1] * mass
     angForce[2] = angVel[2] * drag[2] * mass
-    angForce[3] = angVel[3] * drag[3] * mass
+    angForce[3] = angVel[3] * drag[3] * self:GetYawDragMultiplier() * mass
 
     -- Do wheel physics
     if self.wheelCount > 0 and self.wheelsEnabled then
