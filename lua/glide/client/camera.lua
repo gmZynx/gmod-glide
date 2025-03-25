@@ -95,7 +95,7 @@ function Camera:Deactivate()
     end
 
     if IsValid( self.user ) then
-        self.user:SetDSP( 1 )
+        self.user:SetDSP( 0 )
         self.user:SetEyeAngles( Angle() )
     end
 
@@ -145,7 +145,7 @@ function Camera:SetFirstPerson( enable )
     end
 
     if IsValid( self.user ) then
-        self.user:SetDSP( muffleSound and self.FIRST_PERSON_DSP or 1 )
+        self.user:SetDSP( muffleSound and self.FIRST_PERSON_DSP or 0 )
     end
 end
 
