@@ -41,7 +41,7 @@ if SERVER then
     ENT.FallOnCollision = true
     ENT.SuspensionHeavySound = "Glide.Suspension.CompressBike"
 
-    ENT.AirControlForce = Vector( 0.8, 1.5, 1 ) -- Roll, pitch, yaw
+    ENT.AirControlForce = Vector( 0.8, 3, 1.5 ) -- Roll, pitch, yaw
     ENT.AirMaxAngularVelocity = Vector( 600, 600, 500 ) -- Roll, pitch, yaw
 
     -- Bike-specific variables

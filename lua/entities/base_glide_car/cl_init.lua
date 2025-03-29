@@ -340,7 +340,7 @@ do
             end
 
             if enable and ltype == "headlight" then
-                DrawLightSprite( pos, dir, l.size or 30, COLOR_HEADLIGHT, l.spriteMaterial )
+                DrawLightSprite( pos, dir, l.size or 30, l.color or COLOR_HEADLIGHT, l.spriteMaterial )
 
             elseif enable and ( ltype == "taillight" or ltype == "signal_left" or ltype == "signal_right" ) then
                 DrawLightSprite( pos, dir, l.size or 30, l.color or COLOR_BRAKE, l.spriteMaterial )
@@ -409,7 +409,7 @@ function ENT:OnUpdateMisc()
 
         for _, v in ipairs( self.Headlights ) do
             v.angles = v.angles or Angle( 10, 0, 0 )
-            self:CreateHeadlight( v.offset, v.angles, COLOR_HEADLIGHT, v.texture )
+            self:CreateHeadlight( v.offset, v.angles, v.color or COLOR_HEADLIGHT, v.texture )
         end
     end
 

@@ -1,6 +1,6 @@
 "VertexlitGeneric"
 {
-	"$basetexture" "models/gta5/vehicles/hydra_canopy"
+	"$basetexture" "models/gta5/vehicles/jet_canopy"
 	"$allowdiffusemodulation" "false"
 	"$translucent" "1"
 }

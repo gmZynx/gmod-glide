@@ -1,0 +1,7 @@
+"VertexlitGeneric"
+{
+	"$basetexture" "models/gta5/vehicles/lazer/laser_panels"
+	"$bumpmap" "models/gta5/vehicles/lazer/laser_panels_n"
+	"$allowdiffusemodulation" "false"
+	"$translucent" "1"
+}

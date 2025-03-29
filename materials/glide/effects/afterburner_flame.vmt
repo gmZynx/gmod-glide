@@ -1,0 +1,6 @@
+"UnlitGeneric"
+{
+	"$basetexture" "glide/effects/afterburner_flame"
+    "$translucent" "1"
+    "$additive" "1"
+}

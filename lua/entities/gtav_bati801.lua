@@ -153,20 +153,8 @@ if SERVER then
         self:CreateSeat( Vector( -24, 0, 19 ), Angle( 0, 270, -35 ), Vector( 0, 60, 0 ), true )
         self:CreateSeat( Vector( -33, 0, 20 ), Angle( 0, 270, -5 ), Vector( 0, -60, 0 ), true )
 
-        -- Front
-        self:CreateWheel( Vector( 34, 0, 2.5 ), {
-            model = "models/gta5/vehicles/blazer/wheel.mdl",
-            modelScale = Vector( 0.4, 1, 1 ),
-            modelAngle = Angle( 0, 90, 0 ),
-            steerMultiplier = 1
-        } )
-
-        -- Rear
-        self:CreateWheel( Vector( -32, 0, 2.5 ), {
-            model = "models/gta5/vehicles/blazer/wheel.mdl",
-            modelScale = Vector( 0.4, 1, 1 ),
-            modelAngle = Angle( 0, 90, 0 )
-        } )
+        self:CreateWheel( Vector( 34, 0, 2.5 ), { steerMultiplier = 1 } ) -- Front
+        self:CreateWheel( Vector( -32, 0, 2.5 ) ) -- Rear
 
         for _, w in ipairs( self.wheels ) do
             Glide.HideEntity( w, true )
