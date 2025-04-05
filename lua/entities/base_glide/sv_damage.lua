@@ -8,6 +8,9 @@ end
 function ENT:Explode( attacker, inflictor )
     if self.hasExploded then return end
 
+    local creator = Glide.GetEntityCreator( self )
+    local phys = self:GetPhysicsObject()
+
     -- Don't let stuff like collision/damage events
     -- call this again, to prevent infinite loops.
     self.hasExploded = true
@@ -26,9 +29,9 @@ function ENT:Explode( attacker, inflictor )
 
     self:Remove()
 
-    -- Spawn gibs
-    local phys = self:GetPhysicsObject()
+    local SetEntityCreator = Glide.SetEntityCreator
 
+    -- Spawn wheel gibs
     if self.wheels and IsValid( phys ) then
         local vehPos = self:GetPos()
 
@@ -42,6 +45,8 @@ function ENT:Explode( attacker, inflictor )
                 gib:Spawn()
                 gib:CopyVelocities( self )
 
+                SetEntityCreator( gib, creator )
+
                 local gibPhys = gib:GetPhysicsObject()
                 if IsValid( gibPhys ) then
                     local dir = gibPos - vehPos
@@ -52,6 +57,8 @@ function ENT:Explode( attacker, inflictor )
         end
     end
 
+    -- If the `ExplosionGibs` table is empty,
+    -- just spawn a gib using this vehicle's model.
     if #self.ExplosionGibs == 0 then
         local gib = ents.Create( "glide_gib" )
         gib:SetPos( self:GetPos() )
@@ -61,6 +68,8 @@ function ENT:Explode( attacker, inflictor )
         gib:CopyVelocities( self )
         gib:SetOnFire()
 
+        SetEntityCreator( gib, creator )
+
         for _, v in ipairs( gib:GetBodyGroups() ) do
             gib:SetBodygroup( v.id, 1 )
         end
@@ -68,6 +77,7 @@ function ENT:Explode( attacker, inflictor )
         return
     end
 
+    -- Spawn gibs given by the `ExplosionGibs` table
     for k, v in ipairs( self.ExplosionGibs ) do
         local gib = ents.Create( "glide_gib" )
         gib:SetPos( self:GetPos() )
@@ -75,6 +85,8 @@ function ENT:Explode( attacker, inflictor )
         gib:SetModel( v )
         gib:Spawn()
         gib:CopyVelocities( self )
+
+        SetEntityCreator( gib, creator )
 
         if k == 1 then
             gib:SetOnFire()
@@ -146,16 +158,15 @@ function ENT:PhysicsCollide( data )
         return
     end
 
-    local velocity = data.OurNewVelocity - data.OurOldVelocity
-    local hitHormal = data.HitNormal
-    local speedNormal = -data.HitSpeed:GetNormalized()
-    local speed = velocity:Length()
+    local velocityChange = data.OurNewVelocity - data.OurOldVelocity
+    local surfaceNormal = data.HitNormal
+
+    local speed = velocityChange:Length()
+    if speed < 30 then return end
 
     if self.FallOnCollision then
-        self:PhysicsCollideFall( speed, speedNormal, data )
+        self:PhysicsCollideFall( speed, data )
     end
-
-    if speed < 30 then return end
 
     local ent = data.HitEntity
     local isPlayer = IsValid( ent ) and ent:IsPlayer()
@@ -167,21 +178,21 @@ function ENT:PhysicsCollide( data )
 
     elseif t > self.collisionShakeCooldown then
         self.collisionShakeCooldown = t + 0.5
-        Glide.SendViewPunch( self:GetAllPlayers(), Clamp( speed / 1500, 0, 1 ) * 3 )
+        Glide.SendViewPunch( self:GetAllPlayers(), Clamp( speed / 1000, 0, 1 ) * 3 )
     end
 
     local eff = EffectData()
     eff:SetOrigin( data.HitPos )
-    eff:SetScale( math.min( speed * 0.01, 6 ) * self.CollisionParticleSize )
-    eff:SetNormal( hitHormal )
+    eff:SetScale( math.min( speed * 0.02, 6 ) * self.CollisionParticleSize )
+    eff:SetNormal( surfaceNormal )
     util.Effect( "glide_metal_impact", eff )
 
-    local veryHard = speed > 500
+    local isHardHit = speed > 300
 
-    PlaySoundSet( "Glide.Collision.VehicleHard", self, speed / 400, nil, veryHard and 80 or 75 )
+    PlaySoundSet( "Glide.Collision.VehicleHard", self, speed / 400, nil, isHardHit and 80 or 75 )
 
-    if veryHard then
-        PlaySoundSet( "Glide.Collision.VehicleSoft", self, speed / 400, nil, veryHard and 80 or 75 )
+    if isHardHit then
+        PlaySoundSet( "Glide.Collision.VehicleSoft", self, speed / 400, nil, isHardHit and 80 or 75 )
 
         if self.IsHeavyVehicle then
             self:EmitSound( "physics/metal/metal_barrel_impact_hard5.wav", 90, RandomInt( 70, 90 ), 1 )
@@ -190,22 +201,22 @@ function ENT:PhysicsCollide( data )
     elseif isPlayer then
         PlaySoundSet( "Glide.Collision.VehicleHard", ent, speed / 1000, RandomInt( 90, 130 ) )
 
-    elseif hitHormal:Dot( speedNormal ) < 0.5 then
+    elseif surfaceNormal:Dot( -data.HitSpeed:GetNormalized() ) < 0.5 then
         PlaySoundSet( "Glide.Collision.VehicleScrape", self, 0.4 )
     end
 
-    if not isPlayer and veryHard then
+    if not isPlayer and isHardHit then
         local dmg = DamageInfo()
         dmg:SetAttacker( ent )
         dmg:SetInflictor( self )
-        dmg:SetDamage( ( speed / 8 ) * self.CollisionDamageMultiplier * cvarCollision:GetFloat() )
+        dmg:SetDamage( ( speed / 10 ) * self.CollisionDamageMultiplier * cvarCollision:GetFloat() )
         dmg:SetDamageType( 1 ) -- DMG_CRUSH
         dmg:SetDamagePosition( data.HitPos )
         self:TakeDamageInfo( dmg )
     end
 end
 
-function ENT:PhysicsCollideFall( speed, speedNormal, data )
+function ENT:PhysicsCollideFall( speed, data )
     local ent = data.HitEntity
 
     if IsValid( ent ) then
@@ -213,16 +224,16 @@ function ENT:PhysicsCollideFall( speed, speedNormal, data )
         if ent:GetClass() == "func_breakable" then return end
     end
 
-    local upDot = speedNormal:Dot( self:GetUp() )
+    local upDot = self:GetUp():Dot( -data.HitSpeed:GetNormalized() )
     local relativeHitPos = self:WorldToLocal( data.HitPos )
 
-    -- Did the hit come from above the vehicle?
-    if upDot > 0.3 and relativeHitPos[3] > 0 then
-        speed = speed * 5
+    if upDot < -0.5 and relativeHitPos[3] < 0 then
+        -- The hit came from below the vehicle
+        speed = speed * 0.2
 
-    -- Did the hit come from below the vehicle?
-    elseif upDot < -0.5 and relativeHitPos[3] < 0 then
-        speed = speed * 0.25
+    elseif upDot > 0.5 and relativeHitPos[3] > 0 then
+        -- The hit came from above the vehicle
+        speed = speed * 5
     end
 
     if speed < 600 then return end

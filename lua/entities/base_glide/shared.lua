@@ -6,6 +6,8 @@ ENT.Author = "StyledStrike"
 ENT.Purpose = "Move around"
 ENT.Instructions = "Aim at it, then press USE to enter"
 ENT.AdminOnly = false
+ENT.RenderGroup = RENDERGROUP_BOTH
+
 ENT.VJ_ID_Destructible = true
 ENT.VJ_ID_Vehicle = true
 
@@ -15,6 +17,12 @@ ENT.VehicleType = Glide.VEHICLE_TYPE.UNDEFINED
 
 -- Max. chassis health
 ENT.MaxChassisHealth = 1000
+
+-- Does this vehicle have headlights?
+ENT.CanSwitchHeadlights = false
+
+-- How long is the on/off cycle for turn signals?
+ENT.TurnSignalCycle = 0.8
 
 function ENT:SetupDataTables()
     -- Setup default network variables. Do not override these slots
@@ -32,6 +40,19 @@ function ENT:SetupDataTables()
     self:NetworkVar( "Float", "ChassisHealth" )
     self:NetworkVar( "Float", "EngineHealth" )
 
+    self:NetworkVar( "Bool", "IsBraking" )
+    self:NetworkVar( "Int", "HeadlightState" )
+    self:NetworkVar( "Int", "TurnSignalState" )
+
+    -- Headlight color can be edited if it's available
+    local editData = nil
+
+    if true then
+        editData = { KeyName = "HeadlightColor", Edit = { type = "VectorColor", order = 0, category = "#glide.settings" } }
+    end
+
+    self:NetworkVar( "Vector", "HeadlightColor", editData )
+
     -- Set default values, to avoid some weird behaviour when prediction kicks in
     self:SetDriver( NULL )
     self:SetEngineState( 0 )
@@ -40,6 +61,10 @@ function ENT:SetupDataTables()
     self:SetWeaponIndex( 1 )
     self:SetLockOnState( 0 )
     self:SetLockOnTarget( NULL )
+
+    self:SetIsBraking( false )
+    self:SetHeadlightState( 0 )
+    self:SetTurnSignalState( 0 )
 
     if CLIENT then
         -- Callback used to run `OnTurnOn` and `OnTurnOff` clientside
@@ -53,6 +78,9 @@ function ENT:SetupDataTables()
 
         -- Callback used to setup the driver's HUD clientside
         self:NetworkVarNotify( "Driver", self.OnDriverChange )
+
+        -- Callback used to update the light color
+        self:NetworkVarNotify( "HeadlightColor", self.OnHeadlightColorChange )
     end
 end
 
@@ -63,6 +91,12 @@ end
 -- You can safely override these on children classes
 function ENT:IsEngineOn()
     return self:GetEngineState() > 0
+end
+
+-- You can safely override these on children classes.
+-- Used to update bodygroups and draw sprites while in reverse gear.
+function ENT:IsReversing()
+    return false
 end
 
 function ENT:OnPostInitialize() end
@@ -118,6 +152,18 @@ if CLIENT then
 
     -- How wide should the skidmarks be?
     ENT.WheelSkidmarkScale = 0.5
+
+    -- Properties for break, reverse and headlight sprites
+    ENT.LightSprites = {}
+
+    -- Positions and colors for headlights
+    ENT.Headlights = {}
+
+    -- Light sounds
+    ENT.TurnSignalPitch = 90
+    ENT.TurnSignalVolume = 0.75
+    ENT.TurnSignalTickOnSound = ")glide/headlights_on.wav"
+    ENT.TurnSignalTickOffSound = ")glide/headlights_off.wav"
 
     -- You can safely override these on children classes.
     function ENT:ShouldActivateSounds() return true end
@@ -212,6 +258,26 @@ if SERVER then
     ENT.SuspensionDownSound = "Glide.Suspension.Down"
     ENT.SuspensionUpSound = "Glide.Suspension.Up"
 
+    -- Bodygroup toggles for break, reverse lights, headlights and turn signals
+    ENT.LightBodygroups = {}
+
+    --[[
+        Socket properties for the trailer attachment system.
+        Should contain a array of tables, where each table looks like this:
+
+        { offset = Vector( ... ), id = "TruckSocket", isReceptacle = true }   -- On a vehicle
+        { offset = Vector( ... ), id = "TruckSocket", isReceptacle = false }  -- On a trailer
+
+        You can set `id` to any string, but only sockets with the same `id` can connect to eachother.
+        Sockets with `isReceptacle = false` can only connect to sockets with `isReceptacle = true`.
+
+        Sockets with `isReceptacle = true` can take a optional `forceLimit` parameter. Default is 80000.
+
+        Sockets with `isReceptacle = false` can take optional `connectForce` and `connectDrag` parameters,
+        with their default values being `connectForce = 700` and `connectDrag = 15`.
+    ]]
+    ENT.Sockets = {}
+
     -- If Wiremod is installed, this function gets called to add
     -- inputs/outputs to be created when the vehicle is initialized.
     -- Children classes can override this function, but they should
@@ -252,4 +318,7 @@ if SERVER then
     function ENT:OnPostThink( _dt, _selfTbl ) end
     function ENT:OnSimulatePhysics( _phys, _dt, _outLin, _outAng ) end
     function ENT:OnUpdateFeatures( _dt ) end
+
+    function ENT:OnSocketConnect( _socket, _otherVehicle ) end
+    function ENT:OnSocketDisconnect( _socket ) end
 end

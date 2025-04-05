@@ -127,8 +127,8 @@ function Glide.ShowTip( text, icon )
     } )
 end
 
-function Glide.ShowKeyTip( text, key, icon )
-    if HasGivenHint( text ) then return end
+function Glide.ShowKeyTip( text, key, icon, immediate )
+    if not immediate and HasGivenHint( text ) then return end
 
     if text:sub( 1, 1 ) == "#" then
         text = language.GetPhrase( text )
@@ -141,7 +141,8 @@ function Glide.ShowKeyTip( text, key, icon )
 
     Glide.Notify( {
         text = text:format( colorTag .. keyName:upper() .. "</color></b>" ),
-        icon = icon or "materials/glide/icons/car.png"
+        icon = icon or "materials/glide/icons/car.png",
+        immediate = immediate
     } )
 end
 
@@ -153,7 +154,7 @@ hook.Add( "Glide_OnLocalEnterVehicle", "Glide.ShowVehicleTips", function( _, sea
         if not IsValid( veh ) then return end
 
         if Glide.HasBaseClass( veh, "base_glide_car" ) then
-            Glide.ShowKeyTip( "#glide.notify.tip.headlights", Glide.Config.binds["land_controls"]["headlights"] )
+            Glide.ShowKeyTip( "#glide.notify.tip.headlights", Glide.Config.binds["general_controls"]["headlights"] )
 
         elseif Glide.HasBaseClass( veh, "base_glide_heli" ) and Glide.Config.mouseFlyMode == Glide.MOUSE_FLY_MODE.AIM then
             Glide.ShowTip( "#glide.notify.tip.heli_controls", "materials/glide/icons/helicopter.png" )

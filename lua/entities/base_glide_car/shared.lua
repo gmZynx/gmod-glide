@@ -12,11 +12,11 @@ ENT.VehicleType = Glide.VEHICLE_TYPE.CAR
 -- Should we prevent players from editing these NW variables?
 ENT.UneditableNWVars = {}
 
--- How long is the on/off cycle for turn signals?
-ENT.TurnSignalCycle = 0.8
-
 -- Should this vehicle use the siren system?
 ENT.CanSwitchSiren = false
+
+-- Does this vehicle have headlights?
+ENT.CanSwitchHeadlights = true
 
 DEFINE_BASECLASS( "base_glide" )
 
@@ -37,19 +37,14 @@ function ENT:SetupDataTables()
     -- these slots when creating your own on child classes!
     self:NetworkVar( "Bool", "IsRedlining" )
     self:NetworkVar( "Bool", "IsHonking" )
-    self:NetworkVar( "Bool", "IsBraking" )
-
-    self:NetworkVar( "Int", "HeadlightState" )
-    self:NetworkVar( "Int", "TurnSignalState" )
     self:NetworkVar( "Int", "SirenState" )
-    self:NetworkVar( "Int", "Gear" )
 
+    self:NetworkVar( "Int", "Gear" )
     self:NetworkVar( "Float", "Steering" )
     self:NetworkVar( "Float", "EngineRPM" )
     self:NetworkVar( "Float", "EngineThrottle" )
 
-    -- All DT variables below are editable properties
-    self:NetworkVar( "Vector", "HeadlightColor", { KeyName = "HeadlightColor", Edit = { type = "VectorColor", order = 0, category = "#glide.settings" } } )
+    -- All DT variables below this comment are editable properties
     self:NetworkVar( "Vector", "TireSmokeColor", { KeyName = "TireSmokeColor", Edit = { type = "VectorColor", order = 0, category = "#glide.editvar.wheels" } } )
 
     local order = 0
@@ -122,9 +117,6 @@ function ENT:SetupDataTables()
     if CLIENT then
         -- Callback used to play gear change sounds
         self:NetworkVarNotify( "Gear", self.OnGearChange )
-
-        -- Callback used to update the light color
-        self:NetworkVarNotify( "HeadlightColor", self.OnHeadlightColorChange )
     end
 end
 
@@ -143,6 +135,11 @@ end
 --- Override this base class function.
 function ENT:IsEngineOn()
     return self:GetEngineState() > 1
+end
+
+--- Override this base class function.
+function ENT:IsReversing()
+    return self:GetGear() == -1
 end
 
 if CLIENT then
@@ -164,11 +161,6 @@ if CLIENT then
     ENT.InternalGearSwitchSound = "Glide.GearSwitch.Internal"
     ENT.HornSound = "glide/horns/car_horn_med_2.wav"
 
-    ENT.TurnSignalPitch = 90
-    ENT.TurnSignalVolume = 0.75
-    ENT.TurnSignalTickOnSound = ")glide/headlights_on.wav"
-    ENT.TurnSignalTickOffSound = ")glide/headlights_off.wav"
-
     ENT.SirenLoopSound = ")glide/alarms/police_siren_3.wav"
     ENT.SirenInterruptSound = "Glide.Wail.Interrupt"
     ENT.SirenVolume = 0.8
@@ -183,6 +175,9 @@ if CLIENT then
     ENT.BrakeReleaseSound = ""
     ENT.BrakeSqueakSound = ""
 
+    ENT.BrakeLoopSound = ""
+    ENT.BrakeLoopVolume = 0.6
+
     -- Exhaust positions
     ENT.ExhaustOffsets = {}
     ENT.ExhaustAlpha = 50
@@ -192,12 +187,6 @@ if CLIENT then
 
     -- How much does the engine smoke gets shot up?
     ENT.EngineSmokeMaxZVel = 100
-
-    -- Offset for break, reverse and headlight sprites
-    ENT.LightSprites = {}
-
-    -- Positions and colors for headlights
-    ENT.Headlights = {}
 
     -- How long is the on/off cycle for sirens?
     ENT.SirenCycle = 0.8
@@ -228,12 +217,6 @@ if SERVER then
 
     -- How long does it take for the vehicle to start up?
     ENT.StartupTime = 0.6
-
-    -- Is the driver allowed to switch headlights?
-    ENT.CanSwitchHeadlights = true
-
-    -- Bodygroup toggles for break, reverse and headlights
-    ENT.LightBodygroups = {}
 
     -- How much force to apply when trying to turn while doing a burnout?
     ENT.BurnoutForce = 25

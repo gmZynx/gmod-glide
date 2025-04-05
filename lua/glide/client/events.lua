@@ -1,3 +1,5 @@
+local cvarIsMouseVisible = CreateConVar( "cl_glide_is_mouse_visible", "0", { FCVAR_USERINFO, FCVAR_DONTRECORD } )
+
 concommand.Add( "glide_switch_seat", function( ply, _, args )
     if ply ~= LocalPlayer() then return end
     if #args == 0 then return end
@@ -91,6 +93,10 @@ local function OnEnter( vehicle, seatIndex )
     hook.Add( "HUDPaint", "Glide.DrawVehicleHUD", DrawVehicleHUD )
     hook.Run( "Glide_OnLocalEnterVehicle", vehicle, seatIndex )
 
+    timer.Create( "Glide.CheckMouseVisibility", 0.25, 0, function()
+        cvarIsMouseVisible:SetInt( vgui.CursorVisible() and 1 or 0 )
+    end )
+
     if vehicle.VehicleType == Glide.VEHICLE_TYPE.HELICOPTER and system.IsLinux() then
         Glide.Print( "Linux system detected, setting snd_fixed_rate to 1" )
         RunConsoleCommand( "snd_fixed_rate", "1" )
@@ -131,6 +137,9 @@ local function OnLeave( ply )
     if Glide.simpleThirdPersonHook then
         hook.Add( "CalcView", "SimpleTP.CameraView", Glide.simpleThirdPersonHook )
     end
+
+    timer.Remove( "Glide.CheckMouseVisibility" )
+    cvarIsMouseVisible:SetInt( 0 )
 end
 
 local IsValid = IsValid

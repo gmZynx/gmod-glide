@@ -1,0 +1,6 @@
+"VertexlitGeneric"
+{
+	"$basetexture" "models/gta5/vehicles/wire_alpha"
+	"$translucent" "1"
+	"$allowdiffusemodulation" "false"
+}

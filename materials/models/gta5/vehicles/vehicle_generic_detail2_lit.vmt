@@ -9,6 +9,6 @@
 	$emissiveBlendTexture "vgui/white"
 	$emissiveBlendBaseTexture "models/gta5/vehicles/vehicle_generic_detail2"
 	$emissiveBlendFlowTexture "vgui/white"
-	$emissiveBlendTint "[ 3 3 2 ]"
+	$emissiveBlendTint "[ 5 5 5 ]"
 	$emissiveBlendScrollVector "[ 0 0 ]"
 }

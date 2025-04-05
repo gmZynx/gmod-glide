@@ -158,22 +158,18 @@ function ENT:AutoGearSwitch( throttle )
         return
     end
 
-    -- Neutral when the speed is slow enough
-    if Abs( self.forwardSpeed ) < 100 and throttle < 0.1 then
-        self:SwitchGear( 0, 0 )
-        return
-    end
+    -- Don't switch from reverse gear while still going backwards fast enough
+    local currentGear = self:GetGear()
+    if currentGear < 0 and self.forwardSpeed < -100 then return end
 
-    if self.forwardSpeed < 0 and throttle < 0.1 then return end
+    -- Don't switch when the wheels are slipping forwards
     if Abs( self.avgForwardSlip ) > 10 then return end
 
+    local gear = Clamp( currentGear, 1, self.maxGear )
     local minRPM, maxRPM = self:GetMinRPM(), self:GetMaxRPM()
 
     -- Avoid hitting the redline
     maxRPM = maxRPM * 0.98
-
-    local currentGear = self:GetGear()
-    local gear = Clamp( currentGear, 1, self.maxGear )
 
     -- Switch up early while using reduced throttle
     if self.reducedThrottle then
@@ -249,6 +245,17 @@ function ENT:EngineThink( dt )
     inputBrake = self:GetInputFloat( 1, "brake" )
     inputHandbrake = self:GetInputBool( 1, "handbrake" )
 
+    if self.burnout > 0 then
+        self:SwitchGear( 1, 0 )
+
+        if inputThrottle < 0.1 or inputBrake < 0.1 then
+            self.burnout = 0
+        end
+
+    elseif not self.inputManualShift then
+        self:AutoGearSwitch( inputThrottle )
+    end
+
     -- Reverse the throttle/brake inputs while in reverse gear
     if gear < 0 and not self.inputManualShift then
         inputThrottle, inputBrake = inputBrake, inputThrottle
@@ -265,17 +272,6 @@ function ENT:EngineThink( dt )
 
     elseif self.reducedThrottle then
         inputThrottle = inputThrottle * 0.65
-    end
-
-    if self.burnout > 0 then
-        self:SwitchGear( 1, 0 )
-
-        if inputThrottle < 0.1 or inputBrake < 0.1 then
-            self.burnout = 0
-        end
-
-    elseif not self.inputManualShift then
-        self:AutoGearSwitch( inputThrottle )
     end
 
     rpm = self:GetFlywheelRPM()
@@ -326,9 +322,16 @@ function ENT:EngineThink( dt )
         clutch = 1
 
     else
-        -- Automatically apply brakes when not accelerating, on first gear, with low engine RPM
-        if inputThrottle < 0.05 and inputBrake < 0.1 and gear < 2 and rpm < self:GetMinRPM() * 1.2 then
-            inputBrake = 0.15
+        -- Automatically apply brakes when not accelerating, on the ground,
+        -- with low engine RPM, while on first gear or reverse gear.
+        if
+            ( gear == -1 or gear == 1 ) and
+            inputThrottle < 0.05 and
+            inputBrake < 0.1 and
+            self.groundedCount > 1 and
+            rpm < self:GetMinRPM() * 1.2
+        then
+            inputBrake = 0.2
         end
 
         self.frontBrake = inputBrake * 0.5

@@ -4,7 +4,9 @@ ENT.AutomaticFrameAdvance = true
 
 --- Implement this base class function.
 function ENT:OnPostInitialize()
-    self.brakePressure = 0
+    self.slowBrakePressure = 0
+    self.fastBrakePressure = 0
+
     self.rpmFraction = 0
     self.streamJSONOverride = nil
 end
@@ -24,10 +26,6 @@ function ENT:OnGearChange( _, _, gear )
     elseif self.ExternalGearSwitchSound ~= "" then
         Glide.PlaySoundSet( self.ExternalGearSwitchSound, self )
     end
-end
-
-function ENT:OnHeadlightColorChange()
-    self.headlightState = 0 -- Let OnUpdateMisc recreate the lights
 end
 
 --- Override this base class function.
@@ -66,16 +64,9 @@ end
 
 --- Implement this base class function.
 function ENT:OnActivateMisc()
-    self.brakePressure = 0
+    self.slowBrakePressure = 0
+    self.fastBrakePressure = 0
     self.rpmFraction = 0
-
-    self.headlightState = nil
-    self.headlights = {}
-end
-
---- Implement this base class function.
-function ENT:OnDeactivateMisc()
-    self:RemoveHeadlights()
 end
 
 --- Implement this base class function.
@@ -118,6 +109,8 @@ function ENT:UpdateTurboSound( sounds )
     end
 end
 
+local Min = math.min
+
 --- Implement this base class function.
 function ENT:OnUpdateSounds()
     local sounds = self.sounds
@@ -147,23 +140,6 @@ function ENT:OnUpdateSounds()
         end
     end
 
-    local signal = self:GetTurnSignalState()
-
-    if signal > 0 then
-        local signalBlink = ( CurTime() % self.TurnSignalCycle ) > self.TurnSignalCycle * 0.5
-
-        if self.lastSignalBlink ~= signalBlink then
-            self.lastSignalBlink = signalBlink
-
-            if signalBlink and self.TurnSignalTickOnSound ~= "" then
-                self:EmitSound( self.TurnSignalTickOnSound, 65, self.TurnSignalPitch, self.TurnSignalVolume )
-
-            elseif not signalBlink and self.TurnSignalTickOffSound ~= "" then
-                self:EmitSound( self.TurnSignalTickOffSound, 65, self.TurnSignalPitch, self.TurnSignalVolume )
-            end
-        end
-    end
-
     if self.lastSirenEnableTime and CurTime() - self.lastSirenEnableTime > 0.25 then
         if sounds.siren then
             sounds.siren:ChangeVolume( self.SirenVolume * GetVolume( "hornVolume" ) )
@@ -175,6 +151,39 @@ function ENT:OnUpdateSounds()
     elseif sounds.siren then
         sounds.siren:Stop()
         sounds.siren = nil
+    end
+
+    -- Brake sounds
+    if self:GetIsBraking() then
+        local isSlow = self:GetVelocity():LengthSqr() < 1000
+
+        self.slowBrakePressure = Min( isSlow and self.slowBrakePressure + dt or 0, 1 )
+        self.fastBrakePressure = Min( isSlow and 0 or self.fastBrakePressure + dt, 1 )
+    else
+        if self.slowBrakePressure > 0.5 and self.BrakeSqueakSound ~= "" then
+            Glide.PlaySoundSet( self.BrakeReleaseSound, self, 0.8 )
+        end
+
+        self.slowBrakePressure = 0
+        self.fastBrakePressure = 0
+    end
+
+    if self.fastBrakePressure > 0.1 then
+        if sounds.brakeLoop then
+            sounds.brakeLoop:ChangeVolume( ( self.fastBrakePressure - 0.1 ) * self.BrakeLoopVolume )
+
+        elseif self.BrakeLoopSound ~= "" then
+            local snd = self:CreateLoopingSound( "brakeLoop", self.BrakeLoopSound, 80, self )
+            snd:PlayEx( 0.0, 100 )
+        end
+
+    elseif sounds.brakeLoop then
+        sounds.brakeLoop:Stop()
+        sounds.brakeLoop = nil
+
+        if self.BrakeReleaseSound ~= "" then
+            Glide.PlaySoundSet( self.BrakeSqueakSound, self, 0.8 )
+        end
     end
 
     if not self:IsEngineOn() then return end
@@ -268,98 +277,10 @@ function ENT:OnUpdateSounds()
 end
 
 local CurTime = CurTime
+local ExpDecay = Glide.ExpDecay
 local DrawLight = Glide.DrawLight
 local DrawLightSprite = Glide.DrawLightSprite
-local COLOR_HEADLIGHT = Color( 255, 255, 255 )
 
-do
-    local lightState = {
-        brake = false,
-        reverse = false,
-        headlight = false,
-        taillight = false,
-        signal_left = false,
-        signal_right = false
-    }
-
-    local COLOR_BRAKE = Color( 255, 0, 0, 255 )
-    local COLOR_REV = Color( 255, 255, 255, 200 )
-
-    local DEFAULT_BRIGHTNESS = {
-        ["signal_left"] = 6,
-        ["signal_right"] = 6,
-        ["taillight"] = 1
-    }
-
-    --- Update out model's bodygroups depending on which lights are on.
-    function ENT:DrawLights()
-        local headlightState = self:GetHeadlightState()
-
-        lightState.brake = self:GetIsBraking()
-        lightState.reverse = self:GetGear() == -1
-        lightState.headlight = headlightState > 0
-        lightState.taillight = headlightState > 0
-
-        local signal = self:GetTurnSignalState()
-        local signalBlink = ( CurTime() % self.TurnSignalCycle ) > self.TurnSignalCycle * 0.5
-
-        lightState.signal_left = signal == 1 or signal == 3
-        lightState.signal_right = signal == 2 or signal == 3
-
-        local myPos = self:GetPos()
-        local pos, dir, ltype, enable
-
-        for _, l in ipairs( self.LightSprites ) do
-            pos = self:LocalToWorld( l.offset )
-            dir = self:LocalToWorld( l.dir ) - myPos
-            ltype = l.type
-            enable = lightState[ltype]
-
-            -- Blink "signal_*" light types
-            if ltype == "signal_left" or ltype == "signal_right" then
-                enable = enable and signalBlink
-            end
-
-            -- Allow other types of light to blink with turn signals, if "signal" is set.
-            if l.signal and signal > 0 then
-                if l.signal == "left" and lightState.signal_left then
-                    enable = signalBlink
-
-                elseif l.signal == "right" and lightState.signal_right then
-                    enable = signalBlink
-                end
-            end
-
-            -- If the light has a `beamType` key, only draw the sprite
-            -- if the value of `beamType` matches the current headlight state.
-            if
-                ( l.beamType == "low" and headlightState ~= 1 ) or
-                ( l.beamType == "high" and headlightState ~= 2 )
-            then
-                enable = false
-            end
-
-            if enable and ltype == "headlight" then
-                DrawLightSprite( pos, dir, l.size or 30, l.color or COLOR_HEADLIGHT, l.spriteMaterial )
-
-            elseif enable and ( ltype == "taillight" or ltype == "signal_left" or ltype == "signal_right" ) then
-                DrawLightSprite( pos, dir, l.size or 30, l.color or COLOR_BRAKE, l.spriteMaterial )
-                DrawLight( pos + dir * 10, l.color or COLOR_BRAKE, l.lightRadius, l.lightBrightness or DEFAULT_BRIGHTNESS[ltype] )
-
-            elseif enable and ltype == "brake" then
-                DrawLightSprite( pos, dir, l.size or 30, l.color or COLOR_BRAKE, l.spriteMaterial )
-                DrawLight( pos + dir * 10, l.color or COLOR_BRAKE, l.lightRadius, l.lightBrightness )
-
-            elseif enable and ltype == "reverse" then
-                DrawLightSprite( pos, dir, l.size or 20, l.color or COLOR_REV, l.spriteMaterial )
-                DrawLight( pos + dir * 10, l.color or COLOR_REV, l.lightRadius, l.lightBrightness )
-            end
-        end
-    end
-end
-
-local IsValid = IsValid
-local ExpDecay = Glide.ExpDecay
 local DEFAULT_SIREN_COLOR = Color( 255, 255, 255, 255 )
 
 --- Implement this base class function.
@@ -370,57 +291,6 @@ function ENT:OnUpdateMisc()
     local rpmFraction = ( self:GetEngineRPM() - self:GetMinRPM() ) / ( self:GetMaxRPM() - self:GetMinRPM() )
 
     self.rpmFraction = ExpDecay( self.rpmFraction, rpmFraction, rpmFraction > self.rpmFraction and 7 or 4, dt )
-
-    local headlightState = self:GetHeadlightState()
-    local isHeadlightOn = headlightState > 0
-
-    if isHeadlightOn then
-        local colorVec = self:GetHeadlightColor()
-        COLOR_HEADLIGHT.r = colorVec[1] * 255
-        COLOR_HEADLIGHT.g = colorVec[2] * 255
-        COLOR_HEADLIGHT.b = colorVec[3] * 255
-    end
-
-    -- Render lights and sprites
-    self:DrawLights()
-
-    -- Brake release sounds
-    if self:GetIsBraking() and self.BrakeSqueakSound ~= "" then
-        if self.brakePressure < 1 then
-            self.brakePressure = self.brakePressure + dt
-        end
-
-    elseif self.brakePressure > 0.5 then
-        self.brakePressure = 0
-
-        if self:GetVelocity():LengthSqr() < 1000 and self.BrakeReleaseSound ~= "" then
-            self:EmitSound( self.BrakeReleaseSound, 80, 100, 0.8 )
-        else
-            Glide.PlaySoundSet( self.BrakeSqueakSound, self, 0.8 )
-        end
-    end
-
-    -- Create/remove headlight projected textures
-    if self.headlightState ~= headlightState then
-        self.headlightState = headlightState
-        self:RemoveHeadlights()
-
-        if headlightState == 0 then return end
-
-        for _, v in ipairs( self.Headlights ) do
-            v.angles = v.angles or Angle( 10, 0, 0 )
-            self:CreateHeadlight( v.offset, v.angles, v.color or COLOR_HEADLIGHT, v.texture )
-        end
-    end
-
-    for i, l in ipairs( self.headlights ) do
-        if IsValid( l ) then
-            local data = self.Headlights[i]
-            l:SetPos( self:LocalToWorld( data.offset ) )
-            l:SetAngles( self:LocalToWorldAngles( data.angles ) )
-            l:Update()
-        end
-    end
 
     -- Siren lights/bodygroups
     local siren = self:GetSirenState()
@@ -479,43 +349,6 @@ function ENT:OnUpdateMisc()
     for id, state in pairs( bodygroupState ) do
         self:SetBodygroup( id, state and 1 or 0 )
     end
-end
-
-function ENT:CreateHeadlight( offset, angles, color, texture )
-    color = color or Color( 255, 255, 255 )
-
-    local state = self.headlightState
-    local fov = state > 1 and 85 or 75
-
-    local index = #self.headlights + 1
-    local light = ProjectedTexture()
-
-    self.headlights[index] = light
-
-    light:SetConstantAttenuation( 0 )
-    light:SetLinearAttenuation( 50 )
-    light:SetTexture( texture or "glide/effects/headlight_rect" )
-    light:SetBrightness( state > 1 and 8 or 5 )
-    light:SetEnableShadows( Glide.Config.headlightShadows )
-    light:SetColor( color )
-    light:SetNearZ( 10 )
-    light:SetFarZ( state > 1 and 3000 or 1500 )
-    light:SetFOV( fov )
-    light:SetPos( self:LocalToWorld( offset ) )
-    light:SetAngles( self:LocalToWorldAngles( angles or Angle() ) )
-    light:Update()
-end
-
-function ENT:RemoveHeadlights()
-    if not self.headlights then return end
-
-    for _, light in ipairs( self.headlights ) do
-        if IsValid( light ) then
-            light:Remove()
-        end
-    end
-
-    self.headlights = {}
 end
 
 local DEFAULT_EXHAUST_ANG = Angle()

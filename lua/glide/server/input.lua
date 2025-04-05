@@ -155,6 +155,9 @@ local ACTION_ALIASES = Glide.ACTION_ALIASES
 local SEAT_SWITCH_BUTTONS = Glide.SEAT_SWITCH_BUTTONS
 local IsValid = IsValid
 
+local MOUSE_FIRST = MOUSE_FIRST
+local MOUSE_LAST = MOUSE_LAST
+
 local MOUSE_ACTION_OVERRIDE = {
     ["yaw_left"] = "roll_left",
     ["yaw_right"] = "roll_right"
@@ -198,6 +201,11 @@ local function HandleInput( ply, button, active, pressed )
     -- Does this button have actions associated with it?
     local actions = active.buttons[button]
     if not actions then return end
+
+    -- Ignore mouse button press events while the cursor is visible
+    if pressed and button >= MOUSE_FIRST and button <= MOUSE_LAST and ply:GetInfoNum( "cl_glide_is_mouse_visible", 0 ) > 0 then
+        return
+    end
 
     for _, action in ipairs( actions ) do
         if settings.replaceYawWithRoll and MOUSE_ACTION_OVERRIDE[action] then

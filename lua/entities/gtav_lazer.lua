@@ -163,7 +163,7 @@ if CLIENT then
         local throttle = self:GetThrottle()
         if throttle < 0.1 then return end
 
-        eff:SetMagnitude( throttle )
+        eff:SetMagnitude( throttle * power )
         eff:SetRadius( 30 ) -- This is actually a offset for the flare effect
         Effect( "glide_afterburner_flame", eff, true )
     end

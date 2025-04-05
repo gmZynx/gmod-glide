@@ -73,9 +73,34 @@ function ENT:SetInputBool( seatIndex, action, pressed )
 
     if not pressed then return end
 
-    -- Weapon switching
     if action == "switch_weapon" then
         self:SelectWeaponIndex( self:GetWeaponIndex() + 1 )
+
+    elseif action == "headlights" then
+        self:ChangeHeadlightState( self:GetHeadlightState() + 1 )
+
+    elseif action == "signal_left" then
+        -- If the driver is also holding "signal_right"
+        if self:GetInputBool( 1, "signal_right" ) then
+            -- Toggle hazard lights
+            self:ChangeTurnSignalState( self:GetTurnSignalState() == 3 and 0 or 3 )
+        else
+            -- Toggle left turn signal
+            self:ChangeTurnSignalState( self:GetTurnSignalState() == 1 and 0 or 1 )
+        end
+
+    elseif action == "signal_right" then
+        -- If the driver is also holding "signal_left"
+        if self:GetInputBool( 1, "signal_left" ) then
+            -- Toggle hazard lights
+            self:ChangeTurnSignalState( self:GetTurnSignalState() == 3 and 0 or 3 )
+        else
+            -- Toggle right turn signal
+            self:ChangeTurnSignalState( self:GetTurnSignalState() == 2 and 0 or 2 )
+        end
+
+    elseif action == "detach_trailer" and self.socketCount > 0 then
+        self:DisconnectAllSockets()
     end
 end
 

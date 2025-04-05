@@ -4,7 +4,7 @@ Glide.Config = Config
 
 --- Reset settings to their default values.
 function Config:Reset()
-    self.version = 1
+    self.version = 2
 
     -- Audio settings
     self.carVolume = 1.0
@@ -75,6 +75,14 @@ function Config:ResetBinds()
     end
 
     self.binds = binds
+end
+
+-- Utility function to get the button bound to a certain input action.
+function Config:GetInputActionButton( action, categoryName )
+    local category = self.binds[categoryName]
+    if category then
+        return category[action]
+    end
 end
 
 --- Save settings to disk.
@@ -164,8 +172,22 @@ function Config:CheckVersion( data )
         return {}
     end
 
-    -- This data is fine
-    Glide.Print( "glide.json: version %i", data.version )
+    local upgraded = false
+
+    if data.version == 1 then
+        -- Reset to new default "detach_trailer" bind to avoid conflict with "switch gear up" key
+        if type( data.binds ) == "table" and data.binds.land_controls and data.binds.land_controls.detach_trailer then
+            data.binds.land_controls.detach_trailer = nil
+        end
+
+        upgraded = true
+    end
+
+    if upgraded then
+        Glide.Print( "glide.json: Upgraded from version %i", data.version )
+    else
+        Glide.Print( "glide.json: Version %i", data.version )
+    end
 
     return data
 end
@@ -282,6 +304,8 @@ function Config:TransmitInputSettings( immediate )
         -- Action-key dictionary
         binds = self.binds
     }
+
+    Glide.Print( "Transmitting input data to the server." )
 
     Glide.StartCommand( Glide.CMD_INPUT_SETTINGS )
     Glide.WriteTable( data )
@@ -577,6 +601,7 @@ function Config:OpenFrame()
     CreateHeader( panelKeyboard, L"input.general_controls", 0 )
     CreateBinderButton( panelKeyboard, L"input.switch_weapon", "switch_weapon", generalBinds.switch_weapon, OnChangeGeneralBind )
     CreateBinderButton( panelKeyboard, L"input.toggle_engine", "toggle_engine", generalBinds.toggle_engine, OnChangeGeneralBind )
+    CreateBinderButton( panelKeyboard, L"input.headlights", "headlights", generalBinds.headlights, OnChangeGeneralBind )
 
     local landBinds = binds["land_controls"]
 
@@ -597,8 +622,8 @@ function Config:OpenFrame()
 
     CreateBinderButton( panelKeyboard, L"input.horn", "horn", landBinds.horn, OnChangeLandBind )
     CreateBinderButton( panelKeyboard, L"input.siren", "siren", landBinds.siren, OnChangeLandBind )
-    CreateBinderButton( panelKeyboard, L"input.headlights", "headlights", landBinds.headlights, OnChangeLandBind )
     CreateBinderButton( panelKeyboard, L"input.reduce_throttle", "reduce_throttle", landBinds.reduce_throttle, OnChangeLandBind )
+    CreateBinderButton( panelKeyboard, L"input.detach_trailer", "detach_trailer", landBinds.detach_trailer, OnChangeLandBind )
 
     CreateBinderButton( panelKeyboard, L"input.lean_forward", "lean_forward", landBinds.lean_forward, OnChangeLandBind )
     CreateBinderButton( panelKeyboard, L"input.lean_back", "lean_back", landBinds.lean_back, OnChangeLandBind )

@@ -237,17 +237,6 @@ local function ResetVehicle( vehicle )
     vehicle:SetDriver( NULL )
     vehicle:TurnOff()
 
-    -- Reset bone manipulations
-    local pos = Vector()
-    local ang = Angle()
-    local scale = Vector( 1, 1, 1 )
-
-    for i = 0, vehicle:GetBoneCount() - 1 do
-        vehicle:ManipulateBoneAngles( i, ang )
-        vehicle:ManipulateBonePosition( i, pos )
-        vehicle:ManipulateBoneScale( i, scale )
-    end
-
     -- Reset weapon timings
     if vehicle.weaponCount > 0 then
         for _, weapon in ipairs( vehicle.weapons ) do
@@ -279,7 +268,8 @@ local function ResetAll()
         ["base_glide_aircraft"] = true,
         ["base_glide_heli"] = true,
         ["base_glide_plane"] = true,
-        ["base_glide_motorcycle"] = true
+        ["base_glide_motorcycle"] = true,
+        ["base_glide_trailer"] = true
     }
 
     for _, e in ents.Iterator() do

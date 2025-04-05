@@ -53,6 +53,7 @@ function ENT:Initialize()
     self:SetSmokeColor( Vector( 60, 60, 60 ) )
 
     self:SetModel( "models/props_phx/misc/flakshell_big.mdl" )
+    self:SetMaterial( "phoenix_storms/concrete0" )
     self:SetSolid( SOLID_VPHYSICS )
     self:SetMoveType( MOVETYPE_VPHYSICS )
     self:PhysicsInit( SOLID_VPHYSICS )

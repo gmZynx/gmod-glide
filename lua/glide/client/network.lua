@@ -41,6 +41,18 @@ commands[Glide.CMD_NOTIFY] = function()
     Glide.Notify( data )
 end
 
+commands[Glide.CMD_SHOW_KEY_NOTIFICATION] = function()
+    local text = net.ReadString()
+    local icon = net.ReadString()
+    local inputCategory = net.ReadString()
+    local inputAction = net.ReadString()
+    local button = Glide.Config:GetInputActionButton( inputAction, inputCategory )
+
+    if button then
+        Glide.ShowKeyTip( text, button, icon, true )
+    end
+end
+
 commands[Glide.CMD_SYNC_SOUND_ENTITY_MODIFIER] = function()
     local modEntity = net.ReadEntity()
     if not IsValid( modEntity ) then return end

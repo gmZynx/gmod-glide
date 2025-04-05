@@ -29,9 +29,9 @@ if SERVER then
         } ).HitPos
     end
 
-    --- Utility function to copy the entity creator
-    --- or CPPI owner from one entity to another.
-    function Glide.CopyEntityCreator( source, target )
+    --- Utility function to get the entity creator
+    --- or CPPI owner from a entity.
+    function Glide.GetEntityCreator( source )
         local ply
 
         if source.CPPIGetOwner then
@@ -46,10 +46,23 @@ if SERVER then
             ply = source:GetCreator()
         end
 
+        return ply
+    end
+
+    --- Utility function to set the entity creator
+    --- or CPPI owner for a entity.
+    function Glide.SetEntityCreator( target, ply )
         target:SetCreator( ply or NULL )
 
         if target.CPPISetOwner then
             target:CPPISetOwner( ply )
         end
+    end
+
+    --- Utility function to copy the entity creator
+    --- or CPPI owner from one entity to another.
+    function Glide.CopyEntityCreator( source, target )
+        local ply = Glide.GetEntityCreator( source )
+        Glide.SetEntityCreator( target, ply )
     end
 end

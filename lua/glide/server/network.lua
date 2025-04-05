@@ -146,6 +146,18 @@ function Glide.SendNotification( target, data )
     net.Send( target )
 end
 
+--- Send a notification about a button action message to the target(s).
+function Glide.SendButtonActionNotification( target, text, icon, inputCategory, inputAction )
+    if type( target ) == "table" and #target == 0 then return end
+
+    Glide.StartCommand( Glide.CMD_SHOW_KEY_NOTIFICATION )
+    net.WriteString( text )
+    net.WriteString( icon )
+    net.WriteString( inputCategory )
+    net.WriteString( inputAction )
+    net.Send( target )
+end
+
 --- Let the target client(s) know about a incoming lock-on.
 function Glide.SendLockOnDanger( target )
     if type( target ) == "table" and #target == 0 then return end

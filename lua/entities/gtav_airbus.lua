@@ -16,6 +16,7 @@ if CLIENT then
     ENT.HornSound = "glide/horns/large_truck_horn_1.wav"
 
     ENT.ReverseSound = "glide/alarms/reverse_warning.wav"
+    ENT.BrakeLoopSound = "glide/wheels/rig_brake_disc_2.wav"
     ENT.BrakeReleaseSound = "glide/wheels/rig_brake_release.wav"
     ENT.BrakeSqueakSound = "Glide.Brakes.Squeak"
 
