@@ -80,15 +80,18 @@ if SERVER then
         self:SetSpringStrength( 700 )
         self:SetSteerConeMaxSpeed( 1000 )
         self:SetForwardTractionBias( -0.15 )
-        self:SetForwardTractionMax( 2900 )
+        self:SetForwardTractionMax( 2100 )
 
-        self:SetDifferentialRatio( 2.3 )
+        self:SetDifferentialRatio( 0.6 )
         self:SetTransmissionEfficiency( 0.75 )
         self:SetPowerDistribution( 0.8 )
-        self:SetBrakePower( 2500 )
+        self:SetBrakePower( 2400 )
+        self.engineBrakeTorque = 3000
 
-        self:SetMinRPMTorque( 1000 )
-        self:SetMaxRPMTorque( 1200 )
+        self:SetMinRPM( 800 )
+        self:SetMaxRPM( 4800 )
+        self:SetMinRPMTorque( 3000 )
+        self:SetMaxRPMTorque( 3500 )
 
         self:CreateSeat( Vector( 5, 22, 0 ), Angle( 0, 270, -10 ), Vector( 50, 80, 10 ), true )
         self:CreateSeat( Vector( 25, -22, 0 ), Angle( 0, 270, 5 ), Vector( 50, -80, 10 ), true )

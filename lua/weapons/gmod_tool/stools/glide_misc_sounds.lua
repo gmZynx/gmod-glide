@@ -9,7 +9,8 @@ TOOL.Information = {
 
 local SUPPORTED_VEHICLE_TYPES = {
     [Glide.VEHICLE_TYPE.CAR] = true,
-    [Glide.VEHICLE_TYPE.MOTORCYCLE] = true
+    [Glide.VEHICLE_TYPE.MOTORCYCLE] = true,
+    [Glide.VEHICLE_TYPE.BOAT] = true
 }
 
 local presetData = Glide.miscSoundsToolData or {}

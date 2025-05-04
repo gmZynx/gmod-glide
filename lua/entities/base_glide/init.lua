@@ -2,6 +2,7 @@ AddCSLuaFile( "shared.lua" )
 AddCSLuaFile( "cl_init.lua" )
 AddCSLuaFile( "cl_lights.lua" )
 AddCSLuaFile( "cl_hud.lua" )
+AddCSLuaFile( "sh_vehicle_compat.lua" )
 
 include( "shared.lua" )
 include( "sv_input.lua" )
@@ -10,6 +11,7 @@ include( "sv_weapons.lua" )
 include( "sv_wheels.lua" )
 include( "sv_lights.lua" )
 include( "sv_sockets.lua" )
+include( "sh_vehicle_compat.lua" )
 
 duplicator.RegisterEntityClass( "base_glide", Glide.VehicleFactory, "Data" )
 
@@ -67,6 +69,16 @@ function ENT:SpawnFunction( ply, tr )
     local pos = self.SpawnPositionOffset or Vector( 0, 0, 10 )
     local ang = self.SpawnAngleOffset or Angle( 0, 90, 0 )
 
+    local ray = util.TraceLine( {
+        start = tr.StartPos,
+        endpos = tr.HitPos,
+        mask = MASK_WATER
+    } )
+
+    if ray.Hit and ray.HitWorld then
+        tr.HitPos = ray.HitPos
+    end
+
     return Glide.VehicleFactory( ply, {
         Pos = tr.HitPos + pos,
         Angle = Angle( 0, ply:EyeAngles().y, 0 ) + ang,
@@ -94,11 +106,13 @@ function ENT:Initialize()
     self.forwardSpeed = 0
     self.totalSpeed = 0
 
-    -- Setup trace data used for hitscan weapons and other things
+    -- Setup trace filter used for hitscan weapons and other things
     -- that need to ignore the vehicle's chassis and seats.
-    self.traceData = {
-        filter = { self }
-    }
+    self.traceFilter = { self }
+
+    -- Copy default surface multipliers to this vehicle.
+    self.surfaceGrip = table.Copy( Glide.SURFACE_GRIP )
+    self.surfaceResistance = table.Copy( Glide.SURFACE_RESISTANCE )
 
     -- Setup the chassis model and physics
     self:SetModel( self.ChassisModel )
@@ -196,15 +210,6 @@ function ENT:InitializePhysics()
     self:PhysicsInit( SOLID_VPHYSICS )
 end
 
-function ENT:OnRemove()
-    -- Stop physics processing
-    local phys = self:GetPhysicsObject()
-
-    if IsValid( phys ) then
-        self:StopMotionController()
-    end
-end
-
 function ENT:UpdateTransmitState()
     return 2 -- TRANSMIT_PVS
 end
@@ -243,24 +248,33 @@ end
 function ENT:TurnOff()
     self:SetEngineState( 0 )
     self:OnTurnOff()
-end
 
---- Utility function to setup trace data that
---- ignores the vehicle's chassis and seats.
-function ENT:GetTraceData( startPos, endPos )
-    local data = self.traceData
-
-    data.start = startPos
-    data.endpos = endPos
-
-    return data
+    if self.autoTurnOffLights then
+        self:ChangeHeadlightState( 0, true )
+    end
 end
 
 do
+    local data = {}
+
+    --- Utility function to setup trace data that
+    --- ignores the vehicle's chassis and seats.
+    function ENT:GetTraceData( startPos, endPos )
+        data.filter = self.traceFilter
+        data.start = startPos
+        data.endpos = endPos
+
+        return data
+    end
+end
+
+do
+    local ragdollEnableCvar = GetConVar( "glide_ragdoll_enable" )
     local maxRagdollTimeCvar = GetConVar( "glide_ragdoll_max_time" )
 
     --- Kicks out all passengers, then ragdoll them.
     function ENT:RagdollPlayers( time, vel )
+        if not ragdollEnableCvar:GetBool() then return end
         time = time or maxRagdollTimeCvar:GetFloat()
         vel = vel or self:GetVelocity()
 
@@ -336,25 +350,27 @@ do
             return self:GetPos() -- Not much we can do here...
         end
 
+        local traceData = self:GetTraceData()
+
         -- Try the original exit position first
-        local blocked, pos = ValidateExitPos( seat.GlideExitPos, self.traceData, self )
+        local blocked, pos = ValidateExitPos( seat.GlideExitPos, traceData, self )
 
         if blocked then
             -- Try on the other side
             pos = Vector( seat.GlideExitPos[1], -seat.GlideExitPos[2], seat.GlideExitPos[3] )
-            blocked, pos = ValidateExitPos( pos, self.traceData, self )
+            blocked, pos = ValidateExitPos( pos, traceData, self )
         end
 
         if blocked then
             -- Okay uh... Can we leave at the back?
             local mins = self:OBBMins()
-            blocked, pos = ValidateExitPos( Vector( mins[1] * 1.5, 0, 0 ), self.traceData, self )
+            blocked, pos = ValidateExitPos( Vector( mins[1] * 1.5, 0, 0 ), traceData, self )
         end
 
         if blocked then
             -- Uhhh... Can we leave at the front?
             local maxs = self:OBBMaxs()
-            blocked, pos = ValidateExitPos( Vector( maxs[1] * 2, 0, 0 ), self.traceData, self )
+            blocked, pos = ValidateExitPos( Vector( maxs[1] * 2, 0, 0 ), traceData, self )
         end
 
         if blocked then
@@ -477,8 +493,7 @@ function ENT:CreateSeat( offset, angle, exitPos, isHidden )
     self.inputFloats[index] = {}
 
     -- Don't let weapon fire or other traces hit this seat
-    local filter = self.traceData.filter
-    filter[#filter + 1] = seat
+    self.traceFilter[#self.traceFilter + 1] = seat
 
     -- Update seat wire outputs
     if TriggerOutput then
@@ -550,7 +565,7 @@ function ENT:Think()
     end
 
     -- If necessary, kick passengers when underwater
-    if selfTbl.FallOnCollision and self:WaterLevel() > 2 and #self:GetAllPlayers() > 0 then
+    if selfTbl.FallWhileUnderWater and self:WaterLevel() > 2 and #self:GetAllPlayers() > 0 then
         self:RagdollPlayers( 3 )
     end
 
@@ -594,11 +609,10 @@ function ENT:Think()
     -- Let children classes update their features
     self:OnUpdateFeatures( dt )
 
-    -- Make sure we have the corrent damping values
     local phys = self:GetPhysicsObject()
 
     if IsValid( phys ) then
-        self:ValidatePhysDamping( phys )
+        self:ValidatePhysSettings( phys )
     end
 
     -- Draw debug overlays, if `developer` cvar is active
@@ -609,8 +623,11 @@ function ENT:Think()
     return true
 end
 
---- Make sure nothing messed with our physics damping values.
-function ENT:ValidatePhysDamping( phys )
+--- Make sure nothing messed with
+--- our physics damping and buoyancy values.
+function ENT:ValidatePhysSettings( phys )
+    phys:SetBuoyancyRatio( 0.02 )
+
     local lin, ang = phys:GetDamping()
 
     if lin > 0 or ang > 0 then

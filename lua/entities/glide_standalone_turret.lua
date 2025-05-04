@@ -91,6 +91,7 @@ function ENT:PostEntityPaste( ply, ent, createdEntities )
     Glide.PostEntityPaste( ply, ent, createdEntities )
 
     -- Update parameters in case the limits/console variables are not set to default
+    self:SetTurretExplosive( self.isExplosive )
     self:SetTurretDamage( self.turretDamage )
     self:SetTurretDelay( self.turretDelay )
     self:SetTurretSpread( self.turretSpread )
@@ -109,6 +110,7 @@ local function MakeSpawner( ply, data )
     ent:Activate()
 
     ply:AddCount( "glide_standalone_turrets", ent )
+    cleanup.Add( ply, "glide_standalone_turrets", ent )
 
     for k, v in pairs( data ) do
         if ENT_VARS[k] then ent[k] = v end
@@ -144,7 +146,7 @@ function ENT:Initialize()
     self.tracerColor = Color( 255, 160, 35 )
 
     self.nextShoot = 0
-    self.traceData = { filter = self }
+    self.traceFilter = self
 
     self:SetIsFiring( false )
     self:SetShootLoopSound( ")glide/weapons/mg_shoot_loop.wav" )
@@ -184,11 +186,16 @@ function ENT:UpdateTurret( t )
         isExplosive = self.isExplosive,
         tracerColor = self.tracerColor,
         scale = 0.5
-    }, self.traceData )
+    }, self.traceFilter )
 end
 
+local cvarExplosive = GetConVar( "glide_turret_explosive_allow" )
 local cvarMaxDamage = GetConVar( "glide_turret_max_damage" )
 local cvarMinDelay = GetConVar( "glide_turret_min_delay" )
+
+function ENT:SetTurretExplosive( bool )
+    self.isExplosive = cvarExplosive:GetBool() and bool or false
+end
 
 function ENT:SetTurretDamage( damage )
     self.turretDamage = math.Clamp( damage, 1, cvarMaxDamage and cvarMaxDamage:GetFloat() or 50 )

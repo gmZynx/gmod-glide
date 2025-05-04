@@ -60,10 +60,12 @@ local FrameTime = FrameTime
 local LocalPlayer = LocalPlayer
 local SetAlphaMultiplier = surface.SetAlphaMultiplier
 
+local Config = Glide.Config
 local Camera = Glide.Camera
 local lastTarget, alpha = NULL, 0
 
 hook.Add( "HUDDrawTargetID", "Glide.HUDDrawTargetID", function()
+    if not Config.showCustomHealth then return end
     local localPly = LocalPlayer()
 
     if Camera.isActive then

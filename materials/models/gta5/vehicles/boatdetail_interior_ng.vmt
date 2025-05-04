@@ -1,0 +1,11 @@
+"VertexlitGeneric"
+{
+	"$basetexture" "models/gta5/vehicles/boatdetail_interior_ng"
+	"$bumpmap" "models/gta5/vehicles/body_normal"
+	"$allowdiffusemodulation" "false"
+
+	"$phong" "1"
+	"$phongboost" "2"
+	"$phongfresnelranges" "[.3 1 8]"
+	"$phongexponent" "[5 4 5]"
+}

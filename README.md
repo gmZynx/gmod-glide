@@ -66,7 +66,8 @@ A pack of content and entity classes to add cars, motorcycles, planes, helicopte
 | ------- | -----------
 | `glide_bullet_damage_multiplier` `<number>` | Damage multiplier for bullets hitting Glide vehicles
 | `glide_blast_damage_multiplier` `<number>` | Damage multiplier for explosions hitting Glide vehicles
-| `glide_physics_damage_multiplier` `<number>` | Damage multiplier taken by Glide vehicles after colliding against other things
+| `glide_physics_damage_multiplier` `<number>` | Damage multiplier taken by Glide vehicles after colliding against things that are not the world.
+| `glide_world_physics_damage_multiplier` `<number>` | Damage multiplier taken by Glide vehicles after colliding against the world.
 
 ### Sandbox limits
 
@@ -106,6 +107,7 @@ A pack of content and entity classes to add cars, motorcycles, planes, helicopte
 
 | Command | Description
 | ------- | -----------
+| `glide_ragdoll_enable` `<number>` | When set to 0, players will not be ragdolled when unsuccessfully falling out of vehicles
 | `glide_ragdoll_max_time` `<number>` | The max. amount of time a player can stay ragdolled. Set to 0 for infinite
 
 ## Contributing

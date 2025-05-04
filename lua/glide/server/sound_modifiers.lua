@@ -46,8 +46,6 @@ end
 local Remove = table.remove
 
 timer.Create( "Glide.UpdateModSync", 1, 0, function()
-    local players = player.GetHumans()
-
     -- Reverse loop to cleanup invalid entities
     local mod, synced
 
@@ -56,13 +54,15 @@ timer.Create( "Glide.UpdateModSync", 1, 0, function()
 
         if IsValid( mod.vehicle ) then
             -- Sync modifiers with clients
-            for _, ply in ipairs( players ) do
-                synced = mod.synced
+            for _, ply in player.Iterator() do
+                if ply:IsValid() and not ply:IsBot() then
+                    synced = mod.synced
 
-                -- If we have not synced this modifier to this player yet...
-                if not synced[ply] and ply.GlideLoaded then
-                    synced[ply] = true
-                    SendEntityModifierTo( ply, mod )
+                    -- If we have not synced this modifier to this player yet...
+                    if not synced[ply] and ply.GlideLoaded then
+                        synced[ply] = true
+                        SendEntityModifierTo( ply, mod )
+                    end
                 end
             end
         else
@@ -97,7 +97,8 @@ end )
 local SUPPORTED_VEHICLE_TYPES = {
     [Glide.VEHICLE_TYPE.CAR] = true,
     [Glide.VEHICLE_TYPE.MOTORCYCLE] = true,
-    [Glide.VEHICLE_TYPE.TANK] = true
+    [Glide.VEHICLE_TYPE.TANK] = true,
+    [Glide.VEHICLE_TYPE.BOAT] = true
 }
 
 local function IsGlideVehicle( ent )

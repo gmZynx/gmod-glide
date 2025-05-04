@@ -90,7 +90,7 @@ function ENT:OnPostThink( _dt, selfTbl )
     local attachedVehicle = selfTbl.attachedVehicle
 
     if not IsValid( attachedVehicle ) then
-        self:SetIsBraking( false )
+        self:SetBrakeValue( 0 )
         self:SetHeadlightState( 0 )
         self:SetTurnSignalState( 0 )
         self:SetIsVehicleReversing( false )
@@ -99,7 +99,7 @@ function ENT:OnPostThink( _dt, selfTbl )
     end
 
     -- Copy lights from the attached vehicle
-    self:SetIsBraking( attachedVehicle:GetIsBraking() )
+    self:SetBrakeValue( attachedVehicle:GetBrakeValue() )
     self:SetHeadlightState( attachedVehicle:GetHeadlightState() )
     self:SetTurnSignalState( attachedVehicle:GetTurnSignalState() )
     self:SetIsVehicleReversing( attachedVehicle:IsReversing() )

@@ -161,6 +161,7 @@ function Glide.VehicleFactory( ply, data )
     ent:Activate()
 
     ply:AddCount( "glide_vehicles", ent )
+    cleanup.Add( ply, "glide_vehicles", ent )
 
     return ent
 end
@@ -227,7 +228,7 @@ function Glide.GetNearbyPlayers( pos, radius )
     local found, count = {}, 0
 
     for _, ply in player.Iterator() do
-        if not ply:IsBot() then
+        if ply:IsValid() and not ply:IsBot() then
             local dist = pos:DistToSqr( ply:GetPos() )
 
             if dist < radius then

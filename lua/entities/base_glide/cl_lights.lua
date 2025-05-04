@@ -1,18 +1,21 @@
+function ENT:OnReloaded()
+    -- Let UpdateHeadlights recreate the lights
+    self.headlightState = 0
+end
+
 function ENT:OnHeadlightColorChange()
     -- Let UpdateHeadlights recreate the lights
     self.headlightState = 0
 end
 
-function ENT:CreateHeadlight( offset, angles, color, texture, fovScale )
+function ENT:CreateHeadlight( index, offset, angles, color, texture, fovScale )
     color = color or Color( 255, 255, 255 )
 
     local state = self.headlightState
     local fov = state > 1 and 85 or 75
-
-    local index = #self.headlights + 1
     local light = ProjectedTexture()
 
-    self.headlights[index] = light
+    self.activeHeadlights[index] = light
 
     light:SetConstantAttenuation( 0 )
     light:SetLinearAttenuation( 50 )
@@ -29,15 +32,15 @@ function ENT:CreateHeadlight( offset, angles, color, texture, fovScale )
 end
 
 function ENT:RemoveHeadlights()
-    if not self.headlights then return end
+    if not self.activeHeadlights then return end
 
-    for _, light in ipairs( self.headlights ) do
+    for _, light in pairs( self.activeHeadlights ) do
         if IsValid( light ) then
             light:Remove()
         end
     end
 
-    self.headlights = {}
+    self.activeHeadlights = {}
 end
 
 local IsValid = IsValid
@@ -82,24 +85,48 @@ function ENT:UpdateLights()
 
         if headlightState == 0 then return end
 
-        for _, v in ipairs( self.Headlights ) do
-            v.angles = v.angles or Angle( 10, 0, 0 )
-            self:CreateHeadlight( v.offset, v.angles, v.color or COLOR_HEADLIGHT, v.texture, v.fovScale )
+        local enable
+
+        for index, v in ipairs( self.Headlights ) do
+            enable = true
+
+            -- Check for optional bodygroup requirement
+            if v.ifBodygroupId then
+                enable = self:GetBodygroup( v.ifBodygroupId ) == ( v.ifSubModelId or 0 )
+            end
+
+            if enable then
+                v.angles = v.angles or Angle( 10, 0, 0 )
+                self:CreateHeadlight( index, v.offset, v.angles, v.color or COLOR_HEADLIGHT, v.texture, v.fovScale )
+            end
         end
     end
 
-    for i, l in ipairs( self.headlights ) do
-        if IsValid( l ) then
-            local data = self.Headlights[i]
-            l:SetPos( self:LocalToWorld( data.offset ) )
-            l:SetAngles( self:LocalToWorldAngles( data.angles ) )
-            l:Update()
+    if headlightState > 0 then
+        local l, hasLight
+
+        for index, data in ipairs( self.Headlights ) do
+            l = self.activeHeadlights[index]
+            hasLight = IsValid( l )
+
+            if hasLight then
+                l:SetPos( self:LocalToWorld( data.offset ) )
+                l:SetAngles( self:LocalToWorldAngles( data.angles ) )
+                l:Update()
+            end
+
+            -- Check if this light no longer meets the optional bodygroup requirement.
+            if data.ifBodygroupId and hasLight ~= ( self:GetBodygroup( data.ifBodygroupId ) == ( data.ifSubModelId or 0 ) ) then
+                self.headlightState = 0 -- Update all lights
+            end
         end
     end
 
     -- Handle sprites
-    lightState.brake = self:GetIsBraking()
-    lightState.reverse = self:IsReversing()
+    local allowLights = self:IsEngineOn() or headlightState > 0
+
+    lightState.brake = allowLights and self:GetIsBraking()
+    lightState.reverse = allowLights and self:IsReversing()
     lightState.headlight = headlightState > 0
     lightState.taillight = headlightState > 0
 
@@ -140,6 +167,11 @@ function ENT:UpdateLights()
             ( l.beamType == "high" and headlightState ~= 2 )
         then
             enable = false
+        end
+
+        -- Check for optional bodygroup requirement
+        if l.ifBodygroupId then
+            enable = enable and self:GetBodygroup( l.ifBodygroupId ) == ( l.ifSubModelId or 0 )
         end
 
         if enable and ltype == "headlight" then

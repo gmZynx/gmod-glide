@@ -92,12 +92,10 @@ if SERVER then
 
     function ENT:CreateFeatures()
         self:SetTransmissionEfficiency( 0.7 )
-        self:SetDifferentialRatio( 1.8 )
         self:SetBrakePower( 2000 )
 
-        self:SetMaxRPM( 15000 )
-        self:SetMinRPMTorque( 500 )
-        self:SetMaxRPMTorque( 600 )
+        self:SetMinRPMTorque( 1500 )
+        self:SetMaxRPMTorque( 1800 )
 
         self:SetSuspensionLength( 7 )
         self:SetSpringStrength( 1000 )

@@ -2,12 +2,12 @@ function ENT:EngineInit()
     self:UpdateGearList()
 
     -- Fake flywheel parameters
-    self.flywheelMass = 50
+    self.flywheelMass = 80
     self.flywheelRadius = 0.5
 
-    self.flywheelFriction = -7000
+    self.flywheelFriction = -6000
     self.flywheelTorque = 20000
-    self.engineBrakeTorque = 500
+    self.engineBrakeTorque = 2000
 
     -- Fake engine variables
     self.reducedThrottle = false
@@ -182,8 +182,10 @@ function ENT:AutoGearSwitch( throttle )
     for i = 1, self.maxGear do
         gearRPM = self:TransmissionToEngineRPM( i )
 
-        if gearRPM > minRPM and gearRPM < maxRPM then
-            gear = i
+        -- If this is the first gear, and it's transmission RPM is below the `minRPM`, OR;
+        -- If this gear's transmission RPM is between `minRPM` and `maxRPM`...
+        if ( i == 1 and gearRPM < minRPM ) or ( gearRPM > minRPM and gearRPM < maxRPM ) then
+            gear = i -- Pick this gear
             break
         end
     end

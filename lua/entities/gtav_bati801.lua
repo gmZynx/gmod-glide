@@ -122,6 +122,7 @@ if SERVER then
     ENT.SpawnPositionOffset = Vector( 0, 0, 40 )
     ENT.StartupTime = 0.4
     ENT.BurnoutForce = 50
+    ENT.TiltForce = 650
 
     ENT.LightBodygroups = {
         { type = "headlight", bodyGroupId = 7, subModelId = 1 }, -- Headlight
@@ -131,24 +132,26 @@ if SERVER then
     function ENT:InitializePhysics()
         self:SetSolid( SOLID_VPHYSICS )
         self:SetMoveType( MOVETYPE_VPHYSICS )
-        self:PhysicsInit( SOLID_VPHYSICS, Vector( 0, 0, -16 ) )
+        self:PhysicsInit( SOLID_VPHYSICS, Vector( 0, 0, -12 ) )
     end
 
     function ENT:CreateFeatures()
         self:SetHeadlightColor( Vector( 1, 1, 1 ) )
 
         self:SetSteerConeMaxAngle( 0.25 )
+        self:SetForwardTractionMax( 2400 )
         self:SetSideTractionMax( 2700 )
 
         self:SetSuspensionLength( 8 )
         self:SetSpringDamper( 3500 )
 
         self:SetTransmissionEfficiency( 0.7 )
-        self:SetDifferentialRatio( 1.8 )
+        self:SetDifferentialRatio( 0.6 )
         self:SetBrakePower( 2000 )
 
-        self:SetMinRPMTorque( 500 )
-        self:SetMaxRPMTorque( 700 )
+        self:SetMaxRPM( 7000 )
+        self:SetMinRPMTorque( 1500 )
+        self:SetMaxRPMTorque( 2100 )
 
         self:CreateSeat( Vector( -24, 0, 19 ), Angle( 0, 270, -35 ), Vector( 0, 60, 0 ), true )
         self:CreateSeat( Vector( -33, 0, 20 ), Angle( 0, 270, -5 ), Vector( 0, -60, 0 ), true )

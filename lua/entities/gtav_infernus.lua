@@ -88,10 +88,10 @@ if SERVER then
         self:SetSteerConeChangeRate( 12 )
         self:SetCounterSteer( 0.2 )
 
-        self:SetDifferentialRatio( 2.2 )
-        self:SetMaxRPM( 25000 )
-        self:SetMinRPMTorque( 1500 )
-        self:SetMaxRPMTorque( 1700 )
+        self:SetDifferentialRatio( 1.3 )
+        self:SetMaxRPM( 15000 )
+        self:SetMinRPMTorque( 2500 )
+        self:SetMaxRPMTorque( 3000 )
 
         self:SetForwardTractionMax( 3600 )
         self:SetSideTractionMultiplier( 30 )

@@ -41,6 +41,7 @@ function Camera:Activate( vehicle, seatIndex )
     self.centerStrength = 0
     self.lastMouseMoveTime = 0
     self.traceFraction = 1
+    self.trailerFraction = 0
 
     self.punchAngle = Angle()
     self.punchVelocity = Angle()
@@ -252,6 +253,7 @@ function Camera:Think()
     local dt = FrameTime()
 
     self.traceFraction = ExpDecay( self.traceFraction, 1, 2, dt )
+    self.trailerFraction = ExpDecay( self.trailerFraction, vehicle:GetConnectedReceptacleCount() > 0 and 1 or 0, 2, dt )
 
     local angles = self.angles
     local velocity = vehicle:GetVelocity()
@@ -293,6 +295,7 @@ function Camera:Think()
             self.allowRolling = false
 
             vehicleAngles = velocity:Angle()
+            vehicleAngles[1] = vehicleAngles[1] + 5 * self.trailerFraction
             vehicleAngles[3] = 0
             decay = Clamp( ( speed - 10 ) * 0.002, 0, 1 ) * 4 * self.centerStrength
         end
@@ -342,12 +345,12 @@ function Camera:CalcView()
     else
         local fraction = self.traceFraction
         local offset = self.shakeOffset + vehicle.CameraOffset * Vector( Config.cameraDistance, 1, Config.cameraHeight ) * fraction
-        local startPos = vehicle:LocalToWorld( vehicle.CameraCenterOffset )
+        local startPos = vehicle:LocalToWorld( vehicle.CameraCenterOffset + vehicle.CameraTrailerOffset * self.trailerFraction )
 
         angles = angles + vehicle.CameraAngleOffset
 
         local endPos = startPos
-            + angles:Forward() * offset[1]
+            + angles:Forward() * offset[1] * ( 1 + self.trailerFraction * vehicle.CameraTrailerDistanceMultiplier )
             + angles:Right() * offset[2]
             + angles:Up() * offset[3]
 

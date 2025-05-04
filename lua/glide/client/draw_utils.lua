@@ -94,7 +94,8 @@ local VEHICLE_ICONS = {
     [Glide.VEHICLE_TYPE.MOTORCYCLE] = "materials/glide/icons/motorcycle.png",
     [Glide.VEHICLE_TYPE.HELICOPTER] = "materials/glide/icons/helicopter.png",
     [Glide.VEHICLE_TYPE.PLANE] = "materials/glide/icons/plane.png",
-    [Glide.VEHICLE_TYPE.TANK] = "materials/glide/icons/tank.png"
+    [Glide.VEHICLE_TYPE.TANK] = "materials/glide/icons/tank.png",
+    [Glide.VEHICLE_TYPE.BOAT] = "materials/glide/icons/boat.png"
 }
 
 function Glide.GetVehicleIcon( vehicleType )

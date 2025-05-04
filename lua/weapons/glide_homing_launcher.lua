@@ -1,3 +1,5 @@
+local lockRequiredConvar = CreateConVar( "glide_homing_launcher_lock_required", "0", FCVAR_ARCHIVE + FCVAR_REPLICATED, "Should homing launcher require a lock to fire?" )
+
 SWEP.PrintName = "#glide.swep.homing_launcher"
 SWEP.Instructions = "#glide.swep.homing_launcher.desc"
 SWEP.Author = "StyledStrike"
@@ -70,7 +72,7 @@ function SWEP:Deploy()
     if SERVER then
         self.lockOnThinkCD = 0
         self.lockOnStateCD = 0
-        self.traceData = { filter = { self:GetOwner() } }
+        self.traceFilter = self:GetOwner()
     end
 
     if CLIENT then
@@ -143,6 +145,10 @@ function SWEP:CanAttack()
     end
 
     if self:GetNextPrimaryFire() > CurTime() then
+        return false
+    end
+
+    if lockRequiredConvar:GetBool() and not ( IsValid( self:GetLockTarget() ) and self:GetLockState() == 3 ) then
         return false
     end
 
@@ -380,13 +386,13 @@ function SWEP:UpdateTarget()
         end
 
         -- Stick to the same target for as long as possible
-        if CanLockOnEntity( target, myPos, myDir, self.LockOnThreshold, self.LockOnMaxDistance, user, true, self.traceData ) then
+        if CanLockOnEntity( target, myPos, myDir, self.LockOnThreshold, self.LockOnMaxDistance, user, true, self.traceFilter ) then
             return
         end
     end
 
     -- Find a new target
-    target = FindLockOnTarget( myPos, myDir, self.LockOnThreshold, self.LockOnMaxDistance, user, self.traceData )
+    target = FindLockOnTarget( myPos, myDir, self.LockOnThreshold, self.LockOnMaxDistance, user, self.traceFilter )
 
     if target ~= self:GetLockTarget() then
         self:SetLockTarget( target )

@@ -129,9 +129,11 @@ if SERVER then
 
     function ENT:CreateFeatures()
         self:SetCounterSteer( 0.4 )
-        self:SetDifferentialRatio( 2 )
+        self:SetDifferentialRatio( 0.6 )
         self:SetPowerDistribution( -0.7 )
         self:SetTransmissionEfficiency( 0.75 )
+
+        self:SetMaxRPMTorque( 4400 )
         self:SetBrakePower( 2500 )
 
         self:CreateSeat( Vector( -7, 20, -13 ), Angle( 0, 270, -5 ), Vector( 40, 80, 0 ), true )

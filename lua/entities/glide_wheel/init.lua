@@ -51,12 +51,14 @@ function ENT:Initialize()
         lastFraction = 1,
         lastSpringOffset = 0,
         angularVelocity = 0,
-
-        -- Used for raycasting, updates with wheel radius
-        traceMins = Vector(),
-        traceMaxs = Vector( 1, 1, 1 ),
-
         isDebugging = Glide.GetDevMode()
+    }
+
+    -- Used for raycasting, updates with wheel radius
+    self.traceData = {
+        mins = Vector(),
+        maxs = Vector( 1, 1, 1 ),
+        collisiongroup = COLLISION_GROUP_WORLD
     }
 
     self.contractSoundCD = 0
@@ -164,8 +166,8 @@ function ENT:ChangeRadius( radius )
     self:SetModelScale2( scale )
 
     -- Used on util.TraceHull
-    self.state.traceMins = Vector( radius * -0.2, radius * -0.2, 0 )
-    self.state.traceMaxs = Vector( radius * 0.2, radius * 0.2, 1 )
+    self.traceData.mins = Vector( radius * -0.2, radius * -0.2, 0 )
+    self.traceData.maxs = Vector( radius * 0.2, radius * 0.2, 1 )
 end
 
 do
@@ -238,8 +240,6 @@ do
     end
 end
 
-local SURFACE_GRIP = Glide.SURFACE_GRIP
-local SURFACE_RESISTANCE = Glide.SURFACE_RESISTANCE
 local MAP_SURFACE_OVERRIDES = Glide.MAP_SURFACE_OVERRIDES
 
 local PI = math.pi
@@ -260,9 +260,9 @@ local surfaceGrip, maxTraction, brakeForce, forwardForce, signForwardForce
 local tractionCycle, gripLoss, groundAngularVelocity, angularVelocity = Vector()
 local slipAngle, sideForce
 local force, linearImp, angularImp
-local state, params
+local state, params, traceData
 
-function ENT:DoPhysics( vehicle, phys, traceData, outLin, outAng, dt )
+function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfaceGrip, vehSurfaceResistance )
     state, params = self.state, self.params
 
     -- Get the starting point of the raycast, where the suspension connects to the chassis
@@ -280,10 +280,10 @@ function ENT:DoPhysics( vehicle, phys, traceData, outLin, outAng, dt )
     radius = self:GetRadius()
     maxLen = state.suspensionLengthMult * params.suspensionLength + radius
 
+    traceData = self.traceData
+    traceData.filter = traceFilter
     traceData.start = pos
     traceData.endpos = pos - up * maxLen
-    traceData.mins = state.traceMins
-    traceData.maxs = state.traceMaxs
 
     ray = TraceHull( traceData )
     fraction = Clamp( ray.Fraction, radius / maxLen, 1 )
@@ -298,7 +298,7 @@ function ENT:DoPhysics( vehicle, phys, traceData, outLin, outAng, dt )
 
     if state.isDebugging then
         debugoverlay.Cross( pos, 10, 0.05, Color( 100, 100, 100 ), true )
-        debugoverlay.Box( contactPos, state.traceMins, state.traceMaxs, 0.05, Color( 0, 200, 0 ) )
+        debugoverlay.Box( contactPos, traceData.mins, traceData.maxs, 0.05, Color( 0, 200, 0 ) )
     end
 
     -- Update the wheel position and sounds
@@ -335,10 +335,10 @@ function ENT:DoPhysics( vehicle, phys, traceData, outLin, outAng, dt )
     force = ( springForce - damperForce ) * up:Dot( ray.HitNormal ) * ray.HitNormal
 
     -- Rolling resistance
-    force:Add( ( SURFACE_RESISTANCE[surfaceId] or 0.05 ) * -velF * fw )
+    force:Add( ( vehSurfaceResistance[surfaceId] or 0.05 ) * -velF * fw )
 
     -- Brake and torque forces
-    surfaceGrip = SURFACE_GRIP[surfaceId] or 1
+    surfaceGrip = vehSurfaceGrip[surfaceId] or 1
     maxTraction = params.forwardTractionMax * surfaceGrip * state.forwardTractionMult
 
     -- Grip loss logic
@@ -375,14 +375,14 @@ function ENT:DoPhysics( vehicle, phys, traceData, outLin, outAng, dt )
 
     -- Sideways traction ramp
     slipAngle = Abs( slipAngle * slipAngle )
-    maxTraction = TractionRamp( slipAngle, params.sideTractionMaxAng, params.sideTractionMax, params.sideTractionMin ) * surfaceGrip
+    maxTraction = TractionRamp( slipAngle, params.sideTractionMaxAng, params.sideTractionMax, params.sideTractionMin )
     sideForce = -rt:Dot( vel * params.sideTractionMultiplier * state.sideTractionMult )
 
     -- Reduce sideways traction force as the wheel slips forward
     sideForce = sideForce * ( 1 - Clamp( Abs( gripLoss ) * 0.1, 0, 1 ) * 0.9 )
 
     -- Reduce sideways force as the suspension spring applies less force
-    surfaceGrip = Clamp( springForce / params.springStrength, 0, 1 )
+    surfaceGrip = surfaceGrip * Clamp( springForce / params.springStrength, 0, 1 )
 
     -- Apply sideways traction force
     force:Add( Clamp( sideForce, -maxTraction, maxTraction ) * surfaceGrip * rt )

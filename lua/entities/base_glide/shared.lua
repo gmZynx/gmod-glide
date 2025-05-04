@@ -40,9 +40,10 @@ function ENT:SetupDataTables()
     self:NetworkVar( "Float", "ChassisHealth" )
     self:NetworkVar( "Float", "EngineHealth" )
 
-    self:NetworkVar( "Bool", "IsBraking" )
+    self:NetworkVar( "Float", "BrakeValue" )
     self:NetworkVar( "Int", "HeadlightState" )
     self:NetworkVar( "Int", "TurnSignalState" )
+    self:NetworkVar( "Int", "ConnectedReceptacleCount" )
 
     -- Headlight color can be edited if it's available
     local editData = nil
@@ -62,7 +63,7 @@ function ENT:SetupDataTables()
     self:SetLockOnState( 0 )
     self:SetLockOnTarget( NULL )
 
-    self:SetIsBraking( false )
+    self:SetBrakeValue( 0 )
     self:SetHeadlightState( 0 )
     self:SetTurnSignalState( 0 )
 
@@ -99,6 +100,10 @@ function ENT:IsReversing()
     return false
 end
 
+function ENT:GetIsBraking()
+    return self:GetBrakeValue() > 0.1
+end
+
 function ENT:OnPostInitialize() end
 function ENT:OnTurnOn() end
 function ENT:OnTurnOff() end
@@ -124,6 +129,13 @@ if CLIENT then
     ENT.CameraOffset = Vector( -200, 0, 50 )
     ENT.CameraCenterOffset = Vector( 0, 0, 0 )
     ENT.CameraAngleOffset = Angle( 6, 0, 0 )
+
+    -- This multiplier adds to the final forward offset
+    -- while a trailer is attached.
+    ENT.CameraTrailerDistanceMultiplier = 0.3
+
+    -- Added to ENT.CameraCenterOffset while a trailer is attached.
+    ENT.CameraTrailerOffset = Vector( -150, 0, 10 ) -- Push the camera backwards and a little bit up
 
     -- Setup how far away players can hear sounds and update misc. features
     ENT.MaxSoundDistance = 6000
@@ -214,6 +226,9 @@ if SERVER then
     ENT.BlastDamageMultiplier = 5
     ENT.CollisionDamageMultiplier = 0.5
 
+    ENT.SoftCollisionSound = "Glide.Collision.VehicleHard"
+    ENT.HardCollisionSound = "Glide.Collision.VehicleSoft"
+
     -- How much of the chassis damage is also applied to the engine?
     ENT.EngineDamageMultiplier = 1.3
 
@@ -239,6 +254,9 @@ if SERVER then
 
     -- Should passengers fall on collisions?
     ENT.FallOnCollision = false
+
+    -- Should passengers fall when under water?
+    ENT.FallWhileUnderWater = false
 
     -- Damage things nearby when the vehicle explodes
     ENT.ExplosionRadius = 500

@@ -16,15 +16,15 @@ function ENT:OnPostInitialize()
     -- Change steering parameters to better suit bikes
     self:SetMaxSteerAngle( 30 )
     self:SetSteerConeChangeRate( 12 )
-    self:SetSteerConeMaxSpeed( 1200 )
+    self:SetSteerConeMaxSpeed( 1000 )
     self:SetSteerConeMaxAngle( 0.3 )
-    self:SetCounterSteer( 0.75 )
+    self:SetCounterSteer( 0.9 )
     self:SetPowerDistribution( -1 )
 
     -- Change traction parameters to better suit bikes
     self:SetSideTractionMultiplier( 40 )
     self:SetSideTractionMaxAng( 40 )
-    self:SetSideTractionMax( 1800 )
+    self:SetSideTractionMax( 2000 )
 end
 
 function ENT:SetStaySpright( toggle, dontWakePhys )
@@ -116,7 +116,7 @@ function ENT:UpdateSteering( dt )
         end
     end
 
-    self.steerTilt = ExpDecay( self.steerTilt, tilt, 10, dt )
+    self.steerTilt = ExpDecay( self.steerTilt, isAnyWheelGrounded and tilt or 0, 15, dt )
 
     if
         isAnyWheelGrounded and
@@ -129,7 +129,7 @@ function ENT:UpdateSteering( dt )
         self.frontBrake = 0
         self.rearBrake = 0
         self.clutch = 1
-        self:SetIsBraking( false )
+        self:SetBrakeValue( 0 )
     else
         self.reverseInput = 0
     end
@@ -158,10 +158,6 @@ function ENT:OnSimulatePhysics( phys, _, outLin, outAng )
     local isAnyWheelGrounded = self.groundedCount > 0
     local angVel = phys:GetAngleVelocity()
     local mass = phys:GetMass()
-
-    if not isAnyWheelGrounded then
-        self.steerTilt = 0
-    end
 
     local rt = self:GetRight()
     local angles = self:GetAngles()

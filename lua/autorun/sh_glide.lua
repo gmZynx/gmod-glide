@@ -7,7 +7,8 @@ Glide.VEHICLE_TYPE = {
     MOTORCYCLE = 2,
     HELICOPTER = 3,
     PLANE = 4,
-    TANK = 5
+    TANK = 5,
+    BOAT = 6
 }
 
 -- Max. seats a single vehicle can have
@@ -37,6 +38,7 @@ Glide.LOCKON_WHITELIST = {
     ["base_glide_aircraft"] = true,
     ["base_glide_heli"] = true,
     ["base_glide_plane"] = true,
+    ["base_glide_boat"] = true,
     ["base_glide_motorcycle"] = true,
     ["prop_vehicle_prisoner_pod"] = true
 }
@@ -164,19 +166,23 @@ if SERVER then
     -- Damage multiplier convars
     CreateConVar( "glide_bullet_damage_multiplier", "1", FCVAR_ARCHIVE + FCVAR_NOTIFY, "Damage multiplier for bullets hitting Glide vehicles.", 0, 10 )
     CreateConVar( "glide_blast_damage_multiplier", "1", FCVAR_ARCHIVE + FCVAR_NOTIFY, "Damage multiplier for explosions hitting Glide vehicles.", 0, 10 )
-    CreateConVar( "glide_physics_damage_multiplier", "1", FCVAR_ARCHIVE + FCVAR_NOTIFY, "Damage multiplier taken by Glide vehicles after colliding against other things.", 0, 10 )
-
-    -- Ragdoll time
-    CreateConVar( "glide_ragdoll_max_time", "10", FCVAR_ARCHIVE + FCVAR_NOTIFY, "The max. amount of time a player can stay ragdolled. Set to 0 for infinite.", 0 )
+    CreateConVar( "glide_physics_damage_multiplier", "1", FCVAR_ARCHIVE + FCVAR_NOTIFY, "Damage multiplier taken by Glide vehicles after colliding against things that are not the world.", 0, 10 )
+    CreateConVar( "glide_world_physics_damage_multiplier", "1", FCVAR_ARCHIVE + FCVAR_NOTIFY, "Damage multiplier taken by Glide vehicles after colliding against the world.", 0, 10 )
 end
 
 -- Sandbox limits
+cleanup.Register( "glide_vehicles" )
+cleanup.Register( "glide_standalone_turrets" )
+cleanup.Register( "glide_missile_launchers" )
+cleanup.Register( "glide_projectile_launchers" )
+
 CreateConVar( "sbox_maxglide_vehicles", "5", FCVAR_ARCHIVE + FCVAR_NOTIFY + FCVAR_REPLICATED, "Max. number of Glide vehicles that one player can have", 0 )
 CreateConVar( "sbox_maxglide_standalone_turrets", "5", FCVAR_ARCHIVE + FCVAR_NOTIFY + FCVAR_REPLICATED, "Max. number of Glide Turrets that one player can have", 0 )
 CreateConVar( "sbox_maxglide_missile_launchers", "5", FCVAR_ARCHIVE + FCVAR_NOTIFY + FCVAR_REPLICATED, "Max. number of Glide Missile Launchers that one player can have", 0 )
 CreateConVar( "sbox_maxglide_projectile_launchers", "5", FCVAR_ARCHIVE + FCVAR_NOTIFY + FCVAR_REPLICATED, "Max. number of Glide Projectile Launchers that one player can have", 0 )
 
 -- Turret tool convars
+CreateConVar( "glide_turret_explosive_allow", "1", FCVAR_ARCHIVE + FCVAR_NOTIFY + FCVAR_REPLICATED, "Allows Glide Turrets to use explosive bullets.", 0, 1 )
 CreateConVar( "glide_turret_max_damage", "50", FCVAR_ARCHIVE + FCVAR_NOTIFY + FCVAR_REPLICATED, "Maximum damage dealt per bullet for Glide Turrets.", 0 )
 CreateConVar( "glide_turret_min_delay", "0.02", FCVAR_ARCHIVE + FCVAR_NOTIFY + FCVAR_REPLICATED, "Minimum delay allowed for Glide Turrets.", 0, 1 )
 
@@ -193,8 +199,12 @@ CreateConVar( "glide_projectile_launcher_max_radius", "500", FCVAR_ARCHIVE + FCV
 CreateConVar( "glide_projectile_launcher_max_damage", "200", FCVAR_ARCHIVE + FCVAR_NOTIFY + FCVAR_REPLICATED, "Maximum damage dealt by explosions from Glide Projectile Launchers.", 1 )
 
 -- Gib convars
-CreateConVar( "glide_gib_lifetime", "8", FCVAR_ARCHIVE + FCVAR_NOTIFY, "Lifetime of Glide Gibs, 0 for no despawning.", 0 )
-CreateConVar( "glide_gib_enable_collisions", "1", FCVAR_ARCHIVE + FCVAR_NOTIFY, "When set to 0, gibs wont collide with players/props.", 0, 1 )
+CreateConVar( "glide_gib_lifetime", "8", FCVAR_ARCHIVE + FCVAR_NOTIFY + FCVAR_REPLICATED, "Lifetime of Glide Gibs, 0 for no despawning.", 0 )
+CreateConVar( "glide_gib_enable_collisions", "1", FCVAR_ARCHIVE + FCVAR_NOTIFY + FCVAR_REPLICATED, "When set to 0, gibs wont collide with players/props.", 0, 1 )
+
+-- Ragdoll convars
+CreateConVar( "glide_ragdoll_enable", "1", FCVAR_ARCHIVE + FCVAR_NOTIFY + FCVAR_REPLICATED, "When set to 0, players will not be ragdolled when unsuccessfully falling out of vehicles.", 0, 1 )
+CreateConVar( "glide_ragdoll_max_time", "10", FCVAR_ARCHIVE + FCVAR_NOTIFY + FCVAR_REPLICATED, "The max. amount of time a player can stay ragdolled. Set to 0 for infinite.", 0 )
 
 list.Set( "ContentCategoryIcons", "Glide", "materials/glide/icons/car.png" )
 

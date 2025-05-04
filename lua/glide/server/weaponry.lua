@@ -65,7 +65,9 @@ do
     local attacker, inflictor, length
     local damage, spread, explosionRadius
 
-    function Glide.FireBullet( params, traceData )
+    local traceData = {}
+
+    function Glide.FireBullet( params, traceFilter )
         pos = params.pos
         ang = params.ang
 
@@ -87,9 +89,9 @@ do
 
         local dir = ang:Forward()
 
-        traceData = traceData or {}
         traceData.start = pos
         traceData.endpos = pos + dir * length
+        traceData.filter = traceFilter
 
         local tr = TraceLine( traceData )
 
@@ -210,15 +212,15 @@ end
 
 do
     local TraceLine = util.TraceLine
-    local emptyData = {}
+    local traceData = {}
 
     --- Returns true if the target entity can be locked on from a starting position and direction.
     --- Part of that includes checking if the dot product between `normal` and
     --- the direction towards the target entity is larger than `threshold`.
     --- `attacker` is the player who is trying to lock-on.
     --- Set `includeEmpty` to true to include vehicles without a driver.
-    --- `traceData` is optional, to make use of it's filtering options.
-    function Glide.CanLockOnEntity( ent, origin, normal, threshold, maxDistance, attacker, includeEmpty, traceData )
+    --- `traceFilter` is a optional list of entities/classes to ignore when performing visibility checks.
+    function Glide.CanLockOnEntity( ent, origin, normal, threshold, maxDistance, attacker, includeEmpty, traceFilter )
         if not includeEmpty and ent.GetDriver and ent:GetDriver() == NULL then
             return false -- Don't lock on empty seats
         end
@@ -242,9 +244,9 @@ do
             return false
         end
 
-        traceData = traceData or emptyData
         traceData.start = origin
         traceData.endpos = entPos
+        traceData.filter = traceFilter
 
         local tr = TraceLine( traceData )
         if not tr.Hit then return true, dot end
@@ -263,7 +265,6 @@ local isVehicle = EntityMeta.IsVehicle
 local getParent = EntityMeta.GetParent
 
 local AllEnts = ents.Iterator
-local CanLockOnEntity = Glide.CanLockOnEntity
 local WHITELIST = Glide.LOCKON_WHITELIST
 
 local function IsLockableEntity( ent, skipParentCheck )
@@ -303,9 +304,11 @@ local function IsLockableEntity( ent, skipParentCheck )
     return false
 end
 
+local CanLockOnEntity = Glide.CanLockOnEntity
+
 --- Finds all entities that we can lock on with `Glide.CanLockOnEntity`,
 --- then returns which one has the largest dot product between `normal` and the direction towards it.
-function Glide.FindLockOnTarget( origin, normal, threshold, maxDistance, attacker, traceData, filter )
+function Glide.FindLockOnTarget( origin, normal, threshold, maxDistance, attacker, traceFilter, entFilter )
     local largestDot = 0
     local canLock, dot, target
 
@@ -314,13 +317,15 @@ function Glide.FindLockOnTarget( origin, normal, threshold, maxDistance, attacke
 
     local ignore = {}
 
-    for _, ent in ipairs( filter or {} ) do
-        ignore[ent] = true
+    if entFilter then
+        for _, ent in ipairs( entFilter ) do
+            ignore[ent] = true
+        end
     end
 
     for _, e in AllEnts() do
         if e ~= attacker and not ignore[e] and IsLockableEntity( e ) then
-            canLock, dot = CanLockOnEntity( e, origin, normal, threshold, maxDistance, attacker, includeEmpty, traceData )
+            canLock, dot = CanLockOnEntity( e, origin, normal, threshold, maxDistance, attacker, includeEmpty, traceFilter )
 
             if canLock and dot > largestDot then
                 largestDot = dot

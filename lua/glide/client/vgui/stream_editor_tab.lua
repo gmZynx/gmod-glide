@@ -8,7 +8,10 @@ local KV_LIMITS = {
     pitch = { 0.5, 2, 2 },
     volume = { 0.1, 2, 2 },
     fadeDist = { 500, 4000, 0 },
+
     redlineFrequency = { 30, 70, 0 },
+    redlineStrength = { 0, 0.5, 2 },
+
     wobbleFrequency = { 10, 70, 0 },
     wobbleStrength = { 0.1, 1.0, 2 }
 }

@@ -43,14 +43,6 @@ end
 
 local IsValid = IsValid
 
-function ENT:OnRemove()
-    local phys = self:GetPhysicsObject()
-
-    if IsValid( phys ) then
-        self:StopMotionController()
-    end
-end
-
 function ENT:SetupMissile( attacker, parent )
     -- Set which player created this missile
     self.attacker = attacker

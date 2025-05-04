@@ -86,7 +86,7 @@ if SERVER then
     function ENT:InitializePhysics()
         self:SetSolid( SOLID_VPHYSICS )
         self:SetMoveType( MOVETYPE_VPHYSICS )
-        self:PhysicsInit( SOLID_VPHYSICS, Vector( 5, 0, -8 ) )
+        self:PhysicsInit( SOLID_VPHYSICS, Vector( 10, 0, -8 ) )
     end
 
     ENT.LightBodygroups = {
@@ -99,12 +99,13 @@ if SERVER then
     }
 
     function ENT:CreateFeatures()
-        self:SetDifferentialRatio( 1.9 )
+        self:SetDifferentialRatio( 0.78 )
 
-        self:SetMaxRPM( 25000 )
-        self:SetMinRPMTorque( 1300 )
-        self:SetMaxRPMTorque( 1500 )
+        self:SetMaxRPM( 12000 )
+        self:SetMinRPMTorque( 3300 )
+        self:SetMaxRPMTorque( 4000 )
 
+        self:SetForwardTractionMax( 2800 )
         self:SetSideTractionMaxAng( 30 )
         self:SetSideTractionMax( 3000 )
         self:SetSideTractionMin( 1100 )

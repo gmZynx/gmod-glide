@@ -63,6 +63,7 @@ function ENT:Initialize()
 
     if IsValid( phys ) then
         phys:Wake()
+        phys:SetBuoyancyRatio( 0.02 )
         phys:SetAngleDragCoefficient( 1 )
         phys:SetDragCoefficient( 1 )
     end

@@ -41,9 +41,10 @@ local CurTime = CurTime
 --- Update out model's bodygroups depending on which lights are on.
 function ENT:UpdateLightBodygroups()
     local headlightState = self:GetHeadlightState()
+    local allowLights = self:IsEngineOn() or headlightState > 0
 
-    lightState.brake = self:GetIsBraking()
-    lightState.reverse = self:IsReversing()
+    lightState.brake = allowLights and self:GetIsBraking()
+    lightState.reverse = allowLights and self:IsReversing()
     lightState.headlight = headlightState > 0
 
     local signal = self:GetTurnSignalState()

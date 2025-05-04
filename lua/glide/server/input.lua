@@ -76,7 +76,8 @@ do
         [Glide.VEHICLE_TYPE.MOTORCYCLE] = "land_controls",
         [Glide.VEHICLE_TYPE.HELICOPTER] = "aircraft_controls",
         [Glide.VEHICLE_TYPE.PLANE] = "aircraft_controls",
-        [Glide.VEHICLE_TYPE.TANK] = "land_controls"
+        [Glide.VEHICLE_TYPE.TANK] = "land_controls",
+        [Glide.VEHICLE_TYPE.BOAT] = "land_controls"
     }
 
     --- Given a category of input actions, get all actions

@@ -140,6 +140,7 @@ if SERVER then
     ENT.ChassisMass = 400
 
     ENT.FallOnCollision = true
+    ENT.FallWhileUnderWater = true
     ENT.SpawnPositionOffset = Vector( 0, 0, 40 )
 
     ENT.SuspensionHeavySound = "Glide.Suspension.CompressBike"
@@ -155,11 +156,11 @@ if SERVER then
         return {
             [-1] = 3.0, -- Reverse
             [0] = 0, -- Neutral (this number has no effect)
-            [1] = 3.0,
-            [2] = 1.78,
-            [3] = 1.2,
-            [4] = 0.9,
-            [5] = 0.78
+            [1] = 2.9,
+            [2] = 1.5,
+            [3] = 1.1,
+            [4] = 0.85,
+            [5] = 0.75
         }
     end
 
@@ -173,12 +174,13 @@ if SERVER then
         self:SetSteerConeMaxSpeed( 800 )
 
         self:SetPowerDistribution( -0.7 )
-        self:SetDifferentialRatio( 1.2 )
+        self:SetDifferentialRatio( 0.5 )
         self:SetBrakePower( 1300 )
 
-        self:SetMaxRPM( 15000 )
-        self:SetMinRPMTorque( 1000 )
-        self:SetMaxRPMTorque( 1200 )
+        self:SetMinRPM( 650 )
+        self:SetMaxRPM( 5500 )
+        self:SetMinRPMTorque( 2000 )
+        self:SetMaxRPMTorque( 3000 )
 
         self:SetSuspensionLength( 10 )
         self:SetSpringStrength( 450 )

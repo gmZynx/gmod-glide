@@ -36,9 +36,11 @@ end
 if SERVER then
     -- Change default car variables
     ENT.ChassisMass = 300
-
     ENT.AngularDrag = Vector( 0, -2, -6 ) -- Roll, pitch, yaw
+
     ENT.FallOnCollision = true
+    ENT.FallWhileUnderWater = true
+
     ENT.SuspensionHeavySound = "Glide.Suspension.CompressBike"
 
     ENT.AirControlForce = Vector( 0.8, 3, 1.5 ) -- Roll, pitch, yaw

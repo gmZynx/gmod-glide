@@ -85,10 +85,12 @@ function ENT:PhysicsSimulate( phys, dt )
 
     -- Do wheel physics
     if self.wheelCount > 0 and self.wheelsEnabled then
-        local traceData = self.traceData
+        local traceFilter = self.traceFilter
+        local surfaceGrip = self.surfaceGrip
+        local surfaceResistance = self.surfaceResistance
 
         for _, w in ipairs( self.wheels ) do
-            w:DoPhysics( self, phys, traceData, linForce, angForce, dt )
+            w:DoPhysics( self, phys, traceFilter, linForce, angForce, dt, surfaceGrip, surfaceResistance )
         end
     end
 

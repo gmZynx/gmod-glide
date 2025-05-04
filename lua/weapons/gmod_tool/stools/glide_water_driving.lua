@@ -36,7 +36,9 @@ function TOOL:LeftClick( trace )
             return false
         end
 
-        veh.traceData.mask = MASK_SOLID + CONTENTS_WATER + CONTENTS_SLIME
+        for _, wheel in ipairs( veh.wheels ) do
+            wheel.traceData.mask = MASK_SOLID + CONTENTS_WATER + CONTENTS_SLIME
+        end
     end
 
     return true
@@ -47,7 +49,9 @@ function TOOL:RightClick( trace )
     if not veh then return false end
 
     if SERVER then
-        veh.traceData.mask = nil
+        for _, wheel in ipairs( veh.wheels ) do
+            wheel.traceData.mask = nil
+        end
     end
 
     return true

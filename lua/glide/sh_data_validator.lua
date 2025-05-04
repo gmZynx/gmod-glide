@@ -8,6 +8,8 @@ local DEFAULT_STREAM_PARAMS = {
     fadeDist = 1500,
 
     redlineFrequency = 55,
+    redlineStrength = 0.2,
+
     wobbleFrequency = 25,
     wobbleStrength = 0.13
 }

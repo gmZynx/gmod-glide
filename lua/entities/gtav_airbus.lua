@@ -13,6 +13,7 @@ if CLIENT then
     ENT.StartSound = "Glide.Engine.TruckStart"
     ENT.ExhaustPopSound = ""
     ENT.StartedSound = "glide/engines/start_tail_truck.wav"
+    ENT.StoppedSound = "glide/engines/shut_down_truck_1.wav"
     ENT.HornSound = "glide/horns/large_truck_horn_1.wav"
 
     ENT.ReverseSound = "glide/alarms/reverse_warning.wav"

@@ -34,6 +34,9 @@ function Glide.SocketConnect( plug, receptacle, forceLimit )
     receptacle.constraint = constr
 
     -- Call events on both vehicles
+    plugVeh:UpdateSocketCount()
+    receptacleVeh:UpdateSocketCount()
+
     plugVeh:OnSocketConnect( plug, receptacleVeh )
     receptacleVeh:OnSocketConnect( receptacle, plugVeh )
 end

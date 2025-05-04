@@ -47,7 +47,7 @@ function ENT:OnPostInitialize()
         brakePower = 3000,
 
         -- Forward traction
-        forwardTractionMax = 2600,
+        forwardTractionMax = 2200,
 
         -- Side traction
         sideTractionMultiplier = 20,
@@ -78,12 +78,12 @@ function ENT:OnPostInitialize()
     self:SetSideTractionMin( params.sideTractionMin )
 
     -- Fake engine parameters
-    self:SetMinRPM( 2000 )
-    self:SetMaxRPM( 20000 )
+    self:SetMinRPM( 500 )
+    self:SetMaxRPM( 6000 )
 
-    self:SetMinRPMTorque( 1200 )
-    self:SetMaxRPMTorque( 1500 )
-    self:SetDifferentialRatio( 1.9 )
+    self:SetMinRPMTorque( 3200 )
+    self:SetMaxRPMTorque( 4200 )
+    self:SetDifferentialRatio( 0.55 )
     self:SetTransmissionEfficiency( 0.8 )
     self:SetPowerDistribution( -0.9 )
 
@@ -188,10 +188,6 @@ function ENT:TurnOff()
     self.reducedThrottle = false
     self.availableFrontTorque = 0
     self.availableRearTorque = 0
-
-    if self.autoTurnOffLights then
-        self:ChangeHeadlightState( 0, true )
-    end
 end
 
 --- Override this base class function.
@@ -288,6 +284,8 @@ function ENT:OnSocketDisconnect( socket )
     } )
 end
 
+local TriggerOutput = WireLib and WireLib.TriggerOutput or nil
+
 function ENT:ChangeSirenState( state )
     if not self.CanSwitchSiren then return end
 
@@ -297,6 +295,10 @@ function ENT:ChangeSirenState( state )
     if state > 2 then state = 0 end
 
     self:SetSirenState( state )
+
+    if TriggerOutput then
+        TriggerOutput( self, "SirenState", state )
+    end
 end
 
 --- Override this base class function.
@@ -317,6 +319,11 @@ function ENT:SetupWiremodPorts( inputs, outputs )
     outputs[#outputs + 1] = { "EngineState", "NORMAL", "0: Off\n1: Starting\n2: Running\n3: Shutting down/Ignition cut-off" }
     outputs[#outputs + 1] = { "EngineRPM", "NORMAL", "Current engine RPM" }
     outputs[#outputs + 1] = { "MaxRPM", "NORMAL", "Max. engine RPM" }
+
+    if not self.CanSwitchSiren then return end
+
+    inputs[#inputs + 1] = { "Siren", "NORMAL", "0: Off\n1: Lights only\n2: Lights + sounds" }
+    outputs[#outputs + 1] = { "SirenState", "NORMAL", "0: Off\n1: Lights only\n2: Lights + sounds" }
 end
 
 function ENT:CheckWaterLevel()
@@ -334,7 +341,6 @@ end
 local Abs = math.abs
 local Clamp = math.Clamp
 local Approach = math.Approach
-local TriggerOutput = WireLib and WireLib.TriggerOutput or nil
 
 --- Implement this base class function.
 function ENT:OnPostThink( dt, selfTbl )
@@ -382,7 +388,8 @@ function ENT:OnPostThink( dt, selfTbl )
 
                 if health > 0 then
                     self:SetEngineState( 2 )
-                    self:SetEngineThrottle( 2 )
+                    self:SetFlywheelRPM( self:GetMaxRPM() * 0.75 )
+                    self:EngineAccelerate( self.flywheelTorque * 2, dt )
                 else
                     self:SetEngineState( 0 )
                     Glide.PlaySoundSet( "Glide.Engine.CarStartTail", self )
@@ -460,7 +467,7 @@ function ENT:OnPostThink( dt, selfTbl )
 
     -- Update driver inputs
     self:UpdateSteering( dt )
-    self:SetIsBraking( self:GetInputBool( 1, "handbrake" ) or ( self.frontBrake + self.rearBrake ) > 0.1 )
+    self:SetBrakeValue( Clamp( self.frontBrake + self.rearBrake + ( self:GetInputBool( 1, "handbrake" ) and 1 or 0 ), 0, 1 ) )
 
     local phys = self:GetPhysicsObject()
 
@@ -706,5 +713,18 @@ function ENT:TriggerInput( name, value )
 
     elseif name == "TurnSignal" then
         self:ChangeTurnSignalState( value, true )
+
+    elseif name == "Siren" then
+        self:ChangeSirenState( Floor( value ) )
     end
+end
+
+-- Override some `Vehicle` metatable functions
+
+function ENT:GetRPM()
+    return self:GetEngineRPM()
+end
+
+function ENT:GetThrottle()
+    return self:GetEngineThrottle()
 end

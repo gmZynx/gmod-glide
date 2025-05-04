@@ -45,6 +45,7 @@ function Config:Reset()
     -- Misc. settings
     self.showHUD = true
     self.showPassengerList = true
+    self.showCustomHealth = true
     self.showEmptyVehicleHealth = false
     self.showSkybox = true
     self.reduceTireParticles = false
@@ -143,6 +144,7 @@ function Config:Save( immediate )
 
         showHUD = self.showHUD,
         showPassengerList = self.showPassengerList,
+        showCustomHealth = self.showCustomHealth,
         showEmptyVehicleHealth = self.showEmptyVehicleHealth,
         showSkybox = self.showSkybox,
         reduceTireParticles = self.reduceTireParticles,
@@ -249,6 +251,7 @@ function Config:Load()
 
     LoadBool( "showHUD", true )
     LoadBool( "showPassengerList", true )
+    LoadBool( "showCustomHealth", true )
     LoadBool( "showEmptyVehicleHealth", false )
     LoadBool( "showSkybox", true )
     LoadBool( "reduceTireParticles", false )
@@ -752,6 +755,11 @@ function Config:OpenFrame()
         self:Save()
     end )
 
+    CreateToggle( panelMisc, L"misc.show_custom_health", self.showCustomHealth, function( value )
+        self.showCustomHealth = value
+        self:Save()
+    end )
+
     CreateToggle( panelMisc, L"misc.show_health_empty_vehicles", self.showEmptyVehicleHealth, function( value )
         self.showEmptyVehicleHealth = value
         self:Save()
@@ -829,6 +837,56 @@ function Config:OpenFrame()
             end )
         end, L"no" )
     end )
+
+    ----- Console variables -----
+    if not LocalPlayer():IsSuperAdmin() then return end
+
+    local panelCVars = frame:AddTab( "styledstrike/icons/feature_list.png", L"settings.cvars" )
+
+    CreateHeader( panelCVars, L"settings.cvars", 0 )
+
+    local cvarList = {
+        { name = "sbox_maxglide_vehicles", decimals = 0, min = 0, max = 100 },
+        { name = "sbox_maxglide_standalone_turrets", decimals = 0, min = 0, max = 100 },
+        { name = "sbox_maxglide_missile_launchers", decimals = 0, min = 0, max = 100 },
+        { name = "sbox_maxglide_projectile_launchers", decimals = 0, min = 0, max = 100 },
+        { name = "glide_gib_lifetime", decimals = 0, min = 0, max = 60 },
+        { name = "glide_gib_enable_collisions", decimals = 0, min = 0, max = 1 },
+
+        { name = "glide_ragdoll_enable", decimals = 0, min = 0, max = 1 },
+        { name = "glide_ragdoll_max_time", decimals = 0, min = 0, max = 30 },
+
+        { category = "#tool.glide_turret.name" },
+        { name = "glide_turret_max_damage", decimals = 0, min = 0, max = 1000 },
+        { name = "glide_turret_min_delay", decimals = 2, min = 0, max = 1 },
+
+        { category = "#tool.glide_missile_launcher.name" },
+        { name = "glide_missile_launcher_min_delay", decimals = 2, min = 0.1, max = 5 },
+        { name = "glide_missile_launcher_max_lifetime", decimals = 1, min = 1, max = 30 },
+        { name = "glide_missile_launcher_max_radius", decimals = 0, min = 10, max = 1000 },
+        { name = "glide_missile_launcher_max_damage", decimals = 0, min = 0, max = 1000 },
+
+        { category = "#tool.glide_projectile_launcher.name" },
+        { name = "glide_projectile_launcher_min_delay", decimals = 2, min = 0.1, max = 5 },
+        { name = "glide_projectile_launcher_max_lifetime", decimals = 1, min = 1, max = 30 },
+        { name = "glide_projectile_launcher_max_radius", decimals = 0, min = 10, max = 1000 },
+        { name = "glide_projectile_launcher_max_damage", decimals = 0, min = 0, max = 1000 },
+    }
+
+    local NOOP = function() end
+
+    for _, data in ipairs( cvarList ) do
+        if data.category then
+            CreateHeader( panelCVars, L( "settings.cvars" ) .. ": " ..  language.GetPhrase( data.category ) )
+        else
+            local cvar = GetConVar( data.name )
+
+            if cvar then
+                local slider = CreateSlider( panelCVars, data.name, cvar:GetFloat(), data.min, data.max, data.decimals, NOOP )
+                slider:SetConVar( data.name )
+            end
+        end
+    end
 end
 
 local FrameTime = FrameTime
@@ -837,13 +895,10 @@ local Approach = math.Approach
 local glideVolume = 1
 
 hook.Add( "Tick", "Glide.CheckVoiceActivity", function()
-    local players = player.GetAll()
-    local ply, isAnyoneTalking = nil, false
+    local isAnyoneTalking = false
 
-    for i = 1, #players do
-        ply = players[i]
-
-        if ply:IsVoiceAudible() and ply:VoiceVolume() > 0.05 then
+    for _, ply in player.Iterator() do
+        if ply:IsValid() and ply:IsVoiceAudible() and ply:VoiceVolume() > 0.05 then
             isAnyoneTalking = true
             break
         end

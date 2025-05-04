@@ -60,24 +60,21 @@ function TOOL:LeftClick( trace )
     if not ply:CheckLimit( "glide_projectile_launchers" ) then return false end
 
     if SERVER then
-        ent = ents.Create( "glide_projectile_launcher" )
+        local normal = trace.HitNormal
+        local pos = trace.HitPos + normal * 5
+
+        ent = duplicator.CreateEntityFromTable( ply, {
+            Class = "glide_projectile_launcher",
+            Pos = pos,
+            Angle = normal:Angle() + Angle( 90, 0, 0 )
+        } )
+
         if not IsValid( ent ) then return false end
 
         undo.Create( self.Name )
         undo.AddEntity( ent )
         undo.SetPlayer( ply )
         undo.Finish()
-
-        ply:AddCount( "glide_projectile_launchers", ent )
-
-        local normal = trace.HitNormal
-        local pos = trace.HitPos + normal * 5
-
-        ent:SetPos( pos )
-        ent:SetAngles( normal:Angle() + Angle( 90, 0, 0 ) )
-        ent:SetCreator( ply )
-        ent:Spawn()
-        ent:Activate()
 
         self:UpdateProjectileLauncher( ent )
     end
