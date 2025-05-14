@@ -1,8 +1,3 @@
-function ENT:OnReloaded()
-    -- Let UpdateHeadlights recreate the lights
-    self.headlightState = 0
-end
-
 function ENT:OnHeadlightColorChange()
     -- Let UpdateHeadlights recreate the lights
     self.headlightState = 0
@@ -125,7 +120,7 @@ function ENT:UpdateLights()
     -- Handle sprites
     local allowLights = self:IsEngineOn() or headlightState > 0
 
-    lightState.brake = allowLights and self:GetIsBraking()
+    lightState.brake = allowLights and self:IsBraking()
     lightState.reverse = allowLights and self:IsReversing()
     lightState.headlight = headlightState > 0
     lightState.taillight = headlightState > 0

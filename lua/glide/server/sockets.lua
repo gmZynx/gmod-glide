@@ -29,6 +29,9 @@ function Glide.SocketConnect( plug, receptacle, forceLimit )
     local constr = constraint.Ballsocket( plugVeh, receptacleVeh, 0, 0, receptacle.offset, forceLimit, 0, 0 )
     if not IsValid( constr ) then return end
 
+    constr.DoNotDuplicate = true
+    constr.DisableDuplicator = true
+
     -- Store constraint on both sockets
     plug.constraint = constr
     receptacle.constraint = constr

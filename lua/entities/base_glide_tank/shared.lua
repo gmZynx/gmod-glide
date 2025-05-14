@@ -20,14 +20,6 @@ ENT.LowPitchAng = 10
 ENT.MaxYawSpeed = 50
 ENT.YawSpeed = 1500
 
---[[
-    For tanks, the values on Get/SetEngineState mean:
-
-    0 - Off
-    1 - Starting
-    2 - Running
-]]
-
 DEFINE_BASECLASS( "base_glide" )
 
 --- Override this base class function.
@@ -40,11 +32,6 @@ function ENT:SetupDataTables()
 
     self:NetworkVar( "Angle", "TurretAngle" )
     self:NetworkVar( "Bool", "IsAimingAtTarget" )
-end
-
---- Override this base class function.
-function ENT:IsEngineOn()
-    return self:GetEngineState() > 1
 end
 
 --- Override this base class function.

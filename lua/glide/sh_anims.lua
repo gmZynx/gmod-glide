@@ -139,11 +139,10 @@ end
 local ApplyBoneManipulations = Glide.ApplyBoneManipulations
 
 hook.Add( "PrePlayerDraw", "Glide.ManipulatePlayerBones", function( ply )
-    local vehicle = ply:GetNWEntity( "GlideVehicle", NULL )
+    local vehicle = ply:GlideGetVehicle()
 
     if IsValid( vehicle ) and vehicle.GetSeatBoneManipulations then
-        local seatIndex = ply:GetNWInt( "GlideSeatIndex", 1 )
-        local pose = vehicle:GetSeatBoneManipulations( seatIndex )
+        local pose = vehicle:GetSeatBoneManipulations( ply:GlideGetSeatIndex() )
 
         if pose then
             ApplyBoneManipulations( ply, pose )

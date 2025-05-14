@@ -1,13 +1,9 @@
 local RandomFloat = math.Rand
-local TraceLine = util.TraceLine
+local FindWaterSurfaceAbove = Glide.FindWaterSurfaceAbove
 
 local gravity = Vector( 0, 0, 0 )
 local startVel = Vector( 0, 0, 0 )
-local traceOffset = Vector( 0, 0, 50 )
 local WORLD_UP = Vector( 0, 0, 1 )
-
-local ray = {}
-local traceData = { mask = MASK_WATER, output = ray }
 
 function EFFECT:Init( data )
     local origin = data:GetOrigin()
@@ -21,14 +17,7 @@ function EFFECT:Init( data )
     if not IsValid( emitter ) then return end
 
     -- Try to find a water surface above the origin
-    traceData.start = origin + traceOffset
-    traceData.endpos = origin
-
-    TraceLine( traceData )
-
-    if ray.Hit then
-        origin = ray.HitPos
-    end
+    origin = FindWaterSurfaceAbove( origin ) or origin
 
     local right = WORLD_UP:Cross( normal )
     local p
@@ -37,7 +26,7 @@ function EFFECT:Init( data )
         p = emitter:Add( "effects/splash4", origin + right * RandomFloat( -length, length ) )
 
         if p then
-            p:SetDieTime( 0.5 )
+            p:SetDieTime( 0.3 )
             p:SetStartAlpha( 100 * magnitude )
             p:SetEndAlpha( 0 )
             p:SetStartSize( 5 * scale )
@@ -50,7 +39,7 @@ function EFFECT:Init( data )
             p:SetAirResistance( 200 )
             p:SetGravity( gravity )
             p:SetVelocity( velocity + startVel + normal * RandomFloat( 150, 350 ) * scale * magnitude )
-            p:SetColor( 255, 255, 255 )
+            p:SetColor( 200, 200, 200 )
             p:SetCollide( false )
         end
     end

@@ -28,22 +28,6 @@ function ENT:OnGearChange( _, _, gear )
     end
 end
 
---- Override this base class function.
-function ENT:OnEngineStateChange( _, lastState, state )
-    if state == 1 then
-        if self.rfSounds and self.rfSounds.isActive then
-            local snd = self:CreateLoopingSound( "start", Glide.GetRandomSound( self.StartSound ), 70, self )
-            snd:PlayEx( 1, 100 )
-        end
-
-    elseif lastState ~= 3 and state == 2 then
-        self:OnTurnOn()
-
-    elseif state == 0 then
-        self:OnTurnOff()
-    end
-end
-
 local GetVolume = Glide.Config.GetVolume
 
 --- Implement this base class function.
@@ -115,12 +99,6 @@ local Min = math.min
 function ENT:OnUpdateSounds()
     local sounds = self.sounds
 
-    if sounds.start and self:GetEngineState() ~= 1 then
-        sounds.start:Stop()
-        sounds.start = nil
-        Glide.PlaySoundSet( self.StartTailSound, self )
-    end
-
     local dt = FrameTime()
     local isSirenEnabled = self.lastSirenEnableTime and CurTime() - self.lastSirenEnableTime > 0.25
     local isHonking = self:GetIsHonking()
@@ -167,7 +145,7 @@ function ENT:OnUpdateSounds()
         self.fastBrakePressure = Min( isSlow and 0 or self.fastBrakePressure + dt, 1 )
     else
         if self.slowBrakePressure > 0.5 and self.BrakeSqueakSound ~= "" then
-            Glide.PlaySoundSet( self.BrakeReleaseSound, self, 0.8 )
+            Glide.PlaySoundSet( self.BrakeSqueakSound, self, 0.8 )
         end
 
         self.slowBrakePressure = 0
@@ -188,8 +166,12 @@ function ENT:OnUpdateSounds()
         sounds.brakeLoop = nil
 
         if self.BrakeReleaseSound ~= "" then
-            Glide.PlaySoundSet( self.BrakeSqueakSound, self, 0.8 )
+            Glide.PlaySoundSet( self.BrakeReleaseSound, self, 0.8 )
         end
+    end
+
+    if self.IsAmphibious then
+        self:DoWaterSounds()
     end
 
     if not self:IsEngineOn() then return end
@@ -217,15 +199,17 @@ function ENT:OnUpdateSounds()
     local stream = self.stream
 
     if not stream then
-        self.stream = Glide.CreateEngineStream( self )
+        if self:GetEngineState() < 3 then
+            self.stream = Glide.CreateEngineStream( self )
 
-        if self.streamJSONOverride then
-            self.stream:LoadJSON( self.streamJSONOverride )
-        else
-            self:OnCreateEngineStream( self.stream )
+            if self.streamJSONOverride then
+                self.stream:LoadJSON( self.streamJSONOverride )
+            else
+                self:OnCreateEngineStream( self.stream )
+            end
+
+            self.stream:Play()
         end
-
-        self.stream:Play()
 
         return
     end
@@ -436,6 +420,11 @@ function ENT:OnUpdateParticles()
                 Effect( "glide_exhaust", eff, true, true )
             end
         end
+    end
+
+    if self.IsAmphibious and self:GetWaterState() > 0 then
+        local throttle = self:GetGear() > 0 and self:GetEngineThrottle() or 0
+        self:DoWaterParticles( rpmFraction, throttle )
     end
 
     local health = self:GetEngineHealth()

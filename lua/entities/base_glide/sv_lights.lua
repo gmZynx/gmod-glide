@@ -17,6 +17,8 @@ function ENT:ChangeHeadlightState( state, dontPlaySound )
 end
 
 function ENT:ChangeTurnSignalState( state, dontPlaySound )
+    if not self.CanSwitchTurnSignals then return end
+
     state = math.Clamp( math.floor( state ), 0, 3 )
     self:SetTurnSignalState( state )
 
@@ -43,7 +45,7 @@ function ENT:UpdateLightBodygroups()
     local headlightState = self:GetHeadlightState()
     local allowLights = self:IsEngineOn() or headlightState > 0
 
-    lightState.brake = allowLights and self:GetIsBraking()
+    lightState.brake = allowLights and self:IsBraking()
     lightState.reverse = allowLights and self:IsReversing()
     lightState.headlight = headlightState > 0
 
@@ -53,7 +55,8 @@ function ENT:UpdateLightBodygroups()
     lightState.signal_left = signal == 1 or signal == 3
     lightState.signal_right = signal == 2 or signal == 3
 
-    local enable
+    local lastBodygroups = self.lastBodygroups
+    local enable, targetSubModel
 
     for _, l in ipairs( self.LightBodygroups ) do
         enable = lightState[l.type]
@@ -82,6 +85,11 @@ function ENT:UpdateLightBodygroups()
             enable = false
         end
 
-        self:SetBodygroup( l.bodyGroupId, enable and l.subModelId or 0 )
+        targetSubModel = enable and l.subModelId or 0
+
+        if lastBodygroups[l.bodyGroupId] ~= targetSubModel then
+            lastBodygroups[l.bodyGroupId] = targetSubModel
+            self:SetBodygroup( l.bodyGroupId, targetSubModel )
+        end
     end
 end

@@ -3,6 +3,11 @@ AddCSLuaFile( "cl_init.lua" )
 
 include( "shared.lua" )
 
+-- Store the TraceResult on this table instead of
+-- creating a new one every time. It's contents are
+-- overritten every time a wheel calls `util.TraceHull`.
+local ray = {}
+
 function ENT:Initialize()
     self:SetModel( "models/editor/axis_helper.mdl" )
     self:SetSolid( SOLID_NONE )
@@ -58,7 +63,10 @@ function ENT:Initialize()
     self.traceData = {
         mins = Vector(),
         maxs = Vector( 1, 1, 1 ),
-        collisiongroup = COLLISION_GROUP_WORLD
+        collisiongroup = COLLISION_GROUP_WORLD,
+
+        -- Output TraceResult to `ray`
+        output = ray
     }
 
     self.contractSoundCD = 0
@@ -254,7 +262,7 @@ local TractionRamp = Glide.TractionRamp
 
 -- Temporary variables
 local pos, ang, fw, rt, up, radius, maxLen
-local ray, fraction, contactPos, surfaceId, vel, velF, velR, absVelR
+local fraction, contactPos, surfaceId, vel, velF, velR, absVelR
 local offset, springForce, damperForce
 local surfaceGrip, maxTraction, brakeForce, forwardForce, signForwardForce
 local tractionCycle, gripLoss, groundAngularVelocity, angularVelocity = Vector()
@@ -285,12 +293,14 @@ function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfa
     traceData.start = pos
     traceData.endpos = pos - up * maxLen
 
-    ray = TraceHull( traceData )
+    -- TraceResult gets stored on the `ray` table
+    TraceHull( traceData )
+
     fraction = Clamp( ray.Fraction, radius / maxLen, 1 )
     contactPos = pos - maxLen * fraction * up
 
     -- Update ground contact NW variables
-    surfaceId = ray.MatType or 0
+    surfaceId = ray.Hit and ( ray.MatType or 0 ) or 0
     surfaceId = MAP_SURFACE_OVERRIDES[surfaceId] or surfaceId
 
     state.isOnGround = ray.Hit

@@ -40,7 +40,7 @@ if CLIENT then
         { offset = Vector( -235, 0, 8 ), angle = Angle( 270, 0, 0 ), scale = 0.9 }
     }
 
-    ENT.StartSoundPath = "glide/aircraft/start_4.wav"
+    ENT.StartSound = "glide/aircraft/start_4.wav"
     ENT.DistantSoundPath = "glide/aircraft/jet_stream.wav"
 
     ENT.PropSoundPath = "glide/aircraft/thrust_b11.wav"

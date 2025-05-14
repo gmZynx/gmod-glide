@@ -42,22 +42,6 @@ function ENT:OnLocalPlayerExit()
     self.isPredicted = false
 end
 
---- Override this base class function.
-function ENT:OnEngineStateChange( _, _, state )
-    if state == 1 then
-        if self.rfSounds and self.rfSounds.isActive then
-            local snd = self:CreateLoopingSound( "start", Glide.GetRandomSound( self.StartSound ), 70, self )
-            snd:PlayEx( 1, 100 )
-        end
-
-    elseif state == 2 then
-        self:OnTurnOn()
-
-    elseif state == 0 then
-        self:OnTurnOff()
-    end
-end
-
 --- Implement this base class function.
 function ENT:OnDeactivateSounds()
     if self.stream then
@@ -194,12 +178,6 @@ end
 --- Implement this base class function.
 function ENT:OnUpdateSounds()
     local sounds = self.sounds
-
-    if sounds.start and self:GetEngineState() ~= 1 then
-        sounds.start:Stop()
-        sounds.start = nil
-        Glide.PlaySoundSet( self.StartTailSound, self )
-    end
 
     if not self:IsEngineOn() then return end
 

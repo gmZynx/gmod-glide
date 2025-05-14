@@ -37,7 +37,7 @@ end
 if CLIENT then
 
     -- Play this sound at startup
-    ENT.StartSoundPath = "glide/helicopters/start_1.wav"
+    ENT.StartSound = "glide/helicopters/start_1.wav"
 
     -- Play this sound at the tail rotor
     ENT.TailSoundPath = "glide/helicopters/tail_rotor_1.wav"

@@ -18,16 +18,13 @@ ENT.CanSwitchSiren = false
 -- Does this vehicle have headlights?
 ENT.CanSwitchHeadlights = true
 
+-- Does this vehicle have turn signals?
+ENT.CanSwitchTurnSignals = true
+
+-- Can this vehicle drive over water?
+ENT.IsAmphibious = false
+
 DEFINE_BASECLASS( "base_glide" )
-
---[[
-    For cars, the values on Get/SetEngineState mean:
-
-    0 - Off
-    1 - Starting
-    2 - Running
-    3 - Shutting down or Ignition/Fuel cut-off
-]]
 
 --- Override this base class function.
 function ENT:SetupDataTables()
@@ -130,11 +127,6 @@ function ENT:UpdatePlayerPoseParameters( ply )
     end
 
     return true
-end
-
---- Override this base class function.
-function ENT:IsEngineOn()
-    return self:GetEngineState() > 1
 end
 
 --- Override this base class function.

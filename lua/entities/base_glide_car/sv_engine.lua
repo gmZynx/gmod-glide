@@ -57,7 +57,8 @@ function ENT:UpdateGearList()
     end
 end
 
-function ENT:OnReloaded()
+--- Override this base class function.
+function ENT:OnEntityReload()
     self:UpdateGearList()
 end
 
@@ -242,12 +243,26 @@ local throttle, gearTorque, availableTorque
 function ENT:EngineThink( dt )
     gear = self:GetGear()
 
+    local amphibiousMode = self.IsAmphibious and self:GetWaterState() > 0
+
     -- These variables are used both on `ENT:EngineClutch` and `ENT:EngineThink`
     inputThrottle = self:GetInputFloat( 1, "accelerate" )
     inputBrake = self:GetInputFloat( 1, "brake" )
     inputHandbrake = self:GetInputBool( 1, "handbrake" )
 
-    if self.burnout > 0 then
+    if amphibiousMode then
+        self.burnout = 0
+        self:BoatEngineThink( dt )
+        self:SetIsRedlining( false )
+
+        if inputThrottle > 0 then
+            self:SwitchGear( 1, 0 )
+
+        elseif inputBrake > 0 then
+            self:SwitchGear( -1, 0 )
+        end
+
+    elseif self.burnout > 0 then
         self:SwitchGear( 1, 0 )
 
         if inputThrottle < 0.1 or inputBrake < 0.1 then
@@ -279,7 +294,7 @@ function ENT:EngineThink( dt )
     rpm = self:GetFlywheelRPM()
 
     -- Handle auto-clutch
-    clutch = self:EngineClutch( dt )
+    clutch = amphibiousMode and 1 or self:EngineClutch( dt )
 
     -- Do a burnout when holding down the throttle and brake inputs
     if inputThrottle > 0.1 and inputBrake > 0.1 and Abs( self.forwardSpeed ) < 50 then
@@ -407,10 +422,50 @@ function ENT:EngineThink( dt )
     self.availableFrontTorque = availableTorque * front
     self.availableRearTorque = availableTorque * rear
 
-    -- Accelerate the engine flywheel and update network variables
-    throttle = Approach( throttle, inputThrottle, dt * 4 )
+    if not amphibiousMode then
+        -- Accelerate the engine flywheel and update network variables
+        throttle = Approach( throttle, inputThrottle, dt * 4 )
 
-    self:EngineAccelerate( self.flywheelFriction + self.flywheelTorque * throttle, dt )
-    self:SetEngineThrottle( throttle )
-    self:SetIsRedlining( isRedlining and inputThrottle > 0 )
+        self:EngineAccelerate( self.flywheelFriction + self.flywheelTorque * throttle, dt )
+        self:SetEngineThrottle( throttle )
+        self:SetIsRedlining( isRedlining and inputThrottle > 0 )
+    end
+end
+
+local ExpDecay = Glide.ExpDecay
+
+function ENT:BoatEngineThink( dt )
+    local waterState = self:GetWaterState()
+    local speed = self.forwardSpeed
+
+    if self.reducedThrottle then
+        inputThrottle = inputThrottle * 0.65
+    end
+
+    throttle = 0
+
+    if Abs( speed ) > 20 or waterState > 0 then
+        throttle = inputThrottle - inputBrake
+    end
+
+    self:SetEngineThrottle( ExpDecay( self:GetEngineThrottle(), Abs( throttle ), 5, dt ) )
+
+    local power = Abs( throttle )
+
+    if throttle < 0 then
+        power = power * Clamp( -speed / self.BoatParams.maxSpeed * 4, 0, 1 )
+        power = power * 0.4
+
+    elseif waterState > 0 then
+        power = power * ( 0.4 + Clamp( Abs( speed ) / self.BoatParams.maxSpeed, 0, 1 ) * 0.6 )
+        power = power * ( waterState > 1 and 0.6 or 1 )
+    end
+
+    local minRPM = self:GetMinRPM()
+    local rpmRange = self:GetMaxRPM() - minRPM
+    local currentPower = ( self:GetEngineRPM() - minRPM ) / rpmRange
+
+    currentPower = ExpDecay( currentPower, power, 2 + power * 2, dt )
+
+    self:SetFlywheelRPM( minRPM + rpmRange * currentPower )
 end

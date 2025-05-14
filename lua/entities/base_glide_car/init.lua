@@ -158,20 +158,10 @@ end
 
 --- Override this base class function.
 function ENT:TurnOn()
+    BaseClass.TurnOn( self )
+
     self.reducedThrottle = false
     self:SetGear( 0 )
-
-    local state = self:GetEngineState()
-
-    if state == 3 then
-        self:SetEngineState( 2 )
-        return
-    end
-
-    if state ~= 2 then
-        self:SetEngineState( 1 )
-    end
-
     self:SetFlywheelRPM( 0 )
 end
 
@@ -180,7 +170,6 @@ function ENT:TurnOff()
     BaseClass.TurnOff( self )
 
     self:SetIsHonking( false )
-    self:SetEngineState( 3 )
     self:SetGear( 0 )
     self.startupTimer = nil
 
@@ -229,13 +218,6 @@ function ENT:OnSeatInput( seatIndex, action, pressed )
             icon = "materials/glide/icons/" .. ( self.reducedThrottle and "play_next" or "fast_forward" ) .. ".png",
             immediate = true
         } )
-
-    elseif action == "toggle_engine" then
-        if self:GetEngineState() == 0 then
-            self:TurnOn()
-        else
-            self:TurnOff()
-        end
 
     elseif action == "accelerate" and self:GetEngineState() == 0 then
         self:TurnOn()
@@ -307,16 +289,13 @@ function ENT:SetupWiremodPorts( inputs, outputs )
 
     inputs[#inputs + 1] = { "Ignition", "NORMAL", "1: Turn the engine on\n0: Turn the engine off" }
     inputs[#inputs + 1] = { "Steer", "NORMAL", "A value between -1.0 and 1.0" }
-    inputs[#inputs + 1] = { "Throttle", "NORMAL", "A value between 0.0 and 1.0\nAlso acts brake input when reversing." }
-    inputs[#inputs + 1] = { "Brake", "NORMAL", "A value between 0.0 and 1.0\nAlso acts throttle input when reversing." }
+    inputs[#inputs + 1] = { "Throttle", "NORMAL", "A value between 0.0 and 1.0\nAlso acts as brake input when reversing." }
+    inputs[#inputs + 1] = { "Brake", "NORMAL", "A value between 0.0 and 1.0\nAlso acts as throttle input when reversing." }
     inputs[#inputs + 1] = { "Handbrake", "NORMAL", "A value larger than 0 will set the handbrake" }
-    inputs[#inputs + 1] = { "Headlights", "NORMAL", "0: Off\n1: Low beams\n2: High beams" }
     inputs[#inputs + 1] = { "Horn", "NORMAL", "Set to 1 to sound the horn" }
-    inputs[#inputs + 1] = { "TurnSignal", "NORMAL", "0: Off\n1: Left-turn signal\n2: Right-turn signal\n3: Hazard lights" }
 
     outputs[#outputs + 1] = { "MaxGear", "NORMAL", "Highest gear available for this vehicle" }
     outputs[#outputs + 1] = { "Gear", "NORMAL", "Current engine gear" }
-    outputs[#outputs + 1] = { "EngineState", "NORMAL", "0: Off\n1: Starting\n2: Running\n3: Shutting down/Ignition cut-off" }
     outputs[#outputs + 1] = { "EngineRPM", "NORMAL", "Current engine RPM" }
     outputs[#outputs + 1] = { "MaxRPM", "NORMAL", "Max. engine RPM" }
 
@@ -358,7 +337,6 @@ function ENT:OnPostThink( dt, selfTbl )
         local maxRPM = self:GetMaxRPM()
         TriggerOutput( self, "MaxRPM", maxRPM )
         TriggerOutput( self, "Gear", self:GetGear() )
-        TriggerOutput( self, "EngineState", state )
         TriggerOutput( self, "EngineRPM", Clamp( self:GetFlywheelRPM(), 0, maxRPM ) )
 
         if selfTbl.wireSetEngineOn ~= nil then
@@ -421,18 +399,6 @@ function ENT:OnPostThink( dt, selfTbl )
     end
 
     if self:IsEngineOn() then
-        -- Make sure the physics stay awake,
-        -- otherwise the driver's input won't do anything.
-        local phys = self:GetPhysicsObject()
-
-        if IsValid( phys ) and phys:IsAsleep() then
-            local driverInput = self:GetInputFloat( 1, "accelerate" ) + self:GetInputFloat( 1, "brake" )
-
-            if Abs( driverInput ) > 0.01 then
-                phys:Wake()
-            end
-        end
-
         -- Ignition cut-off, slowdown the flywheel and then turn off
         if state == 3 then
             local rpm = self:GetFlywheelRPM()
@@ -503,7 +469,6 @@ function ENT:UpdateSteering( dt )
     inputSteer = ExpDecay( self.inputSteer, inputSteer * steerCone, self:GetSteerConeChangeRate(), dt )
 
     self.inputSteer = inputSteer
-    self:SetSteering( inputSteer )
 
     -- Counter-steer when slipping, going fast and not using steer input
     local counterSteer = sideSlip * steerConeFactor * ( 1 - absInputSteer )
@@ -511,6 +476,7 @@ function ENT:UpdateSteering( dt )
     counterSteer = Clamp( counterSteer, -1, 1 ) * self:GetCounterSteer()
     inputSteer = Clamp( inputSteer + counterSteer, -1, 1 )
 
+    self:SetSteering( inputSteer )
     self.steerAngle[2] = -inputSteer * self:GetMaxSteerAngle()
 
     -- Reduce front wheel sideways friction when trying to do a J-turn 
@@ -611,6 +577,16 @@ function ENT:CreateWheel( offset, params )
     return wheel
 end
 
+--- Implement this base class function.
+function ENT:OnSimulatePhysics( phys, dt, outLin, outAng )
+    if self.IsAmphibious then
+        local throttle = self:IsEngineOn() and self:GetEngineThrottle() or 0
+        throttle = self:GetGear() == -1 and -throttle or throttle
+
+        self:SimulateBoat( phys, dt, outLin, outAng, throttle, self:GetInputFloat( 1, "steer" ) )
+    end
+end
+
 local traction, tractionFront, tractionRear
 local frontTorque, rearTorque, steerAngle, frontBrake, rearBrake
 local groundedCount, rpm, avgRPM, totalSideSlip, totalForwardSlip, state
@@ -705,14 +681,8 @@ function ENT:TriggerInput( name, value )
             self.inputManualShift = false
         end
 
-    elseif name == "Headlights" then
-        self:ChangeHeadlightState( Floor( value ), true )
-
     elseif name == "Horn" then
         self:SetIsHonking( value > 0 )
-
-    elseif name == "TurnSignal" then
-        self:ChangeTurnSignalState( value, true )
 
     elseif name == "Siren" then
         self:ChangeSirenState( Floor( value ) )

@@ -18,9 +18,11 @@ function EFFECT:Init( data )
 
     local color = 255 * Clamp( health * 3, 0, 1 )
     local alpha = 120 * Clamp( 1 - health, 0, 1 )
+    local speed = velocity:Length()
 
-    velocity[3] = velocity[3] + Clamp( velocity:Length() * 0.3, 0, maxZVel )
+    velocity[3] = velocity[3] + Clamp( speed * 0.3, 0, maxZVel )
 
+    local dieTime = 0.8 - Clamp( speed * 0.0005, 0, 0.7 )
     local gravity = Vector( velocity[1], velocity[2], 0 )
     local right = angles:Right()
     local forward = angles:Forward()
@@ -28,7 +30,7 @@ function EFFECT:Init( data )
     for _ = 1, 10 do
         local p = emitter:Add( SMOKE_MAT .. RandomInt( 9 ), origin + right * RandomFloat( -width, width ) )
         if p then
-            p:SetDieTime( 0.8 )
+            p:SetDieTime( dieTime )
             p:SetStartAlpha( alpha )
             p:SetEndAlpha( 0 )
             p:SetStartSize( 3 * scale )

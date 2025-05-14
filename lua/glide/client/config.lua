@@ -53,6 +53,7 @@ function Config:Reset()
 
     self.maxSkidMarkPieces = 500
     self.maxTireRollPieces = 400
+    self.skidmarkTimeLimit = 15
 
     self.manualGearShifting = false
     self.autoHeadlightOn = true
@@ -141,6 +142,7 @@ function Config:Save( immediate )
         -- Misc. settings
         maxSkidMarkPieces = self.maxSkidMarkPieces,
         maxTireRollPieces = self.maxTireRollPieces,
+        skidmarkTimeLimit = self.skidmarkTimeLimit,
 
         showHUD = self.showHUD,
         showPassengerList = self.showPassengerList,
@@ -248,6 +250,7 @@ function Config:Load()
     -- Misc. settings
     SetNumber( self, "maxSkidMarkPieces", data.maxSkidMarkPieces, 0, 1000, self.maxSkidMarkPieces )
     SetNumber( self, "maxTireRollPieces", data.maxTireRollPieces, 0, 1000, self.maxTireRollPieces )
+    SetNumber( self, "skidmarkTimeLimit", data.skidmarkTimeLimit, 3, 300, self.skidmarkTimeLimit )
 
     LoadBool( "showHUD", true )
     LoadBool( "showPassengerList", true )
@@ -743,6 +746,12 @@ function Config:OpenFrame()
         self:ApplySkidMarkLimits()
     end )
 
+    CreateSlider( panelMisc, L"misc.skid_mark_time", self.skidmarkTimeLimit, 3, 300, 0, function( value )
+        self.skidmarkTimeLimit = value
+        self:Save()
+        self:ApplySkidMarkLimits()
+    end )
+
     CreateHeader( panelMisc, L"settings.misc" )
 
     CreateToggle( panelMisc, L"misc.show_hud", self.showHUD, function( value )
@@ -897,8 +906,8 @@ local glideVolume = 1
 hook.Add( "Tick", "Glide.CheckVoiceActivity", function()
     local isAnyoneTalking = false
 
-    for _, ply in player.Iterator() do
-        if ply:IsValid() and ply:IsVoiceAudible() and ply:VoiceVolume() > 0.05 then
+    for _, ply in ipairs( player.GetAll() ) do
+        if ply:IsVoiceAudible() and ply:VoiceVolume() > 0.05 then
             isAnyoneTalking = true
             break
         end

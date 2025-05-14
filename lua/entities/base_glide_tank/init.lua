@@ -39,11 +39,7 @@ end
 
 --- Override this base class function.
 function ENT:TurnOn()
-    local state = self:GetEngineState()
-
-    if state ~= 2 then
-        self:SetEngineState( 1 )
-    end
+    BaseClass.TurnOn( self )
 
     self:SetEngineThrottle( 0 )
     self:SetEnginePower( 0 )
@@ -58,19 +54,6 @@ function ENT:TurnOff()
     self.availableTorqueR = 0
     self.isTurningInPlace = false
     self.brake = 0.5
-end
-
---- Implement this base class function.
-function ENT:OnSeatInput( seatIndex, action, pressed )
-    if not pressed or seatIndex > 1 then return end
-
-    if action == "toggle_engine" then
-        if self:GetEngineState() == 0 then
-            self:TurnOn()
-        else
-            self:TurnOff()
-        end
-    end
 end
 
 --- Override this base class function.
@@ -248,25 +231,21 @@ function ENT:OnPostThink( dt, selfTbl )
             local startupTime = health < 0.5 and math.Rand( 1, 2 ) or selfTbl.StartupTime
             selfTbl.startupTimer = CurTime() + startupTime
         end
+
+    elseif state == 3 then
+        -- This vehicle does not do a "shutdown" sequence.
+        self:SetEngineState( 0 )
     end
 
     if self:IsEngineOn() then
         self:UpdateEngine( dt )
 
-        -- Make sure the physics stay awake when necessary,
-        -- otherwise the driver's input won't do anything.
         local phys = self:GetPhysicsObject()
 
         if IsValid( phys ) and phys:IsAsleep() then
             self:SetTrackSpeed( 0 )
             selfTbl.availableTorqueL = 0
             selfTbl.availableTorqueR = 0
-
-            local driverInput = self:GetInputFloat( 1, "accelerate" ) + self:GetInputFloat( 1, "brake" ) + self:GetInputFloat( 1, "steer" )
-
-            if Abs( driverInput ) > 0.01 then
-                phys:Wake()
-            end
         end
     end
 

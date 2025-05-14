@@ -7,37 +7,6 @@ ENT.AutomaticFrameAdvance = true
 --- Implement this base class function.
 function ENT:OnPostInitialize()
     self.streamJSONOverride = nil
-    self.enginePower = 0
-    self.waterSideSlide = 0
-end
-
---- Override this base class function.
-function ENT:OnEngineStateChange( _, lastState, state )
-    if state == 1 then
-        if self.rfSounds and self.rfSounds.isActive then
-            local snd = self:CreateLoopingSound( "start", Glide.GetRandomSound( self.StartSound ), 70, self )
-            snd:PlayEx( 1, 100 )
-        end
-
-    elseif lastState == 1 and state == 2 then
-        self:OnTurnOn()
-
-    elseif state == 0 then
-        self:OnTurnOff()
-    end
-end
-
-local PlaySoundSet = Glide.PlaySoundSet
-
-function ENT:OnWaterStateChange( _, _, state )
-    if not self.rfSounds then return end
-    if not self.rfSounds.isActive then return end
-
-    local speed = self:GetVelocity():Length()
-
-    if state > 0 and speed > 10 then
-        PlaySoundSet( self.FallOnWaterSound, self, speed / 400 )
-    end
 end
 
 local GetVolume = Glide.Config.GetVolume
@@ -59,16 +28,6 @@ function ENT:OnTurnOff()
 end
 
 --- Implement this base class function.
-function ENT:OnActivateMisc()
-    self.enginePower = 0
-end
-
---- Implement this base class function.
-function ENT:OnActivateSounds()
-    self.waterSideSlide = 0
-end
-
---- Implement this base class function.
 function ENT:OnDeactivateSounds()
     if self.stream then
         self.stream:Destroy()
@@ -84,17 +43,10 @@ end
 local Abs = math.abs
 local Clamp = math.Clamp
 local FrameTime = FrameTime
-local ExpDecay = Glide.ExpDecay
 
 --- Implement this base class function.
 function ENT:OnUpdateSounds()
     local sounds = self.sounds
-
-    if sounds.start and self:GetEngineState() ~= 1 then
-        sounds.start:Stop()
-        sounds.start = nil
-        Glide.PlaySoundSet( self.StartTailSound, self )
-    end
 
     local dt = FrameTime()
     local isHonking = self:GetIsHonking()
@@ -118,63 +70,7 @@ function ENT:OnUpdateSounds()
         end
     end
 
-    -- Water sounds
-    local localVelocity = self:WorldToLocal( self:GetPos() + self:GetVelocity() )
-    local speed = localVelocity:Length()
-    local waterState = self:GetWaterState()
-
-    if waterState > 0 and speed > 50 then
-        local vol = Clamp( speed / 1000, 0, 1 ) * self.FastWaterVolume
-        local pitch = self.FastWaterPitch + ( self.FastWaterPitch * vol * 0.5 )
-
-        if sounds.fastWater then
-            sounds.fastWater:ChangeVolume( vol )
-            sounds.fastWater:ChangePitch( pitch )
-        else
-            local snd = self:CreateLoopingSound( "fastWater", self.FastWaterLoop, 85, self )
-            snd:PlayEx( vol, pitch )
-        end
-
-    elseif sounds.fastWater then
-        sounds.fastWater:Stop()
-        sounds.fastWater = nil
-    end
-
-    if waterState > 0 and speed < 300 then
-        local vol = 1 - Clamp( speed / 300, 0, 1 )
-        vol = vol * self.CalmWaterVolume
-
-        if sounds.calmWater then
-            sounds.calmWater:ChangeVolume( vol )
-        else
-            local snd = self:CreateLoopingSound( "calmWater", self.CalmWaterLoop, 65, self )
-            snd:PlayEx( vol, self.CalmWaterPitch )
-        end
-
-    elseif sounds.calmWater then
-        sounds.calmWater:Stop()
-        sounds.calmWater = nil
-    end
-
-    local sideSlide = Clamp( Abs( localVelocity[2] / 500 ), 0, 1 )
-
-    sideSlide = ExpDecay( self.waterSideSlide, waterState > 0 and sideSlide or 0, 4, dt )
-    self.waterSideSlide = sideSlide
-
-    if sideSlide > 0.1 then
-        sideSlide = sideSlide * self.WaterSideSlideVolume
-
-        if sounds.waterSlide then
-            sounds.waterSlide:ChangeVolume( sideSlide )
-        else
-            local snd = self:CreateLoopingSound( "waterSlide", self.WaterSideSlideLoop, 85, self )
-            snd:PlayEx( sideSlide, self.WaterSideSlidePitch )
-        end
-
-    elseif sounds.waterSlide then
-        sounds.waterSlide:Stop()
-        sounds.waterSlide = nil
-    end
+    self:DoWaterSounds()
 
     if not self:IsEngineOn() then return end
 
@@ -221,75 +117,12 @@ end
 
 local Effect = util.Effect
 local EffectData = EffectData
-local IsUnderWater = Glide.IsUnderWater
 
 local DEFAULT_ANG = Angle()
 
 --- Implement this base class function.
 function ENT:OnUpdateParticles()
-    local vel = self:GetVelocity()
-    local power = self:GetEnginePower()
-    local throttle = self:GetEngineThrottle()
-
-    if throttle > 0.1 then
-        local eff = EffectData()
-        local dir = -self:GetForward()
-
-        throttle = ( throttle * 0.5 ) + Clamp( power * 2, 0, 1 ) * 0.5
-
-        for _, offset in ipairs( self.PropellerPositions ) do
-            offset = self:LocalToWorld( offset )
-
-            if IsUnderWater( offset ) then
-                eff:SetOrigin( offset )
-                eff:SetStart( vel )
-                eff:SetNormal( dir )
-                eff:SetScale( 1 )
-                eff:SetMagnitude( throttle )
-                Effect( "glide_boat_propeller", eff )
-            end
-        end
-    end
-
-    local waterState = self:GetWaterState()
-    local speed = vel:Length()
-
-    if waterState > 0 and speed > 50 then
-        local right = self:GetRight()
-        local mins, maxs = self:OBBMins(), self:OBBMaxs()
-
-        local pos = Vector( mins[1] * 0.8, 0, mins[3] )
-        local magnitude = Clamp( speed / 1000, 0, 1 )
-        local scale = self.WaterParticlesScale
-
-        local eff = EffectData()
-        eff:SetOrigin( self:LocalToWorld( pos ) )
-        eff:SetStart( vel )
-        eff:SetScale( scale )
-        eff:SetMagnitude( magnitude )
-        Effect( "glide_boat_foam", eff )
-
-        if waterState > 1 then
-            local length = maxs[1] * 0.75
-
-            pos[1] = 0
-            pos[2] = mins[2] * 0.75
-
-            eff:SetOrigin( self:LocalToWorld( pos ) )
-            eff:SetScale( scale )
-            eff:SetNormal( right )
-            eff:SetRadius( length )
-            Effect( "glide_boat_splash", eff )
-
-            pos[2] = maxs[2] * 0.75
-
-            eff:SetOrigin( self:LocalToWorld( pos ) )
-            eff:SetScale( scale )
-            eff:SetNormal( -right )
-            eff:SetRadius( length )
-            Effect( "glide_boat_splash", eff )
-        end
-    end
+    self:DoWaterParticles( self:GetEnginePower(), self:GetEngineThrottle() )
 
     local health = self:GetEngineHealth()
     if health > 0.5 then return end

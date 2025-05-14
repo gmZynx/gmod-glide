@@ -29,6 +29,10 @@ function Glide.CreateExplosion( pos, normal, explosionType )
         end
 
         if isUnderWater then
+            if not isTurret then
+                EmitSound( ")glide/collisions/land_on_water_1.wav", pos, 0, 6, volume, 90 )
+            end
+
             EmitSound( "WaterExplosionEffect.Sound", pos, 0, 6, volume, 100 )
         else
             if not isTurret then
@@ -40,6 +44,8 @@ function Glide.CreateExplosion( pos, normal, explosionType )
     end
 
     if isUnderWater then
+        pos = Glide.FindWaterSurfaceAbove( pos, 500 ) or pos
+
         local eff = EffectData()
         eff:SetOrigin( pos )
         eff:SetScale( 100 )

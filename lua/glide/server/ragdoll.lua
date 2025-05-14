@@ -355,7 +355,7 @@ hook.Add( "PlayerDisconnected", "Glide.CleanupPlayerRagdolls", function( ply )
 end )
 
 hook.Add( "PreCleanupMap", "Glide.CleanupPlayerRagdolls", function()
-    for _, ply in player.Iterator() do
+    for _, ply in ipairs( player.GetAll() ) do
         Glide.UnRagdollPlayer( ply )
     end
 end )

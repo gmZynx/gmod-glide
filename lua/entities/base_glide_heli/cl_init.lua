@@ -17,7 +17,7 @@ end
 --- Implement this base class function.
 function ENT:OnTurnOn()
     if self:GetPower() < 0.1 then
-        self:EmitSound( self.StartSoundPath, 80, 100, 0.6 )
+        self:EmitSound( self.StartSound, 80, 100, 0.6 )
     end
 end
 

@@ -113,6 +113,20 @@ commands[Glide.CMD_SYNC_SOUND_ENTITY_MODIFIER] = function()
     end
 end
 
+commands[Glide.CMD_SET_CURRENT_VEHICLE] = function()
+    local ply = LocalPlayer()
+    local vehicle = net.ReadEntity()
+
+    -- BUG: ReadEntity returns `worldspawn` if a NULL entity was sent.
+    -- In that case, calling IsValid on `worldspawn` returns false.
+    if not IsValid( vehicle ) then
+        vehicle = NULL
+    end
+
+    ply.GlideCurrentVehicle = vehicle
+    ply.GlideCurrentSeatIndex = net.ReadUInt( 6 )
+end
+
 net.Receive( "glide.command", function()
     local cmd = net.ReadUInt( Glide.CMD_SIZE )
 

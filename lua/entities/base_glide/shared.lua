@@ -21,8 +21,20 @@ ENT.MaxChassisHealth = 1000
 -- Does this vehicle have headlights?
 ENT.CanSwitchHeadlights = false
 
+-- Does this vehicle have turn signals?
+ENT.CanSwitchTurnSignals = false
+
 -- How long is the on/off cycle for turn signals?
 ENT.TurnSignalCycle = 0.8
+
+--[[
+    For all vehicles, the values on Get/SetEngineState mean:
+
+    0 - Off
+    1 - Starting
+    2 - Running
+    3 - Shutting down or Ignition/Fuel cut-off
+]]
 
 function ENT:SetupDataTables()
     -- Setup default network variables. Do not override these slots
@@ -45,10 +57,22 @@ function ENT:SetupDataTables()
     self:NetworkVar( "Int", "TurnSignalState" )
     self:NetworkVar( "Int", "ConnectedReceptacleCount" )
 
+    --[[
+        0: Not on water
+        1: At least one buoyancy point is on water
+        2: At least half of the buoyancy points are on water
+        3: Fully submerged
+    ]]
+    self:NetworkVar( "Int", "WaterState" )
+
+    if CLIENT then
+        self:NetworkVarNotify( "WaterState", self.OnWaterStateChange )
+    end
+
     -- Headlight color can be edited if it's available
     local editData = nil
 
-    if true then
+    if self.CanSwitchHeadlights then
         editData = { KeyName = "HeadlightColor", Edit = { type = "VectorColor", order = 0, category = "#glide.settings" } }
     end
 
@@ -67,10 +91,10 @@ function ENT:SetupDataTables()
     self:SetHeadlightState( 0 )
     self:SetTurnSignalState( 0 )
 
-    if CLIENT then
-        -- Callback used to run `OnTurnOn` and `OnTurnOff` clientside
-        self:NetworkVarNotify( "EngineState", self.OnEngineStateChange )
+    -- Callback used to run `ENT:OnTurnOn` and `ENT:OnTurnOff`
+    self:NetworkVarNotify( "EngineState", self.OnEngineStateChange )
 
+    if CLIENT then
         -- Callback used to run `OnSwitchWeapon` clientside
         self:NetworkVarNotify( "WeaponIndex", self.OnWeaponIndexChange )
 
@@ -91,27 +115,32 @@ end
 
 -- You can safely override these on children classes
 function ENT:IsEngineOn()
-    return self:GetEngineState() > 0
+    return self:GetEngineState() > 1
 end
 
--- You can safely override these on children classes.
+-- You can safely override this on children classes.
 -- Used to update bodygroups and draw sprites while in reverse gear.
 function ENT:IsReversing()
     return false
 end
 
-function ENT:GetIsBraking()
+-- You can safely override this on children classes.
+-- Used to update bodygroups and draw sprites while braking.
+function ENT:IsBraking()
     return self:GetBrakeValue() > 0.1
 end
 
+-- You can safely override these on children classes.
 function ENT:OnPostInitialize() end
+function ENT:OnEntityReload() end
 function ENT:OnTurnOn() end
 function ENT:OnTurnOff() end
 function ENT:OnSwitchWeapon( _weaponIndex ) end
 function ENT:UpdatePlayerPoseParameters( _ply ) return false end
 
--- drive_airboat, drive_pd, sit, sit_rollercoaster
 function ENT:GetPlayerSitSequence( seatIndex )
+    -- Some sequences I'm aware of are:
+    -- drive_airboat, drive_pd, sit, sit_rollercoaster
     return seatIndex > 1 and "sit" or "drive_jeep"
 end
 
@@ -140,6 +169,10 @@ if CLIENT then
     -- Setup how far away players can hear sounds and update misc. features
     ENT.MaxSoundDistance = 6000
     ENT.MaxMiscDistance = 3000
+
+    -- Startup/ignition sounds, leave empty to disable
+    ENT.StartSound = ""
+    ENT.StartTailSound = ""
 
     -- Set label/icons for each weapon slot.
     -- This should contain a array of tables, where each table looks like these:
@@ -176,6 +209,32 @@ if CLIENT then
     ENT.TurnSignalVolume = 0.75
     ENT.TurnSignalTickOnSound = ")glide/headlights_on.wav"
     ENT.TurnSignalTickOffSound = ")glide/headlights_off.wav"
+
+    --[[
+        Sounds played when floating over water surfaces.
+        These are audible only if your vehicle/vehicle base calls `ENT:DoWaterSounds`.
+    ]]
+    ENT.FallOnWaterSound = "Glide.Collision.BoatLandOnWater"
+
+    ENT.WaterSideSlideLoop = ")ambient/levels/canals/dam_water_loop2.wav"
+    ENT.WaterSideSlideVolume = 0.8
+    ENT.WaterSideSlidePitch = 255
+
+    ENT.FastWaterLoop = "vehicles/airboat/pontoon_fast_water_loop1.wav"
+    ENT.FastWaterPitch = 110
+    ENT.FastWaterVolume = 0.5
+
+    ENT.CalmWaterLoop = ")vehicles/airboat/pontoon_stopped_water_loop1.wav"
+    ENT.CalmWaterPitch = 100
+    ENT.CalmWaterVolume = 0.9
+
+    -- Offsets where propeller particle effects are emitted.
+    -- These are visible only if your vehicle/vehicle base calls `ENT:DoWaterParticles`.
+    ENT.PropellerPositions = {}
+
+    -- Size multiplier for water foam/splash effects.
+    -- They are visible only if your vehicle/vehicle base calls `ENT:DoWaterParticles`.
+    ENT.WaterParticlesScale = 1
 
     -- You can safely override these on children classes.
     function ENT:ShouldActivateSounds() return true end
@@ -296,6 +355,41 @@ if SERVER then
     ]]
     ENT.Sockets = {}
 
+    --[[
+        The following parameters are relevant only if
+        the vehicle calls the `ENT:SimulateBoat` function.
+    ]]
+
+    -- If you have not overritten `ENT:GetBuoyancyOffsets`,
+    -- this variable moves the auto-generated points on the Z axis.
+    ENT.BuoyancyPointsZOffset = 5
+
+    -- If you have not overritten `ENT:GetBuoyancyOffsets`,
+    -- this variable spaces out the auto-generated points on the X axis.
+    ENT.BuoyancyPointsXSpacing = 0.6
+
+    -- If you have not overritten `ENT:GetBuoyancyOffsets`,
+    -- this variable spaces out the auto-generated points on the Y axis.
+    ENT.BuoyancyPointsYSpacing = 0.6
+
+    -- Drag & force constants for floating on water.
+    ENT.BoatParams = {
+        waterLinearDrag = Vector( 0.2, 1.5, 0.02 ), -- (Forward, right, up)
+        waterAngularDrag = Vector( -5, -20, -15 ), -- (Roll, pitch, yaw)
+
+        buoyancy = 6,           -- How strong is the buoyancy force on each buoyancy point?
+        buoyancyDepth = 30,     -- How far from the water surface each buoyancy point have to be for the `buoyancy` to fully apply?
+
+        turbulanceForce = 100,  -- Force to wobble the vehicle
+        alignForce = 800,       -- Force to align the vehicle towards the direction of movement
+        maxSpeed = 1000,        -- Stop applying `engineForce` once the vehicle hits this speed
+
+        engineForce = 500,
+        engineLiftForce = 1300, -- Pitch the vehicle up when accelerating
+        turnForce = 1200,
+        rollForce = 200         -- Roll the vehicle when turning
+    }
+
     -- If Wiremod is installed, this function gets called to add
     -- inputs/outputs to be created when the vehicle is initialized.
     -- Children classes can override this function, but they should
@@ -306,10 +400,19 @@ if SERVER then
         inputs[#inputs + 1] = { "EjectDriver", "NORMAL", "When set to 1, kicks the driver out of the vehicle" }
         inputs[#inputs + 1] = { "LockVehicle", "NORMAL", "When set to 1, only the vehicle creator and friends can enter the vehicle" }
 
+        if self.CanSwitchHeadlights then
+            inputs[#inputs + 1] = { "Headlights", "NORMAL", "0: Off\n1: Low beams\n2: High beams" }
+        end
+
+        if self.CanSwitchTurnSignals then
+            inputs[#inputs + 1] = { "TurnSignal", "NORMAL", "0: Off\n1: Left-turn signal\n2: Right-turn signal\n3: Hazard lights" }
+        end
+
         -- Output name, output type, output description
         outputs[#outputs + 1] = { "MaxChassisHealth", "NORMAL", "Max. chassis health" }
         outputs[#outputs + 1] = { "ChassisHealth", "NORMAL", "Current chassis health (between 0.0 and MaxChassisHealth)" }
         outputs[#outputs + 1] = { "EngineHealth", "NORMAL", "Current engine health (between 0.0 and 1.0)" }
+        outputs[#outputs + 1] = { "EngineState", "NORMAL", "0: Off\n1: Starting\n2: Running\n3: Shutting down/Ignition cut-off" }
         outputs[#outputs + 1] = { "Active", "NORMAL", "0: No driver\n1: Has a driver" }
         outputs[#outputs + 1] = { "Driver", "ENTITY", "The current driver" }
         outputs[#outputs + 1] = { "DriverSeat", "ENTITY", "The driver seat" }

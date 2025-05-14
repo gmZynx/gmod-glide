@@ -7,6 +7,7 @@ end
 
 function ENT:Explode( attacker, inflictor )
     if self.hasExploded then return end
+    if not IsValid( self ) then return end
 
     local creator = Glide.GetEntityCreator( self )
     local phys = self:GetPhysicsObject()
@@ -26,8 +27,6 @@ function ENT:Explode( attacker, inflictor )
     for _, ply in ipairs( self:GetAllPlayers() ) do
         ply:TakeDamage( 999, attacker, inflictor )
     end
-
-    self:Remove()
 
     local SetEntityCreator = Glide.SetEntityCreator
 
@@ -73,25 +72,25 @@ function ENT:Explode( attacker, inflictor )
         for _, v in ipairs( gib:GetBodyGroups() ) do
             gib:SetBodygroup( v.id, 1 )
         end
+    else
+        -- Spawn gibs given by the `ExplosionGibs` table
+        for k, v in ipairs( self.ExplosionGibs ) do
+            local gib = ents.Create( "glide_gib" )
+            gib:SetPos( self:GetPos() )
+            gib:SetAngles( self:GetAngles() )
+            gib:SetModel( v )
+            gib:Spawn()
+            gib:CopyVelocities( self )
 
-        return
-    end
+            SetEntityCreator( gib, creator )
 
-    -- Spawn gibs given by the `ExplosionGibs` table
-    for k, v in ipairs( self.ExplosionGibs ) do
-        local gib = ents.Create( "glide_gib" )
-        gib:SetPos( self:GetPos() )
-        gib:SetAngles( self:GetAngles() )
-        gib:SetModel( v )
-        gib:Spawn()
-        gib:CopyVelocities( self )
-
-        SetEntityCreator( gib, creator )
-
-        if k == 1 then
-            gib:SetOnFire()
+            if k == 1 then
+                gib:SetOnFire()
+            end
         end
     end
+
+    self:Remove()
 end
 
 function ENT:TakeEngineDamage( amount )

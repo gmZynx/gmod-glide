@@ -137,21 +137,21 @@ function ENT:WeaponThink()
     local t = CurTime()
 
     -- Reload if it is the time to do so
-    if weapon.ammo < weapon.maxAmmo and t > weapon.nextReload then
+    if weapon.ammo < 1 and t > weapon.nextReload then
         weapon.ammo = weapon.maxAmmo
     end
 
     local isFiring = self:GetInputBool( 1, "attack" )
 
     if isFiring and t > weapon.nextFire and ( weapon.ammo > 0 or weapon.maxAmmo == 0 ) then
-        if t > weapon.nextReload then
-            weapon.nextReload = t + weapon.replenishDelay
-        end
-
         weapon.ammo = weapon.ammo - 1
         weapon.nextFire = t + weapon.fireRate
 
         self:OnWeaponFire( weapon, weaponIndex )
+
+        if weapon.ammo < 1 and weapon.maxAmmo > 0 then
+            weapon.nextReload = t + weapon.replenishDelay
+        end
     end
 
     -- Trigger `OnWeaponStop` once the weapon runs out of ammo or

@@ -102,6 +102,16 @@ function ENT:SetInputBool( seatIndex, action, pressed )
     elseif action == "detach_trailer" and self.socketCount > 0 then
         self:DisconnectAllSockets()
     end
+
+    if seatIndex > 1 then return end
+
+    if action == "toggle_engine" then
+        if self:GetEngineState() == 0 then
+            self:TurnOn()
+        else
+            self:TurnOff()
+        end
+    end
 end
 
 function ENT:SetInputFloat( seatIndex, action, value )

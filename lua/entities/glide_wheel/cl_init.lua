@@ -214,7 +214,6 @@ function ENT:Think()
     local skidmarkSize = self:GetRadius() * parent.WheelSkidmarkScale
 
     contactPos = contactPos + velocity * 0.04
-    velocity:Normalize()
 
     if ROLL_MARK_SURFACES[surfaceId] then
         if Abs( fastFactor ) + forwardSlipFactor + sideSlipFactor > 0.01 then

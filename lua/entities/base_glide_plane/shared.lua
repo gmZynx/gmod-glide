@@ -32,7 +32,7 @@ if CLIENT then
     ENT.MaxSoundDistance = 15000
 
     -- Play this sound at startup
-    ENT.StartSoundPath = "glide/aircraft/start_3.wav"
+    ENT.StartSound = "glide/aircraft/start_3.wav"
 
     -- Play this sound from far away
     ENT.DistantSoundPath = "glide/aircraft/distant_stunt.wav"

@@ -36,6 +36,12 @@ function ENT:Repair()
     self:CreateRotors()
 end
 
+--- Override this base class function.
+function ENT:TurnOff()
+    BaseClass.TurnOff( self )
+    self:SetEngineState( 0 )
+end
+
 --- Creates and stores a new rotor entity.
 ---
 --- `radius` is used for collision checking.
@@ -65,6 +71,8 @@ end
 --- Override this base class function.
 function ENT:TurnOn()
     BaseClass.TurnOn( self )
+
+    self:SetEngineState( 2 )
     self:SetOutOfControl( false )
 end
 
@@ -109,7 +117,6 @@ function ENT:RemoveRotorWash()
     end
 end
 
-local IsValid = IsValid
 local Approach = math.Approach
 local ExpDecay = Glide.ExpDecay
 local TriggerOutput = WireLib and WireLib.TriggerOutput or nil
@@ -143,14 +150,6 @@ function ENT:OnPostThink( dt, selfTbl )
     local isEngineDying = false
 
     if self:IsEngineOn() then
-        -- Make sure the physics stay awake,
-        -- otherwise the driver's input won't do anything.
-        local phys = self:GetPhysicsObject()
-
-        if IsValid( phys ) and phys:IsAsleep() then
-            phys:Wake()
-        end
-
         if self:GetEngineHealth() > 0 then
             -- Approach towards the idle power plus the offset
             local powerOffset = throttle * 0.2

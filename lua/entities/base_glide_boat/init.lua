@@ -7,21 +7,23 @@ DEFINE_BASECLASS( "base_glide" )
 
 --- Implement this base class function.
 function ENT:OnPostInitialize()
-    -- Setup variables used on all boats
-    self.inputSteerInstant = 0
-    self:SetupBuoyancyPoints()
+    self.reducedThrottle = false
 
     self:SetEngineThrottle( 0 )
     self:SetEnginePower( 0 )
-
     self:SetIsHonking( false )
-    self:SetWaterState( 0 )
 
     -- Make boats more slidey on land
     local phys = self:GetPhysicsObject()
 
     if IsValid( phys ) then
         phys:SetMaterial( "glass" )
+    end
+
+    -- Trigger wire outputs
+    if WireLib then
+        WireLib.TriggerOutput( self, "EngineThrottle", 0 )
+        WireLib.TriggerOutput( self, "EnginePower", 0 )
     end
 end
 
@@ -51,16 +53,15 @@ function ENT:OnSeatInput( seatIndex, action, pressed )
 
     if action == "horn" then
         self:SetIsHonking( pressed )
-    end
 
-    if not pressed then return end
+    elseif pressed and action == "reduce_throttle" then
+        self.reducedThrottle = not self.reducedThrottle
 
-    if action == "toggle_engine" then
-        if self:GetEngineState() == 0 then
-            self:TurnOn()
-        else
-            self:TurnOff()
-        end
+        Glide.SendNotification( self:GetAllPlayers(), {
+            text = "#glide.notify.reduced_throttle_" .. ( self.reducedThrottle and "on" or "off" ),
+            icon = "materials/glide/icons/" .. ( self.reducedThrottle and "play_next" or "fast_forward" ) .. ".png",
+            immediate = true
+        } )
     end
 end
 
@@ -75,9 +76,9 @@ end
 
 --- Override this base class function.
 function ENT:TurnOn()
-    if self:GetEngineState() < 1 then
-        self:SetEngineState( 1 )
-    end
+    BaseClass.TurnOn( self )
+
+    self.reducedThrottle = false
 end
 
 --- Override this base class function.
@@ -88,26 +89,8 @@ function ENT:TurnOff()
     self:SetEngineThrottle( 0 )
     self:SetIsHonking( false )
 
+    self.reducedThrottle = false
     self.startupTimer = nil
-end
-
-function ENT:OnReloaded()
-    self:SetupBuoyancyPoints()
-end
-
-function ENT:SetupBuoyancyPoints()
-    local offsets = self:GetBuoyancyOffsets()
-    local points = {}
-
-    for i, offset in ipairs( offsets ) do
-        points[i] = {
-            offset = offset,
-            isUnderWater = false
-        }
-    end
-
-    self.buoyancyPoints = points
-    self.buoyancyPointsCount = #points
 end
 
 local Abs = math.abs
@@ -115,8 +98,7 @@ local Clamp = math.Clamp
 local WORLD_UP = Vector( 0, 0, 1 )
 
 local ExpDecay = Glide.ExpDecay
-local IsUnderWater = Glide.IsUnderWater
-local GetDevMode = Glide.GetDevMode
+local TriggerOutput = WireLib and WireLib.TriggerOutput or nil
 
 --- Implement this base class function.
 function ENT:OnPostThink( dt, selfTbl )
@@ -131,7 +113,6 @@ function ENT:OnPostThink( dt, selfTbl )
 
                 if health > 0 then
                     self:SetEngineState( 2 )
-                    self:OnTurnOn()
                 else
                     self:SetEngineState( 0 )
                 end
@@ -140,48 +121,21 @@ function ENT:OnPostThink( dt, selfTbl )
             local startupTime = health < 0.5 and math.Rand( 1, 2 ) or selfTbl.StartupTime
             selfTbl.startupTimer = CurTime() + startupTime
         end
+
+    elseif state == 3 then
+        -- This vehicle does not do a "shutdown" sequence.
+        self:SetEngineState( 0 )
     end
 
     if self:IsEngineOn() then
         self:UpdateEngine( dt, selfTbl )
-
-        -- Make sure the physics stay awake when necessary,
-        -- otherwise the driver's input won't do anything.
-        local phys = self:GetPhysicsObject()
-
-        if IsValid( phys ) and phys:IsAsleep() then
-            local driverInput = self:GetInputFloat( 1, "accelerate" ) + self:GetInputFloat( 1, "brake" ) + self:GetInputFloat( 1, "steer" )
-
-            if Abs( driverInput ) > 0.01 then
-                phys:Wake()
-            end
-        end
     end
 
     -- Update steer input
-    local inputSteer = self:GetInputFloat( 1, "steer" )
-    selfTbl.inputSteerInstant = inputSteer
-    self:SetSteering( ExpDecay( self:GetSteering(), inputSteer, 8, dt ) )
+    self:SetSteering( ExpDecay( self:GetSteering(), self:GetInputFloat( 1, "steer" ), 8, dt ) )
 
-    -- Update buoyancy points
-    local underWaterPoints = 0
-
-    for _, point in ipairs( selfTbl.buoyancyPoints ) do
-        point.isUnderWater = IsUnderWater( self:LocalToWorld( point.offset ) )
-
-        if point.isUnderWater then
-            underWaterPoints = underWaterPoints + 1
-        end
-    end
-
-    local waterState = underWaterPoints < 1 and 0 or (
-        underWaterPoints > selfTbl.buoyancyPointsCount * 0.5 and 2 or 1
-    )
-
-    self:SetWaterState( waterState )
-
-    -- Check if the boat is fully upside down
-    if waterState == 2 and self:GetUp():Dot( WORLD_UP ) < 0 then
+    -- Check if the vehicle is fully upside down on water
+    if self:GetWaterState() > 1 and self:GetUp():Dot( WORLD_UP ) < 0 then
         self:SetEngineThrottle( 0 )
         self:SetEnginePower( 0 )
 
@@ -199,10 +153,21 @@ function ENT:OnPostThink( dt, selfTbl )
         end
     end
 
-    -- Draw buoyancy debug overlays, if `developer` cvar is active
-    if GetDevMode() then
-        for _, point in ipairs( selfTbl.buoyancyPoints ) do
-            debugoverlay.Cross( self:LocalToWorld( point.offset ), 8, 0.1, Color( 50, point.isUnderWater and 255 or 150, 255 ), true )
+    if TriggerOutput then
+        TriggerOutput( self, "EngineThrottle", self:GetEngineThrottle() )
+        TriggerOutput( self, "EnginePower", self:GetEnginePower() )
+
+        if selfTbl.wireSetEngineOn ~= nil then
+            if selfTbl.wireSetEngineOn then
+                if state < 1 then
+                    self:TurnOn()
+                end
+
+            elseif state > 0 then
+                self:TurnOff()
+            end
+
+            selfTbl.wireSetEngineOn = nil
         end
     end
 end
@@ -210,10 +175,16 @@ end
 function ENT:UpdateEngine( dt, selfTbl )
     local waterState = self:GetWaterState()
     local speed = selfTbl.forwardSpeed
+
+    local inputThrottle = self:GetInputFloat( 1, "accelerate" )
     local throttle = 0
 
+    if self.reducedThrottle then
+        inputThrottle = inputThrottle * 0.65
+    end
+
     if Abs( speed ) > 20 or waterState > 0 then
-        throttle = self:GetInputFloat( 1, "accelerate" ) - self:GetInputFloat( 1, "brake" )
+        throttle = inputThrottle - self:GetInputFloat( 1, "brake" )
     end
 
     self:SetEngineThrottle( ExpDecay( self:GetEngineThrottle(), throttle, 5, dt ) )
@@ -232,130 +203,48 @@ function ENT:UpdateEngine( dt, selfTbl )
     self:SetEnginePower( ExpDecay( self:GetEnginePower(), power, 2 + power * 2, dt ) )
 end
 
-local mass, effectiveness
-local linearImp, angularImp
-
-local function AddForceOffset( outLin, outAng, phys, dt, pos, f )
-    linearImp, angularImp = phys:CalculateForceOffset( f * mass * effectiveness, pos )
-
-    outLin[1] = outLin[1] + linearImp[1] / dt
-    outLin[2] = outLin[2] + linearImp[2] / dt
-    outLin[3] = outLin[3] + linearImp[3] / dt
-
-    outAng[1] = outAng[1] + angularImp[1] / dt
-    outAng[2] = outAng[2] + angularImp[2] / dt
-    outAng[3] = outAng[3] + angularImp[3] / dt
-end
-
-local function AddForce( out, f )
-    out[1] = out[1] + f[1] * mass * effectiveness
-    out[2] = out[2] + f[2] * mass * effectiveness
-    out[3] = out[3] + f[3] * mass * effectiveness
-end
-
-local function LimitInputWithAngle( value, ang, maxAng )
-    if ang > maxAng then
-        value = value * ( 1 - Clamp( ( ang - maxAng ) / 20, 0, 1 ) )
-    end
-
-    return value
-end
-
-local CurTime = CurTime
-local Cos = math.cos
-local TraceLine = util.TraceLine
-
-local ray = {}
-local traceData = { mask = MASK_WATER, output = ray }
-local fw, rt, vel, speed
-
+--- Implement this base class function.
 function ENT:OnSimulatePhysics( phys, dt, outLin, outAng )
-    if self:IsPlayerHolding() then return end
+    self:SimulateBoat( phys, dt, outLin, outAng, self:GetEngineThrottle(), self:GetInputFloat( 1, "steer" ) )
+end
 
-    -- Don't apply any of the other forces
-    -- if no buoyancy points are under water.
-    if self:GetWaterState() < 1 then return end
+--- Override this base class function.
+function ENT:TriggerInput( name, value )
+    BaseClass.TriggerInput( self, name, value )
 
-    effectiveness = 1.0
-    mass = phys:GetMass()
+    if name == "Ignition" then
+        -- Avoid continuous triggers
+        self.wireSetEngineOn = value > 0
 
-    fw = self:GetForward()
-    rt = fw:Cross( WORLD_UP )
+    elseif name == "Throttle" then
+        self:SetInputFloat( 1, "accelerate", Clamp( value, 0, 1 ) )
 
-    vel = phys:GetVelocity()
-    speed = self:WorldToLocal( phys:GetPos() + vel )[1]
+    elseif name == "Steer" then
+        self:SetInputFloat( 1, "steer", Clamp( value, -1, 1 ) )
 
-    local params = self.BoatParams
+    elseif name == "Brake" then
+        self:SetInputFloat( 1, "brake", Clamp( value, 0, 1 ) )
 
-    -- Buoyancy forces
-    local upDrag = -params.waterLinearDrag[3]
-    local upDepth = params.buoyancyDepth
-    local pointVel, offset, buoyancyForce
+    elseif name == "TightTurn" then
+        self:SetInputBool( 1, "handbrake", value > 0 )
 
-    for _, point in ipairs( self.buoyancyPoints ) do
-        if point.isUnderWater then
-            offset = self:LocalToWorld( point.offset )
-            pointVel = phys:GetVelocityAtPoint( offset )
+    elseif name == "Horn" then
+        self:SetIsHonking( value > 0 )
 
-            -- Check how far from the surface this point is
-            traceData.start = offset + WORLD_UP * upDepth
-            traceData.endpos = offset
-
-            TraceLine( traceData )
-
-            buoyancyForce = params.buoyancy * ( 1 - ray.Fraction )
-            buoyancyForce = buoyancyForce + WORLD_UP:Dot( pointVel ) * upDrag
-
-            AddForceOffset( outLin, outAng, phys, dt, offset, WORLD_UP * buoyancyForce )
-        end
     end
+end
 
-    local tightTurn = self:GetInputBool( 1, "handbrake" )
+--- Override this base class function.
+function ENT:SetupWiremodPorts( inputs, outputs )
+    BaseClass.SetupWiremodPorts( self, inputs, outputs )
 
-    -- Drag forces
-    AddForce( outLin, fw * Clamp( speed, -500, 500 ) * -params.waterLinearDrag[1] * ( tightTurn and 2 or 1 ) )
-    AddForce( outLin, rt * rt:Dot( vel ) * -params.waterLinearDrag[2] * ( tightTurn and 2 or 1 ) )
+    inputs[#inputs + 1] = { "Ignition", "NORMAL", "1: Turn the engine on\n0: Turn the engine off" }
+    inputs[#inputs + 1] = { "Steer", "NORMAL", "A value between -1.0 and 1.0" }
+    inputs[#inputs + 1] = { "Throttle", "NORMAL", "A value between 0.0 and 1.0\nAlso acts as brake input when reversing." }
+    inputs[#inputs + 1] = { "Brake", "NORMAL", "A value between 0.0 and 1.0\nAlso acts as throttle input when reversing." }
+    inputs[#inputs + 1] = { "TightTurn", "NORMAL", "A value larger than 0 will let the boat do tight turns" }
+    inputs[#inputs + 1] = { "Horn", "NORMAL", "Set to 1 to sound the horn" }
 
-    local angDrag = params.waterAngularDrag
-    local angVel = phys:GetAngleVelocity()
-
-    outAng[1] = outAng[1] + angVel[1] * angDrag[1] * mass * effectiveness
-    outAng[2] = outAng[2] + angVel[2] * angDrag[2] * mass * effectiveness
-    outAng[3] = outAng[3] + angVel[3] * angDrag[3] * mass * effectiveness
-
-    -- Try to align the boat towards the direction of movement
-    if not tightTurn then
-        vel:Normalize()
-        outAng[3] = outAng[3] - vel:Dot( rt ) * params.alignForce * mass * effectiveness
-    end
-
-    -- Turbulance
-    local t = CurTime()
-    outAng[1] = outAng[1] + Cos( t * 1.5 ) * params.turbulanceForce * mass
-    outAng[2] = outAng[2] + Cos( t * 2 ) * params.turbulanceForce * 2 * mass
-
-    -- Engine and steering forces
-    local angles = self:GetAngles()
-    local throttle = self:GetEngineThrottle()
-
-    if throttle > 0 and speed < params.maxSpeed then
-        AddForce( outLin, fw * params.engineForce * throttle )
-
-        throttle = LimitInputWithAngle( throttle, Abs( angles[1] ), 10 )
-        outAng[2] = outAng[2] - params.engineLiftForce * mass * effectiveness * throttle
-
-    elseif throttle < 0 and speed > params.maxSpeed * -0.25 then
-        AddForce( outLin, fw * params.engineForce * throttle )
-    end
-
-    local inputSteer = self.inputSteerInstant * Clamp( ( Abs( speed ) - 20 ) / 200, 0, 1 )
-
-    if speed < 0 then
-        inputSteer = -inputSteer
-    end
-
-    outAng[3] = outAng[3] - params.turnForce * inputSteer * mass * effectiveness
-
-    inputSteer = LimitInputWithAngle( inputSteer, Abs( angles[3] ), 30 )
-    outAng[1] = outAng[1] + params.rollForce * inputSteer * mass * effectiveness * ( tightTurn and 2 or 1 )
+    outputs[#outputs + 1] = { "EngineThrottle", "NORMAL", "Current engine throttle" }
+    outputs[#outputs + 1] = { "EnginePower", "NORMAL", "Current engine power" }
 end

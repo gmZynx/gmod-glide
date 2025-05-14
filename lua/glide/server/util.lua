@@ -227,14 +227,12 @@ function Glide.GetNearbyPlayers( pos, radius )
 
     local found, count = {}, 0
 
-    for _, ply in player.Iterator() do
-        if ply:IsValid() and not ply:IsBot() then
-            local dist = pos:DistToSqr( ply:GetPos() )
+    for _, ply in ipairs( player.GetHumans() ) do
+        local dist = pos:DistToSqr( ply:GetPos() )
 
-            if dist < radius then
-                count = count + 1
-                found[count] = ply
-            end
+        if dist < radius then
+            count = count + 1
+            found[count] = ply
         end
     end
 

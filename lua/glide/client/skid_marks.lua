@@ -20,22 +20,20 @@ function SkidHandler:Destroy()
     setmetatable( self, nil )
 end
 
-local Color = Color
-local Vector = Vector
+local RealTime = RealTime
 local TraceLine = util.TraceLine
 
-local traceData = {
-    mask = 131083 -- MASK_NPCWORLDSTATIC
-}
+local Config = Glide.Config
 
-function SkidHandler:AddPiece( lastQuadId, pos, dir, normal, width, strength )
+local ray = {}
+local traceData = { mask = MASK_NPCWORLDSTATIC, output = ray }
+
+function SkidHandler:AddPiece( lastQuadId, pos, forward, normal, width, strength )
     traceData.start = pos + normal * 10
     traceData.endpos = pos - normal * 10
+    TraceLine( traceData )
 
-    local tr = TraceLine( traceData )
-    if not tr.Hit then return end
-
-    pos = tr.HitPos + normal * 1
+    if not ray.Hit then return end
 
     local quads = self.quads
     local i = self.lastQuadIndex + 1
@@ -45,43 +43,45 @@ function SkidHandler:AddPiece( lastQuadId, pos, dir, normal, width, strength )
 
     self.lastQuadIndex = i
 
-    local v1 = Vector( 0, width, 0.2 )
-    local v2 = Vector( 0, -width, 0.2 )
+    normal = ray.HitNormal
+    pos = ray.HitPos + normal
+    forward:Normalize()
 
-    dir:Normalize()
-
-    local ang = dir:Angle()
-    v1:Rotate( ang )
-    v2:Rotate( ang )
-
-    v1 = pos + v1
-    v2 = pos + v2
-
+    local right = normal:Cross( forward )
     local lastQuad = quads[lastQuadId]
 
     quads[i] = {
-        v1,
-        v2,
-        lastQuad and lastQuad[2] or pos,
-        lastQuad and lastQuad[1] or pos,
-        Color( 255, 255, 255, 55 + 200 * strength )
+        pos + right * width,                -- [1] 1st vertex
+        pos - right * width,                -- [2] 2nd vertex
+        lastQuad and lastQuad[2] or pos,    -- [3] 3rd vertex
+        lastQuad and lastQuad[1] or pos,    -- [4] 4th vertex
+        55 + 200 * strength,                -- [5] Alpha
+        RealTime() + Config.skidmarkTimeLimit -- [6] Lifetime
     }
 
     return i
 end
 
+local Min = math.min
 local SetMaterial = render.SetMaterial
 local DrawQuad = render.DrawQuad
 
-function SkidHandler:Draw()
+local color = Color( 255, 255, 255 )
+
+function SkidHandler:Draw( t )
     SetMaterial( self.material )
 
     local quads = self.quads
-    local q
+    local q, timeLeft
 
     for i = 1, self.quadCount do
         q = quads[i]
-        DrawQuad( q[1], q[2], q[3], q[4], q[5] )
+        timeLeft = q[6] - t
+
+        if timeLeft > 0 then
+            color.a = q[5] * Min( timeLeft * 0.5, 1 )
+            DrawQuad( q[1], q[2], q[3], q[4], color )
+        end
     end
 end
 
@@ -90,15 +90,15 @@ end
 local skidMarkHandler = Glide.skidMarkHandler
 local tireRollHandler = Glide.tireRollHandler
 
-function Glide.AddSkidMarkPiece( lastQuadId, pos, dir, normal, width, strength )
+function Glide.AddSkidMarkPiece( lastQuadId, pos, forward, normal, width, strength )
     if skidMarkHandler then
-        return skidMarkHandler:AddPiece( lastQuadId, pos, dir, normal, width, strength )
+        return skidMarkHandler:AddPiece( lastQuadId, pos, forward, normal, width, strength )
     end
 end
 
-function Glide.AddTireRollPiece( lastQuadId, pos, dir, normal, width, strength )
+function Glide.AddTireRollPiece( lastQuadId, pos, forward, normal, width, strength )
     if tireRollHandler then
-        return tireRollHandler:AddPiece( lastQuadId, pos, dir, normal, width, strength )
+        return tireRollHandler:AddPiece( lastQuadId, pos, forward, normal, width, strength )
     end
 end
 
@@ -122,8 +122,6 @@ end
 
 function Glide.SetupSkidMarkMeshes()
     Glide.DestroySkidMarkMeshes()
-
-    local Config = Glide.Config
 
     -- Mesh handler for skid marks
     if Config.maxSkidMarkPieces > 0 then
@@ -155,11 +153,13 @@ hook.Add( "PreDrawTranslucentRenderables", "Glide.RenderSkidMarks", function( is
     SetBlend( 1 )
     SetColorModulation( 1, 1, 1 )
 
+    local t = RealTime()
+
     if skidMarkHandler then
-        skidMarkHandler:Draw()
+        skidMarkHandler:Draw( t )
     end
 
     if tireRollHandler then
-        tireRollHandler:Draw()
+        tireRollHandler:Draw( t )
     end
 end )

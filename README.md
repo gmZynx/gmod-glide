@@ -10,16 +10,16 @@ A pack of content and entity classes to add cars, motorcycles, planes, helicopte
 
 ## Features
 
-- Includes base classes for cars, motorcycles, helicopters, planes and tanks
+- Includes base classes for cars, motorcycles, helicopters, planes, tanks and boats
 - Duplicator/Advanced Duplicator 2 support
 - You can use the regular sandbox Color tool
 - No constraints are used for wheel physics
-- Comes with 4 cars, a bus, a ATV, 2 motorcycles, 2 planes and a tank
+- Comes with 7 cars, a bus, a truck + trailer, a ATV, 3 motorcycles, 2 boats, 3 planes and a tank
 - First person and GTA-like third person camera
 - Players can fall off motorcycles
 - Vehicles can set custom player poses per seat
 - Editable engine/transmission/traction properties for cars and motorcycles
-- Car headlights, reverse lights, break lights and horns
+- Car headlights, reverse lights, break lights, horns and sirens for emergency vehicles
 - Separate chassis and engine health
 - Some vehicles can switch between weapons
 - Some aircraft can deploy flare countermeasures
@@ -43,8 +43,10 @@ A pack of content and entity classes to add cars, motorcycles, planes, helicopte
 
 ### Tools
 
+- Engine Stream
 - Missile Launcher
 - Projectile Launcher
+- Ragdoll Disabler
 - Turret
 - Vehicle Material
 - Wheel Model
@@ -59,6 +61,12 @@ A pack of content and entity classes to add cars, motorcycles, planes, helicopte
 - Custom notifications system
 
 ## Server console variables
+
+### Weapons
+
+| Command | Description
+| ------- | -----------
+| `glide_homing_launcher_lock_required` `<number>` | Should the homing launcher require a lock to fire?
 
 ### Vehicle damage multipliers
 

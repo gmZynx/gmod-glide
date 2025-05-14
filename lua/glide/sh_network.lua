@@ -21,6 +21,7 @@ Glide.CMD_SYNC_SOUND_ENTITY_MODIFIER = 8
 Glide.CMD_UPLOAD_STREAM_PRESET = 9
 Glide.CMD_UPLOAD_SOUND_PRESET = 10
 Glide.CMD_SHOW_KEY_NOTIFICATION = 11
+Glide.CMD_SET_CURRENT_VEHICLE = 12
 
 function Glide.StartCommand( id, unreliable )
     net.Start( "glide.command", unreliable or false )

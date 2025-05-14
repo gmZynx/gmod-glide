@@ -54,15 +54,13 @@ timer.Create( "Glide.UpdateModSync", 1, 0, function()
 
         if IsValid( mod.vehicle ) then
             -- Sync modifiers with clients
-            for _, ply in player.Iterator() do
-                if ply:IsValid() and not ply:IsBot() then
-                    synced = mod.synced
+            for _, ply in ipairs( player.GetHumans() ) do
+                synced = mod.synced
 
-                    -- If we have not synced this modifier to this player yet...
-                    if not synced[ply] and ply.GlideLoaded then
-                        synced[ply] = true
-                        SendEntityModifierTo( ply, mod )
-                    end
+                -- If we have not synced this modifier to this player yet...
+                if not synced[ply] and ply.GlideLoaded then
+                    synced[ply] = true
+                    SendEntityModifierTo( ply, mod )
                 end
             end
         else

@@ -1,12 +1,22 @@
 include( "shared.lua" )
 include( "cl_lights.lua" )
 include( "cl_hud.lua" )
+include( "cl_water.lua" )
 include( "sh_vehicle_compat.lua" )
 
 ENT.AutomaticFrameAdvance = true
 
+function ENT:OnReloaded()
+    -- Let UpdateHeadlights recreate the lights
+    self.headlightState = 0
+
+    -- Let children classes do their own logic
+    self:OnEntityReload()
+end
+
 function ENT:Initialize()
     self.sounds = {}
+    self.waterSideSlide = 0
     self.isLocalPlayerInFirstPerson = false
 
     self.crosshair = {
@@ -16,7 +26,7 @@ function ENT:Initialize()
     -- Create a RangedFeature to handle engine sounds
     self.rfSounds = Glide.CreateRangedFeature( self, self.MaxSoundDistance )
     self.rfSounds:SetTestCallback( "ShouldActivateSounds" )
-    self.rfSounds:SetActivateCallback( "OnActivateSounds" )
+    self.rfSounds:SetActivateCallback( "ActivateSounds" )
     self.rfSounds:SetDeactivateCallback( "DeactivateSounds" )
     self.rfSounds:SetUpdateCallback( "UpdateSounds" )
 
@@ -48,10 +58,18 @@ function ENT:OnRemove( fullUpdate )
     end
 end
 
-function ENT:OnEngineStateChange( _, _, state )
-    if state > 0 then
+function ENT:OnEngineStateChange( _, lastState, state )
+    if state == 1 then
+        -- If we have a "startup" sound, play it now.
+        if self.rfSounds and self.rfSounds.isActive and self.StartSound and self.StartSound ~= "" then
+            local snd = self:CreateLoopingSound( "start", Glide.GetRandomSound( self.StartSound ), 70, self )
+            snd:PlayEx( 1, 100 )
+        end
+
+    elseif lastState ~= 3 and state == 2 then
         self:OnTurnOn()
-    else
+
+    elseif state == 0 then
         self:OnTurnOff()
     end
 end
@@ -71,7 +89,7 @@ end
 function ENT:GetWheelOffset( index )
     local wheel = self.wheels and self.wheels[index]
 
-    if IsValid( wheel ) then
+    if IsValid( wheel ) and wheel.GetLastOffset then
         return wheel:GetLastOffset()
     end
 
@@ -91,6 +109,13 @@ function ENT:CreateLoopingSound( id, path, level, parent )
     end
 
     return snd
+end
+
+function ENT:ActivateSounds()
+    self.waterSideSlide = 0
+
+    -- Let children classes do their own thing
+    self:OnActivateSounds()
 end
 
 function ENT:DeactivateSounds()
@@ -121,6 +146,17 @@ function ENT:UpdateSounds()
             elseif not signalBlink and self.TurnSignalTickOffSound ~= "" then
                 self:EmitSound( self.TurnSignalTickOffSound, 65, self.TurnSignalPitch, self.TurnSignalVolume )
             end
+        end
+    end
+
+    local sounds = self.sounds
+
+    if sounds.start and self:GetEngineState() ~= 1 then
+        sounds.start:Stop()
+        sounds.start = nil
+
+        if self.StartTailSound and self.StartTailSound ~= "" then
+            Glide.PlaySoundSet( self.StartTailSound, self )
         end
     end
 

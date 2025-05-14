@@ -4,7 +4,7 @@ function ENT:Initialize()
     self.smokeSpinSpeed = math.random( 60, 110 )
 
     -- Create a RangedFeature to handle missile sounds
-    self.missileSounds = Glide.CreateRangedFeature( self, 4000 )
+    self.missileSounds = Glide.CreateRangedFeature( self, 5000 )
     self.missileSounds:SetActivateCallback( "ActivateSound" )
     self.missileSounds:SetDeactivateCallback( "DeactivateSound" )
 
@@ -22,7 +22,7 @@ end
 function ENT:ActivateSound()
     if not self.missileLoop then
         self.missileLoop = CreateSound( self, "glide/weapons/missile_loop.wav" )
-        self.missileLoop:SetSoundLevel( 80 )
+        self.missileLoop:SetSoundLevel( 85 )
         self.missileLoop:Play()
     end
 end

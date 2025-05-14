@@ -169,7 +169,7 @@ hook.Add( "Tick", "Glide.CheckCurrentVehicle", function()
         return
     end
 
-    local seatIndex = seat:GetNWInt( "GlideSeatIndex", 0 )
+    local seatIndex = ply:GlideGetSeatIndex()
 
     if activeSeatIndex ~= seatIndex then
         if activeSeatIndex > 0 then
