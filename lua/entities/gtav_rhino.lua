@@ -7,6 +7,10 @@ ENT.PrintName = "Rhino"
 ENT.GlideCategory = "Default"
 ENT.ChassisModel = "models/gta5/vehicles/rhino/chassis.mdl"
 
+-- The Rhino does not have these
+ENT.CanSwitchHeadlights = false
+ENT.CanSwitchTurnSignals = false
+
 DEFINE_BASECLASS( "base_glide_tank" )
 
 if CLIENT then
@@ -20,6 +24,9 @@ if CLIENT then
         { offset = Vector( -130, 40, 18 ), angle = Angle( 0, 180, 0 ), width = 35 },
         { offset = Vector( -130, -40, 18 ), angle = Angle( 0, 180, 0 ), width = 35 }
     }
+
+    ENT.HornSound = "glide/horns/large_truck_horn_2.wav"
+    ENT.ExhaustPopSound = ""
 
     function ENT:OnCreateEngineStream( stream )
         stream:LoadPreset( "rhino" )
@@ -170,7 +177,7 @@ if SERVER then
         } )
 
         -- Middle left
-        self:CreateWheel( Vector( 5, 55, -5 ) )
+        self:CreateWheel( Vector( 5, 55, -5 ) ):SetSoundsEnabled( false )
 
         -- Rear left
         self:CreateWheel( Vector( -76, 55, -5 ), {
@@ -183,13 +190,15 @@ if SERVER then
         } )
 
         -- Middle right
-        self:CreateWheel( Vector( 5, -55, -5 ) )
+        self:CreateWheel( Vector( 5, -55, -5 ) ):SetSoundsEnabled( false )
 
         -- Rear right
         self:CreateWheel( Vector( -76, -55, -5 ), {
             steerMultiplier = -1
         } )
 
+        -- Since the model already has a visual representation
+        -- for the wheels and tracks, hide the actual wheels.
         for _, w in ipairs( self.wheels ) do
             Glide.HideEntity( w, true )
         end

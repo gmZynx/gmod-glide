@@ -7,9 +7,11 @@ ENT.PrintName = "Dinghy"
 ENT.GlideCategory = "Default"
 ENT.ChassisModel = "models/gta5/vehicles/dinghy/chassis.mdl"
 
+-- Override the default first person offset
 function ENT:GetFirstPersonOffset( _, localEyePos )
     localEyePos[1] = localEyePos[1] + 5
     localEyePos[3] = localEyePos[3] + 10
+
     return localEyePos
 end
 
@@ -56,8 +58,10 @@ if CLIENT then
 
     local spinAng = Angle()
 
+    -- Override this function to animate the propellers.
     function ENT:OnUpdateAnimations()
-        -- On boats, you must also call `OnUpdateAnimations` from the base! 
+        -- Call the base class' `OnUpdateAnimations`
+        -- to automatically update the steering pose parameter.
         BaseClass.OnUpdateAnimations( self )
 
         if not self.propellerL then return end

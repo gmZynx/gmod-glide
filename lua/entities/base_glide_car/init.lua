@@ -437,7 +437,7 @@ function ENT:OnPostThink( dt, selfTbl )
 
     local phys = self:GetPhysicsObject()
 
-    if selfTbl.groundedCount < 1 and IsValid( phys ) then
+    if selfTbl.groundedCount < 1 and IsValid( phys ) and self:WaterLevel() < 3 then
         if selfTbl.totalSpeed > 200 then
             self:UpdateAirControls( phys, dt )
         else

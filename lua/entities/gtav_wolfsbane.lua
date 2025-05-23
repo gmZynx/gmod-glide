@@ -9,6 +9,7 @@ ENT.ChassisModel = "models/gta5/vehicles/wolfsbane/chassis.mdl"
 
 DEFINE_BASECLASS( "base_glide_motorcycle" )
 
+-- Override the default first person offset for all seats
 function ENT:GetFirstPersonOffset( _, localEyePos )
     return localEyePos
 end
@@ -70,6 +71,8 @@ if CLIENT then
     local FrameTime = FrameTime
     local ExpDecayAngle = Glide.ExpDecayAngle
 
+    -- On this motorcycle, we manually update the
+    -- drivers's leg depending on the motorcycle speed.
     function ENT:GetSeatBoneManipulations( seatIndex )
         if seatIndex > 1 then
             return POSE_DATA
@@ -105,10 +108,14 @@ if CLIENT then
     local spinAng = Angle()
 
     function ENT:OnUpdateAnimations()
+        -- Call the base class' `OnUpdateAnimations`
+        -- to automatically update the steering pose parameter.
         BaseClass.OnUpdateAnimations( self )
 
         if not self.frontBoneId then return end
 
+        -- The wheels are part of the model, so we have to
+        -- rotate their bones to match the actual wheels.
         spinAng[3] = -self:GetWheelSpin( 1 )
         self:ManipulateBoneAngles( self.frontBoneId, spinAng, false )
 
@@ -125,8 +132,8 @@ if SERVER then
     ENT.WheelieForce = 400
 
     ENT.LightBodygroups = {
-        { type = "headlight", bodyGroupId = 7, subModelId = 1 }, -- Headlight
-        { type = "headlight", bodyGroupId = 8, subModelId = 1 } -- Tail light
+        { type = "headlight", bodyGroupId = 7, subModelId = 1 },
+        { type = "brake_or_taillight", bodyGroupId = 8, subModelId = 1 }
     }
 
     function ENT:CreateFeatures()
@@ -155,6 +162,8 @@ if SERVER then
         -- Rear
         self:CreateWheel( Vector( -32, 0, -1 ) )
 
+        -- Since the model already has a visual representation
+        -- for the wheels, hide the actual wheels.
         for _, w in ipairs( self.wheels ) do
             Glide.HideEntity( w, true )
         end

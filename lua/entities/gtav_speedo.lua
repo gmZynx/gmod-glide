@@ -68,8 +68,8 @@ if SERVER then
 
     ENT.LightBodygroups = {
         { type = "reverse", bodyGroupId = 10, subModelId = 1 },
-        { type = "headlight", bodyGroupId = 9, subModelId = 1 }, -- Headlights
-        { type = "headlight", bodyGroupId = 11, subModelId = 1 },  -- Tail lighs
+        { type = "headlight", bodyGroupId = 9, subModelId = 1 },
+        { type = "brake_or_taillight", bodyGroupId = 11, subModelId = 1 },
         { type = "signal_left", bodyGroupId = 12, subModelId = 1 },
         { type = "signal_right", bodyGroupId = 13, subModelId = 1 }
     }

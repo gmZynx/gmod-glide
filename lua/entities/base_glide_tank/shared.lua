@@ -1,5 +1,5 @@
 ENT.Type = "anim"
-ENT.Base = "base_glide"
+ENT.Base = "base_glide_car"
 
 ENT.PrintName = "Glide Tank"
 ENT.Author = "StyledStrike"
@@ -12,24 +12,52 @@ ENT.VehicleType = Glide.VEHICLE_TYPE.TANK
 -- Tweak max. chassis health
 ENT.MaxChassisHealth = 3000
 
--- Turrets are predictable, so their properties
--- should be set both on SERVER and CLIENT.
-ENT.TurretOffset = Vector( 0, 0, 50 )
-ENT.HighPitchAng = -25
-ENT.LowPitchAng = 10
-ENT.MaxYawSpeed = 50
-ENT.YawSpeed = 1500
+-- Prevent players from editing these NW variables
+ENT.UneditableNWVars = {
+    WheelRadius = true,
+    BrakePower = true,
+    SuspensionLength = true,
+    SpringStrength = true,
+    SpringDamper = true,
 
-DEFINE_BASECLASS( "base_glide" )
+    SideTractionMultiplier = true,
+    SideTractionMaxAng = true,
+    SideTractionMin = true,
+    SideTractionMax = true,
+
+    MinRPM = true,
+    MaxRPM = true,
+    MinRPMTorque = true,
+    MaxRPMTorque = true,
+    DifferentialRatio = true,
+    TransmissionEfficiency = true,
+    PowerDistribution = true,
+    ForwardTractionMax = true,
+    ForwardTractionBias = true
+}
+
+--[[
+    Turrets are predictable, so these properties
+    should be the same on both SERVER and CLIENT.
+]]
+
+-- Position of the turret's origin relative to the vehicle.
+ENT.TurretOffset = Vector( 0, 0, 50 )
+
+-- Turret pitch angle limits
+ENT.PitchAngMax = -25   -- Pitch up limit (yes, it's negative)
+ENT.PitchAngMin = 10    -- Pitch down limit (yes, it's positive)
+
+ENT.MaxYawSpeed = 50        -- Max. turret yaw rotation speed
+ENT.YawAcceleration = 1500  -- Turret yaw acceleration
+
+DEFINE_BASECLASS( "base_glide_car" )
 
 --- Override this base class function.
 function ENT:SetupDataTables()
     BaseClass.SetupDataTables( self )
 
-    self:NetworkVar( "Float", "EngineThrottle" )
-    self:NetworkVar( "Float", "EnginePower" )
     self:NetworkVar( "Float", "TrackSpeed" )
-
     self:NetworkVar( "Angle", "TurretAngle" )
     self:NetworkVar( "Bool", "IsAimingAtTarget" )
 end
@@ -52,7 +80,6 @@ end
 function ENT:ManipulateTurretBones( _turretAngle ) end
 
 if CLIENT then
-    ENT.MaxMiscDistance = 5000
     ENT.WheelSkidmarkScale = 1
 
     --- Override this base class function.
@@ -65,33 +92,17 @@ if CLIENT then
         { name = "#glide.weapons.cannon" }
     }
 
-    -- Strips/lines where smoke particles are spawned when the engine is damaged
-    ENT.EngineSmokeStrips = {}
-
-    -- How much does the engine smoke gets shot up?
-    ENT.EngineSmokeMaxZVel = 50
-
     -- Track sound parameters
     ENT.TrackSound = ")glide/tanks/tracks_leopard.wav"
     ENT.TrackVolume = 0.7
 
-    -- Engine sounds
-    ENT.StartSound = "Glide.Engine.TruckStart"
-    ENT.StartTailSound = "Glide.Engine.CarStartTail"
-    ENT.StartedSound = "glide/engines/start_tail_truck.wav"
-    ENT.StoppedSound = "glide/engines/shut_down_1.wav"
-
-    -- Other sounds
+    -- Turret sounds
     ENT.TurrentMoveSound = "glide/tanks/turret_move.wav"
     ENT.TurrentMoveVolume = 1.0
 
-    -- Children classes should override this
-    -- function to add engine sounds to the stream.
-    function ENT:OnCreateEngineStream( _stream ) end
-
-    -- Children classes should override this function
-    -- to update animations (the tracks/suspension for example).
-    function ENT:OnUpdateAnimations() end
+    -- Change a few engine sounds from the car class
+    ENT.StartSound = "Glide.Engine.TruckStart"
+    ENT.StartedSound = "glide/engines/start_tail_truck.wav"
 end
 
 if SERVER then
@@ -103,30 +114,37 @@ if SERVER then
     ENT.CollisionDamageMultiplier = 3
     ENT.BulletDamageMultiplier = 0.25
 
+    ENT.UnflipForce = 0.2
+    ENT.AirControlForce = Vector( 0.08, 0.03, 0.02 ) -- Roll, pitch, yaw
+
     ENT.SuspensionHeavySound = "Glide.Suspension.CompressTruck"
     ENT.SuspensionDownSound = "Glide.Suspension.Stress"
 
-    -- How long does it take for the vehicle to start up?
-    ENT.StartupTime = 0.8
-
-    -- Setup default cannon
+    -- Setup a weapon slot for the turret
     ENT.WeaponSlots = {
         { maxAmmo = 0, fireRate = 2.0 },
     }
 
+    -- Can this tank "turn in place"?
+    ENT.CanTurnInPlace = true
+
+    -- How much extra torque to apply when trying to spin in place?
+    ENT.TurnInPlaceTorqueMultiplier = 3
+
+    -- Turret parameters
     ENT.TurretFireSound = ")glide/tanks/acf_fire4.mp3"
     ENT.TurretFireVolume = 0.8
     ENT.TurretRecoilForce = 50
     ENT.TurretDamage = 275
 
-    -- How much torque to distribute among all wheels?
-    ENT.EngineTorque = 40000
-
-    -- How much extra torque to apply when trying to spin in place?
-    ENT.SpinEngineTorqueMultiplier = 3
-
-    ENT.MaxSpeed = 700
-    ENT.MaxSteerAngle = 35
+    -- Override this base class function.
+    function ENT:GetGears()
+        return {
+            [-1] = 3, -- Reverse
+            [0] = 0, -- Neutral (this number has no effect)
+            [1] = 3
+        }
+    end
 
     -- Children classes should override this function
     -- to set where the cannon projectile is spawned.
@@ -148,17 +166,17 @@ function ENT:UpdateTurret( driver, dt, currentAng )
     local targetAng = self:WorldToLocalAngles( targetDir:Angle() )
     local isAimingAtTarget = true
 
-    if targetAng[1] > self.LowPitchAng then
-        targetAng[1] = self.LowPitchAng
+    if targetAng[1] > self.PitchAngMin then
+        targetAng[1] = self.PitchAngMin
         isAimingAtTarget = false
 
-    elseif targetAng[1] < self.HighPitchAng then
-        targetAng[1] = self.HighPitchAng
+    elseif targetAng[1] < self.PitchAngMax then
+        targetAng[1] = self.PitchAngMax
         isAimingAtTarget = false
     end
 
     currentAng[1] = ExpDecayAngle( currentAng[1], targetAng[1], 10, dt )
-    currentAng[2] = currentAng[2] + Clamp( AngleDifference( currentAng[2], targetAng[2] ) * self.YawSpeed * dt, -self.MaxYawSpeed, self.MaxYawSpeed ) * dt
+    currentAng[2] = currentAng[2] + Clamp( AngleDifference( currentAng[2], targetAng[2] ) * self.YawAcceleration * dt, -self.MaxYawSpeed, self.MaxYawSpeed ) * dt
 
     isAimingAtTarget = isAimingAtTarget and targetDir:Dot( self:LocalToWorldAngles( currentAng ):Forward() ) > 0.99
 

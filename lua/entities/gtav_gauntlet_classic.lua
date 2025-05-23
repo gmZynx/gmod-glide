@@ -1,4 +1,3 @@
--- Example car class
 AddCSLuaFile()
 
 ENT.Type = "anim"
@@ -47,18 +46,19 @@ if CLIENT then
         { type = "headlight", offset = Vector( 104, -33, 13.5 ), dir = Vector( 1, 0, 0 ) },
         { type = "headlight", offset = Vector( 104, -25.5, 13.5 ), dir = Vector( 1, 0, 0 ) },
 
-        { type = "brake", offset = Vector( -100, 19, 18 ), dir = Vector( -1, 0, 0 ) },
-        { type = "brake", offset = Vector( -100, -19, 18 ), dir = Vector( -1, 0, 0 ) },
+        { type = "taillight", offset = Vector( -100, 19, 18 ), dir = Vector( -1, 0, 0 ) },
+        { type = "taillight", offset = Vector( -100, -19, 18 ), dir = Vector( -1, 0, 0 ) },
+
+        { type = "brake", offset = Vector( -100, 34.2, 18 ), dir = Vector( -1, 0, 0 ), signal = "left" },
+        { type = "brake", offset = Vector( -100, -34.2, 18 ), dir = Vector( -1, 0, 0 ), signal = "right" },
+
         { type = "reverse", offset = Vector( -99, 27, 6 ), dir = Vector( -1, 0, 0 ) },
         { type = "reverse", offset = Vector( -99, -27, 6 ), dir = Vector( -1, 0, 0 ) },
 
-        { type = "taillight", offset = Vector( -100, 24.5, 18 ), dir = Vector( -1, 0, 0 ), size = 15 },
-        { type = "taillight", offset = Vector( -100, 29.4, 18 ), dir = Vector( -1, 0, 0 ), size = 15 },
-        { type = "taillight", offset = Vector( -100, -24.5, 18 ), dir = Vector( -1, 0, 0 ), size = 15 },
-        { type = "taillight", offset = Vector( -100, -29.4, 18 ), dir = Vector( -1, 0, 0 ), size = 15 },
-
-        { type = "signal_left", offset = Vector( -100, 34.2, 18 ), dir = Vector( -1, 0, 0 ) },
-        { type = "signal_right", offset = Vector( -100, -34.2, 18 ), dir = Vector( -1, 0, 0 ) }
+        { type = "brake", offset = Vector( -100, 24.5, 18 ), dir = Vector( -1, 0, 0 ), size = 15 },
+        { type = "brake", offset = Vector( -100, 29.4, 18 ), dir = Vector( -1, 0, 0 ), size = 15 },
+        { type = "brake", offset = Vector( -100, -24.5, 18 ), dir = Vector( -1, 0, 0 ), size = 15 },
+        { type = "brake", offset = Vector( -100, -29.4, 18 ), dir = Vector( -1, 0, 0 ), size = 15 },
     }
 
     function ENT:OnCreateEngineStream( stream )
@@ -90,12 +90,13 @@ if SERVER then
     end
 
     ENT.LightBodygroups = {
-        { type = "brake", bodyGroupId = 16, subModelId = 1 },
+        { type = "headlight", bodyGroupId = 17, subModelId = 1 }, -- Headlights
+        { type = "headlight", bodyGroupId = 16, subModelId = 1 }, -- Tail lights
         { type = "reverse", bodyGroupId = 18, subModelId = 1 },
-        { type = "headlight", bodyGroupId = 19, subModelId = 1 }, -- Tail lights
-        { type = "headlight", bodyGroupId = 17, subModelId = 1 },  -- Headlights
-        { type = "signal_left", bodyGroupId = 20, subModelId = 1 },
-        { type = "signal_right", bodyGroupId = 21, subModelId = 1 },
+
+        { type = "brake", bodyGroupId = 20, subModelId = 1, signal = "left" },
+        { type = "brake", bodyGroupId = 21, subModelId = 1, signal = "right" },
+        { type = "brake", bodyGroupId = 19, subModelId = 1 }
     }
 
     function ENT:CreateFeatures()

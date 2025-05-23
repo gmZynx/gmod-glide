@@ -1,4 +1,3 @@
--- Example car class
 AddCSLuaFile()
 
 ENT.Type = "anim"
@@ -245,6 +244,8 @@ if SERVER then
 
         self:ChangeWheelRadius( 12 )
 
+        -- Since the model already has a visual representation
+        -- for the wheels, hide the actual wheels.
         for _, w in ipairs( self.wheels ) do
             Glide.HideEntity( w, true )
         end

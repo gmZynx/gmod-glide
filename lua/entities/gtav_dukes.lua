@@ -1,4 +1,3 @@
--- Example car class
 AddCSLuaFile()
 
 ENT.Type = "anim"
@@ -30,12 +29,12 @@ if CLIENT then
     }
 
     ENT.LightSprites = {
-        { type = "brake", offset = Vector( -125, 13, 5 ), dir = Vector( -1, 0, 0 ) },
-        { type = "brake", offset = Vector( -125, -13, 5 ), dir = Vector( -1, 0, 0 ) },
+        { type = "taillight", offset = Vector( -125, 13, 5 ), dir = Vector( -1, 0, 0 ) },
+        { type = "taillight", offset = Vector( -125, -13, 5 ), dir = Vector( -1, 0, 0 ) },
         { type = "reverse", offset = Vector( -125, 21, 5 ), dir = Vector( -1, 0, 0 ) },
         { type = "reverse", offset = Vector( -125, -21, 5 ), dir = Vector( -1, 0, 0 ) },
-        { type = "taillight", offset = Vector( -125, 27, 5 ), dir = Vector( -1, 0, 0 ), signal = "left" },
-        { type = "taillight", offset = Vector( -125, -27, 5 ), dir = Vector( -1, 0, 0 ), signal = "right" },
+        { type = "brake", offset = Vector( -125, 27, 5 ), dir = Vector( -1, 0, 0 ), signal = "left" },
+        { type = "brake", offset = Vector( -125, -27, 5 ), dir = Vector( -1, 0, 0 ), signal = "right" },
 
         { type = "headlight", offset = Vector( 106, 29, -1 ), dir = Vector( 1, 0, 0 ) },
         { type = "headlight", offset = Vector( 106, 22, -1 ), dir = Vector( 1, 0, 0 ) },
@@ -53,11 +52,11 @@ if SERVER then
 
     ENT.LightBodygroups = {
         { type = "headlight", bodyGroupId = 19, subModelId = 1 }, -- Headlights
-        { type = "brake", bodyGroupId = 20, subModelId = 1 },
+        { type = "headlight", bodyGroupId = 20, subModelId = 1 }, -- Taillights
         { type = "reverse", bodyGroupId = 21, subModelId = 1 },
 
-        { type = "headlight", bodyGroupId = 22, subModelId = 1, signal = "left" }, -- Left signal/taillight combo
-        { type = "headlight", bodyGroupId = 23, subModelId = 1, signal = "right" } -- Right signal/taillight combo
+        { type = "brake", bodyGroupId = 22, subModelId = 1, signal = "left" }, -- Left signal/brake
+        { type = "brake", bodyGroupId = 23, subModelId = 1, signal = "right" } -- Right signal/brake
     }
 
     function ENT:CreateFeatures()

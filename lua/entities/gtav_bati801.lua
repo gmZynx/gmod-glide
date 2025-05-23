@@ -9,6 +9,7 @@ ENT.ChassisModel = "models/gta5/vehicles/bati801/chassis.mdl"
 
 DEFINE_BASECLASS( "base_glide_motorcycle" )
 
+-- Override the default first person offset for all seats
 function ENT:GetFirstPersonOffset( _, localEyePos )
     localEyePos[3] = localEyePos[3] - 5
     return localEyePos
@@ -62,14 +63,19 @@ if CLIENT then
     local spinAng = Angle()
 
     function ENT:OnUpdateAnimations()
+        -- Call the base class' `OnUpdateAnimations`
+        -- to automatically update the steering pose parameter.
         BaseClass.OnUpdateAnimations( self )
 
+        -- Manually update the suspension pose parameters
         self:SetPoseParameter( "suspension_front", Remap( self:GetWheelOffset( 1 ), -9, 0, 0, 1.3 ) )
         self:SetPoseParameter( "suspension_rear", Remap( self:GetWheelOffset( 2 ), -9, 0, 0, 1 ) )
         self:InvalidateBoneCache()
 
         if not self.frontBoneId then return end
 
+        -- The wheels are part of the model, so we have to
+        -- rotate their bones to match the actual wheels.
         spinAng[3] = self:GetWheelSpin( 1 )
         self:ManipulateBoneAngles( self.frontBoneId, spinAng, false )
 
@@ -125,8 +131,8 @@ if SERVER then
     ENT.TiltForce = 650
 
     ENT.LightBodygroups = {
-        { type = "headlight", bodyGroupId = 7, subModelId = 1 }, -- Headlight
-        { type = "headlight", bodyGroupId = 10, subModelId = 1 } -- Tail light
+        { type = "headlight", bodyGroupId = 7, subModelId = 1 },
+        { type = "brake_or_taillight", bodyGroupId = 10, subModelId = 1 }
     }
 
     function ENT:InitializePhysics()
@@ -159,6 +165,8 @@ if SERVER then
         self:CreateWheel( Vector( 34, 0, 2.5 ), { steerMultiplier = 1 } ) -- Front
         self:CreateWheel( Vector( -32, 0, 2.5 ) ) -- Rear
 
+        -- Since the model already has a visual representation
+        -- for the wheels, hide the actual wheels.
         for _, w in ipairs( self.wheels ) do
             Glide.HideEntity( w, true )
         end

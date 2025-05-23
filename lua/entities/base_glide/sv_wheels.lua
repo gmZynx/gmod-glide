@@ -12,7 +12,6 @@ end
 
 function ENT:CreateWheel( offset, params )
     params = params or {}
-    params.localPos = offset
 
     local pos = self:LocalToWorld( offset )
     local ang = self:LocalToWorldAngles( Angle() )
@@ -88,10 +87,15 @@ function ENT:PhysicsSimulate( phys, dt )
         local traceFilter = self.traceFilter
         local surfaceGrip = self.surfaceGrip
         local surfaceResistance = self.surfaceResistance
+        local vehVel = phys:GetVelocity()
+        local vehAngVel = phys:GetAngleVelocity()
 
         for _, w in ipairs( self.wheels ) do
-            w:DoPhysics( self, phys, traceFilter, linForce, angForce, dt, surfaceGrip, surfaceResistance )
+            w:DoPhysics( self, phys, traceFilter, linForce, angForce, dt, surfaceGrip, surfaceResistance, vehVel, vehAngVel )
         end
+
+        phys:SetVelocityInstantaneous( vehVel )
+        phys:SetAngleVelocityInstantaneous( vehAngVel )
     end
 
     -- Let children classes do additional physics if they want to

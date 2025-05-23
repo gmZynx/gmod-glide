@@ -49,11 +49,11 @@ hook.Add( "PlayerEnteredVehicle", "Glide.OnEnterSeat", function( ply, seat )
 
     -- Store some variables on this player
     ply.IsUsingGlideVehicle = true
-    ply.GlideCurrentVehicle = parent
-    ply.GlideCurrentSeatIndex = seatIndex
+    ply:SetNWEntity( "GlideVehicle", parent )
+    ply:SetNWInt( "GlideSeatIndex", seatIndex )
     ply:DrawShadow( false )
 
-    -- Let the player know about the current vehicle/seat they are sitting on
+    -- Make sure the player knows about their current vehicle/seat
     Glide.StartCommand( Glide.CMD_SET_CURRENT_VEHICLE, false )
     net.WriteEntity( parent )
     net.WriteUInt( seatIndex, 6 )
@@ -78,11 +78,11 @@ hook.Add( "PlayerLeaveVehicle", "Glide.OnExitSeat", function( ply )
 
     -- Cleanup variables
     ply.IsUsingGlideVehicle = false
-    ply.GlideCurrentVehicle = NULL
-    ply.GlideCurrentSeatIndex = 0
+    ply:SetNWEntity( "GlideVehicle", NULL )
+    ply:SetNWInt( "GlideSeatIndex", 0 )
     ply:DrawShadow( true )
 
-    -- Let the player know that they aren't on a vehicle anymore
+    -- Make sure the player knows that they aren't on a vehicle anymore
     Glide.StartCommand( Glide.CMD_SET_CURRENT_VEHICLE, false )
     net.WriteEntity( NULL )
     net.WriteUInt( 0, 6 )

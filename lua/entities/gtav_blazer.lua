@@ -11,10 +11,12 @@ ENT.CanSwitchTurnSignals = false
 
 DEFINE_BASECLASS( "base_glide_car" )
 
+-- Override the default first person offset
 function ENT:GetFirstPersonOffset( _, localEyePos )
     return localEyePos
 end
 
+-- Override the default sit animation
 function ENT:GetPlayerSitSequence( _seatIndex )
     return "drive_airboat"
 end
@@ -53,8 +55,14 @@ if CLIENT then
     ENT.ExternalGearSwitchSound = ""
     ENT.InternalGearSwitchSound = ""
 
+    -- Enable the wind sound at full volume
     function ENT:AllowWindSound()
         return true, 1
+    end
+
+    -- Do not muffle first person sounds
+    function ENT:AllowFirstPersonMuffledSound()
+        return false
     end
 
     function ENT:OnCreateEngineStream( stream )
@@ -73,10 +81,6 @@ if CLIENT then
 
     function ENT:GetSeatBoneManipulations()
         return POSE_DATA
-    end
-
-    function ENT:AllowFirstPersonMuffledSound()
-        return false
     end
 
     function ENT:OnActivateMisc()

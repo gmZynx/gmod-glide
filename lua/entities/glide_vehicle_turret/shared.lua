@@ -90,12 +90,11 @@ function ENT:UpdateTurret( parent, body, t )
 
         body:SetLocalAngles( ang )
 
-        if SERVER then
+        if SERVER or LocalPlayer() == user then
             self:SetLastBodyAngle( ang )
         end
 
         if CLIENT then
-            self.predictedBodyAngle = ang
             self.nextPunch = self.nextPunch or 0
 
             if self:GetIsFiring() and t > self.nextPunch then

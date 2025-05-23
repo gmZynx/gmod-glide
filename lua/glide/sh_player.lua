@@ -1,11 +1,17 @@
 local PlayerMeta = FindMetaTable( "Player" )
+local EntityMeta = FindMetaTable( "Entity" )
 
-function PlayerMeta:GlideGetVehicle()
-    return self.GlideCurrentVehicle or NULL
-end
+do
+    local GetNWEntity = EntityMeta.GetNWEntity
+    local GetNWInt = EntityMeta.GetNWInt
 
-function PlayerMeta:GlideGetSeatIndex()
-    return self.GlideCurrentSeatIndex or 0
+    function PlayerMeta:GlideGetVehicle()
+        return GetNWEntity( self, "GlideVehicle", NULL )
+    end
+
+    function PlayerMeta:GlideGetSeatIndex()
+        return GetNWInt( self, "GlideSeatIndex", 0 )
+    end
 end
 
 if SERVER then
@@ -15,7 +21,7 @@ if SERVER then
     end
 
     local TraceLine = util.TraceLine
-    local eyePos = FindMetaTable( "Entity" ).EyePos
+    local eyePos = EntityMeta.EyePos
 
     function PlayerMeta:GlideGetAimPos()
         local origin = eyePos( self )

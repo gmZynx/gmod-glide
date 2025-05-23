@@ -34,6 +34,7 @@ local lightState = {
     brake = false,
     reverse = false,
     headlight = false,
+    brake_or_taillight = false,
     signal_left = false,
     signal_right = false
 }
@@ -48,6 +49,7 @@ function ENT:UpdateLightBodygroups()
     lightState.brake = allowLights and self:IsBraking()
     lightState.reverse = allowLights and self:IsReversing()
     lightState.headlight = headlightState > 0
+    lightState.brake_or_taillight = lightState.brake or lightState.headlight
 
     local signal = self:GetTurnSignalState()
     local signalBlink = ( CurTime() % self.TurnSignalCycle ) > self.TurnSignalCycle * 0.5

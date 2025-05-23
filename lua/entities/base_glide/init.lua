@@ -401,7 +401,15 @@ do
             return self:GetPos() -- Not much we can do here...
         end
 
-        traceData.filter = table.Copy( self.traceFilter )
+        traceData.filter = {}
+
+        -- Ignore everything that is parented to this vehicle
+        for i, ent in ipairs( self:GetChildren() ) do
+            traceData.filter[i] = ent
+        end
+
+        -- Ignore the vehicle itself and players
+        traceData.filter[#traceData.filter + 1] = self
         traceData.filter[#traceData.filter + 1] = "player"
 
         -- Try the original exit position first

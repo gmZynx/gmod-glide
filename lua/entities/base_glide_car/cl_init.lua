@@ -325,7 +325,7 @@ function ENT:OnUpdateMisc()
 
         if on and v.offset then
             pos = self:LocalToWorld( v.offset )
-            radius = v.lightRadius or 150
+            radius = v.lightRadius or 200
 
             if radius > 0 then
                 DrawLight( pos, v.color or DEFAULT_SIREN_COLOR, radius )

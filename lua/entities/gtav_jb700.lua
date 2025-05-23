@@ -1,4 +1,3 @@
--- Example car class
 AddCSLuaFile()
 
 ENT.Type = "anim"
@@ -77,7 +76,7 @@ if SERVER then
 
     ENT.LightBodygroups = {
         { type = "headlight", bodyGroupId = 10, subModelId = 1 }, -- Headlights
-        { type = "headlight", bodyGroupId = 13, subModelId = 1 }, -- Tail lights
+        { type = "brake_or_taillight", bodyGroupId = 13, subModelId = 1 }, -- Tail lights
         { type = "signal_left", bodyGroupId = 11, subModelId = 1 },
         { type = "signal_right", bodyGroupId = 12, subModelId = 1 }
     }

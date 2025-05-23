@@ -1,4 +1,3 @@
--- Example car class
 AddCSLuaFile()
 
 ENT.Type = "anim"

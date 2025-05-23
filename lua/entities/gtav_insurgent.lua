@@ -1,4 +1,3 @@
--- Example car class
 AddCSLuaFile()
 
 ENT.Type = "anim"
@@ -9,17 +8,26 @@ ENT.GlideCategory = "Default"
 ENT.ChassisModel = "models/gta5/vehicles/insurgent/chassis.mdl"
 ENT.MaxChassisHealth = 2000
 
+-- Store which seat index will have the turret
+-- in a variable, so it can be changed easily.
+local TURRET_SEAT_INDEX = 5
+
 DEFINE_BASECLASS( "base_glide_car" )
 
 function ENT:SetupDataTables()
+    -- Call the base class' `SetupDataTables`
+    -- to let it setup required network variables.
     BaseClass.SetupDataTables( self )
 
+    -- Store our turret entity, as well as the seat that controls it.
     self:NetworkVar( "Entity", "Turret" )
     self:NetworkVar( "Entity", "TurretSeat" )
 end
 
+-- Use `drive_airboat` for the turret seat, `drive_jeep` for the driver,
+-- or the regular `sit` animation for everyone else.
 function ENT:GetPlayerSitSequence( seatIndex )
-    return seatIndex == 5 and "drive_airboat" or ( seatIndex > 1 and "sit" or "drive_jeep" )
+    return seatIndex == TURRET_SEAT_INDEX and "drive_airboat" or ( seatIndex > 1 and "sit" or "drive_jeep" )
 end
 
 if CLIENT then
@@ -46,10 +54,10 @@ if CLIENT then
     }
 
     ENT.LightSprites = {
-        { type = "brake", offset = Vector( -132, 30.5, 11 ), dir = Vector( -1, 0, 0 ) },
-        { type = "brake", offset = Vector( -132, -30.5, 11 ), dir = Vector( -1, 0, 0 ) },
-        { type = "taillight", offset = Vector( -132, 30.5, 11 ), dir = Vector( -1, 0, 0 ), size = 15 },
-        { type = "taillight", offset = Vector( -132, -30.5, 11 ), dir = Vector( -1, 0, 0 ), size = 15 },
+        { type = "brake", offset = Vector( -132, 30.5, 11 ), dir = Vector( -1, 0, 0 ), size = 60 },
+        { type = "brake", offset = Vector( -132, -30.5, 11 ), dir = Vector( -1, 0, 0 ), size = 60  },
+        { type = "taillight", offset = Vector( -132, 30.5, 11 ), dir = Vector( -1, 0, 0 ), size = 20 },
+        { type = "taillight", offset = Vector( -132, -30.5, 11 ), dir = Vector( -1, 0, 0 ), size = 20 },
 
         { type = "reverse", offset = Vector( -132, 24, 11 ), dir = Vector( -1, 0, 0 ) },
         { type = "reverse", offset = Vector( -132, -24, 11 ), dir = Vector( -1, 0, 0 ) },
@@ -69,43 +77,49 @@ if CLIENT then
 
     function ENT:OnLocalPlayerEnter( seatIndex )
         self:DisableCrosshair()
-        self.isUsingTurret = false
 
-        if seatIndex == 5 then
+        -- Enable the crosshair when a player enters the turret seat
+        if seatIndex == TURRET_SEAT_INDEX then
             self:EnableCrosshair( { iconType = "dot", color = Color( 0, 255, 0 ) } )
-            self.isUsingTurret = true
         else
+            -- Let the base class handle it
             BaseClass.OnLocalPlayerEnter( self, seatIndex )
         end
     end
 
     function ENT:OnLocalPlayerExit()
         self:DisableCrosshair()
-        self.isUsingTurret = false
     end
 
+    -- This function runs every frame when the crosshair is enabled.
     function ENT:UpdateCrosshairPosition()
+        -- Put right at the local player's camera aim position.
         self.crosshair.origin = Glide.GetCameraAimPos()
     end
 
     function ENT:OnActivateMisc()
+        -- Let the base class do some initialization
         BaseClass.OnActivateMisc( self )
 
+        -- Store the bones that control the turret's base and weapon
         self.turretBaseBone = self:LookupBone( "turret_base" )
         self.turretWeaponBone = self:LookupBone( "turret_weapon" )
     end
 
+    -- Temporary variables to move/rotate the turret's bones and seat.
     local ang = Angle()
     local offset = Vector()
     local matrix = Matrix()
 
     function ENT:OnUpdateAnimations()
+        -- Call the base class' `OnUpdateAnimations`
+        -- to automatically update the steering pose parameter.
         BaseClass.OnUpdateAnimations( self )
 
         local turret = self:GetTurret()
         if not IsValid( turret ) then return end
 
-        local bodyAng = self.isUsingTurret and turret.predictedBodyAngle or turret:GetLastBodyAngle()
+        local bodyAng = turret:GetLastBodyAngle()
         local seat = self:GetTurretSeat()
 
         if IsValid( seat ) then
@@ -127,6 +141,8 @@ if CLIENT then
 
         if not self.turretBaseBone then return end
 
+        -- Using the turret's body angle,
+        -- rotate our turret base/weapon bones.
         bodyAng[1] = math.NormalizeAngle( bodyAng[1] ) -- Stay on the -180/180 range
 
         ang[1] = 0
@@ -139,8 +155,9 @@ if CLIENT then
         self:ManipulateBoneAngles( self.turretWeaponBone, ang )
     end
 
+    -- Override the default first person offset
     function ENT:GetFirstPersonOffset( seatIndex, localEyePos )
-        if seatIndex == 5 then
+        if seatIndex == TURRET_SEAT_INDEX then
             return Vector( -30, 0, 115 )
         end
 
@@ -150,12 +167,14 @@ if CLIENT then
         return localEyePos
     end
 
+    -- Override the default camera type for the turret seat
     function ENT:GetCameraType( seatIndex )
-        return seatIndex == 5 and 1 or 0 -- Glide.CAMERA_TYPE.TURRET or Glide.CAMERA_TYPE.CAR
+        return seatIndex == TURRET_SEAT_INDEX and 1 or 0 -- Glide.CAMERA_TYPE.TURRET or Glide.CAMERA_TYPE.CAR
     end
 
+    -- Don't muffle sounds while sitting on the turret seat
     function ENT:AllowFirstPersonMuffledSound( seatIndex )
-        return seatIndex < 5
+        return seatIndex ~= TURRET_SEAT_INDEX
     end
 
     local POSE_DATA = {
@@ -172,8 +191,9 @@ if CLIENT then
         ["ValveBiped.Bip01_R_Calf"] = Angle( 10.3, 91.6, 16.3 )
     }
 
+    -- Roughly place the turret user's hands on the weapon
     function ENT:GetSeatBoneManipulations( seatIndex )
-        if seatIndex == 5 then
+        if seatIndex == TURRET_SEAT_INDEX then
             return POSE_DATA
         end
     end
@@ -192,15 +212,17 @@ if SERVER then
 
     ENT.LightBodygroups = {
         { type = "headlight", bodyGroupId = 10, subModelId = 1 }, -- Headlights
-        { type = "headlight", bodyGroupId = 12, subModelId = 1 }, -- Tail lights
+        { type = "brake_or_taillight", bodyGroupId = 12, subModelId = 1 }, -- Tail lights
         { type = "headlight", bodyGroupId = 13, subModelId = 1, beamType = "high" }, -- Extra lights
         { type = "reverse", bodyGroupId = 11, subModelId = 1 },
         { type = "signal_left", bodyGroupId = 14, subModelId = 1 },
         { type = "signal_right", bodyGroupId = 15, subModelId = 1 }
     }
 
+    -- Allow the passengers of seats created after
+    -- the turret seat to fall off the vehicle.
     function ENT:CanFallOnCollision( seatIndex )
-        return seatIndex > 5
+        return seatIndex > TURRET_SEAT_INDEX
     end
 
     function ENT:CreateFeatures()
@@ -226,15 +248,18 @@ if SERVER then
         self:SetSideTractionMax( 4500 )
         self:SetSideTractionMin( 2000 )
 
-        self:CreateSeat( Vector( -2, 21.5, 9 ), Angle( 0, 270, -5 ), Vector( 40, 100, 0 ), true )
-        self:CreateSeat( Vector( 15, -21.5, 7 ), Angle( 0, 270, 5 ), Vector( 40, -100, 0 ), true )
-        self:CreateSeat( Vector( -35, 20, 6 ), Angle( 0, 270, 5 ), Vector( -40, 100, 0 ), true )
-        self:CreateSeat( Vector( -35, -20, 6 ), Angle( 0, 270, 5 ), Vector( -40, -100, 0 ), true )
+        self:CreateSeat( Vector( -2, 21.5, 9 ), Angle( 0, 270, -5 ), Vector( 40, 100, 0 ), true ) -- 1
+        self:CreateSeat( Vector( 15, -21.5, 7 ), Angle( 0, 270, 5 ), Vector( 40, -100, 0 ), true ) -- 2
+        self:CreateSeat( Vector( -35, 20, 6 ), Angle( 0, 270, 5 ), Vector( -40, 100, 0 ), true ) -- 3
+        self:CreateSeat( Vector( -35, -20, 6 ), Angle( 0, 270, 5 ), Vector( -40, -100, 0 ), true ) -- 4
 
-        local turretSeat = self:CreateSeat( Vector( -44.7, 0, 55.6 ), Angle( 0, 270, -10 ), Vector( -80, -100, 0 ), true )
+        local turretSeat = self:CreateSeat( Vector( -44.7, 0, 55.6 ), Angle( 0, 270, -10 ), Vector( -80, -100, 0 ), true ) -- 5
 
-        self:CreateSeat( Vector( -110, 30, 20.5 ), Angle( 0, 180, 3 ), Vector( 40, 100, 0 ), true )
-        self:CreateSeat( Vector( -110, -30, 20.5 ), Angle( 0, 0, 3 ), Vector( 40, 100, 0 ), true )
+        -- Store the seat to be used client-side
+        self:SetTurretSeat( turretSeat )
+
+        self:CreateSeat( Vector( -110, 30, 20.5 ), Angle( 0, 180, 3 ), Vector( 40, 100, 0 ), true ) -- 6
+        self:CreateSeat( Vector( -110, -30, 20.5 ), Angle( 0, 0, 3 ), Vector( 40, 100, 0 ), true ) -- 7
 
         local turret = Glide.CreateTurret( self, Vector( -30, 0, 90 ), Angle() )
         turret:SetFireDelay( 0.13 )
@@ -246,12 +271,11 @@ if SERVER then
         turret:SetShootStopSound( "" )
 
         turret.BulletDamage = 40
-
-        self:SetTurret( turret )
-        self:SetTurretSeat( turretSeat )
-
         Glide.HideEntity( turret, true )
         Glide.HideEntity( turret:GetGunBody(), true )
+
+        -- Store the turret to be used client-side
+        self:SetTurret( turret )
 
         -- Front left
         self:CreateWheel( Vector( 82, 48, -8 ), {
@@ -288,7 +312,8 @@ if SERVER then
         local turret = self:GetTurret()
 
         if IsValid( turret ) then
-            turret:UpdateUser( self:GetSeatDriver( 5 ) )
+            -- The player on our "turret seat" should be the user of the actual turret entity.
+            turret:UpdateUser( self:GetSeatDriver( TURRET_SEAT_INDEX ) )
         end
     end
 end

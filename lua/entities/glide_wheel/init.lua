@@ -6,7 +6,11 @@ include( "shared.lua" )
 -- Store the TraceResult on this table instead of
 -- creating a new one every time. It's contents are
 -- overritten every time a wheel calls `util.TraceHull`.
-local ray = {}
+local ray = Glide.LastWheelTraceResult or {}
+
+-- Keep the same table reference on Lua autorefresh.
+-- Prevents errors on existing wheels when updating this file.
+Glide.LastWheelTraceResult = ray
 
 function ENT:Initialize()
     self:SetModel( "models/editor/axis_helper.mdl" )
@@ -63,7 +67,6 @@ function ENT:Initialize()
     self.traceData = {
         mins = Vector(),
         maxs = Vector( 1, 1, 1 ),
-        collisiongroup = COLLISION_GROUP_WORLD,
 
         -- Output TraceResult to `ray`
         output = ray
@@ -262,7 +265,7 @@ local TractionRamp = Glide.TractionRamp
 
 -- Temporary variables
 local pos, ang, fw, rt, up, radius, maxLen
-local fraction, contactPos, surfaceId, vel, velF, velR, absVelR
+local fraction, contactPos, surfaceId, vel, velF, velR, velU, absVelR
 local offset, springForce, damperForce
 local surfaceGrip, maxTraction, brakeForce, forwardForce, signForwardForce
 local tractionCycle, gripLoss, groundAngularVelocity, angularVelocity = Vector()
@@ -270,7 +273,7 @@ local slipAngle, sideForce
 local force, linearImp, angularImp
 local state, params, traceData
 
-function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfaceGrip, vehSurfaceResistance )
+function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfaceGrip, vehSurfaceResistance, vehVel, vehAngVel )
     state, params = self.state, self.params
 
     -- Get the starting point of the raycast, where the suspension connects to the chassis
@@ -331,6 +334,7 @@ function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfa
     -- Split that velocity among our local directions
     velF = fw:Dot( vel )
     velR = rt:Dot( vel )
+    velU = ray.HitNormal:Dot( vel )
     absVelR = Abs( velR )
 
     -- Make forward forces be perpendicular to the surface normal
@@ -343,6 +347,14 @@ function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfa
     state.lastSpringOffset = offset
 
     force = ( springForce - damperForce ) * up:Dot( ray.HitNormal ) * ray.HitNormal
+
+    -- If the suspension spring is going to be fully compressed on the next frame...
+    if velU < 0 and offset + Abs( velU * dt ) > params.suspensionLength then
+        -- Completely negate the downwards velocity at the local position
+        linearImp, angularImp = phys:CalculateVelocityOffset( ( -velU / dt ) * ray.HitNormal, pos )
+        vehVel:Add( linearImp )
+        vehAngVel:Add( angularImp )
+    end
 
     -- Rolling resistance
     force:Add( ( vehSurfaceResistance[surfaceId] or 0.05 ) * -velF * fw )
@@ -392,7 +404,7 @@ function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfa
     sideForce = sideForce * ( 1 - Clamp( Abs( gripLoss ) * 0.1, 0, 1 ) * 0.9 )
 
     -- Reduce sideways force as the suspension spring applies less force
-    surfaceGrip = surfaceGrip * Clamp( springForce / params.springStrength, 0, 1 )
+    --surfaceGrip = surfaceGrip * Clamp( springForce / params.springStrength, 0, 1 )
 
     -- Apply sideways traction force
     force:Add( Clamp( sideForce, -maxTraction, maxTraction ) * surfaceGrip * rt )
