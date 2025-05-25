@@ -23,7 +23,7 @@ function ENT:Initialize()
         self:StartMotionController()
     end
 
-    self.radius = 350
+    self.radius = 200
     self.damage = 100
     self.lifeTime = CurTime() + 6
     self.acceleration = 8000
