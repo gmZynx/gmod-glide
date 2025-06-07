@@ -149,6 +149,7 @@ if SERVER then
         self:SetSideTractionMax( 2700 )
 
         self:SetSuspensionLength( 8 )
+        self:SetSpringStrength( 700 )
         self:SetSpringDamper( 3500 )
 
         self:SetTransmissionEfficiency( 0.7 )

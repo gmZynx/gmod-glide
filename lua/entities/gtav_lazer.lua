@@ -122,8 +122,8 @@ if CLIENT then
         self:ManipulateBoneAngles( self.airbrakeLBone, ang )
     end
 
-    function ENT:OnUpdateSounds()
-        BaseClass.OnUpdateSounds( self )
+    function ENT:OnUpdateMisc()
+        BaseClass.OnUpdateMisc( self )
 
         local sounds = self.sounds
 

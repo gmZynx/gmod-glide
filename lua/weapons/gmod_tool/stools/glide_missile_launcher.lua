@@ -10,7 +10,10 @@ TOOL.ClientConVar = {
     delay = 1,
     lifetime = 5,
     radius = 350,
-    damage = 100
+    damage = 100,
+
+    missile_model = "models/glide/weapons/homing_rocket.mdl",
+    missile_model_scale = 1
 }
 
 local function IsGlideMissileLauncher( ent )
@@ -18,16 +21,25 @@ local function IsGlideMissileLauncher( ent )
 end
 
 if SERVER then
+    function TOOL:Deploy()
+        Glide.ToolCheckMissingWiremod( self:GetOwner() )
+    end
+
     function TOOL:UpdateMissileLauncher( ent )
         local delay = self:GetClientNumber( "delay" )
         local lifetime = self:GetClientNumber( "lifetime" )
         local radius = self:GetClientNumber( "radius" )
         local damage = self:GetClientNumber( "damage" )
 
+        local missileModel = self:GetClientInfo( "missile_model" )
+        local missileScale = self:GetClientNumber( "missile_model_scale" )
+
         ent:SetReloadDelay( delay )
         ent:SetMissileLifetime( lifetime )
         ent:SetExplosionRadius( radius )
         ent:SetExplosionDamage( damage )
+        ent:SetMissileModel( missileModel )
+        ent:SetMissileScale( missileScale )
     end
 end
 
@@ -128,4 +140,13 @@ function TOOL.BuildCPanel( panel )
         min = 1,
         max = cvarMaxDamage and cvarMaxDamage:GetFloat() or 200
     } )
+
+    local models = {}
+
+    for path, _ in pairs( list.Get( "GlideProjectileModels" ) ) do
+        models[path] = { convar = path }
+    end
+
+    panel:PropSelect( "#tool.glide_missile_launcher.missile_model", "glide_missile_launcher_missile_model", models, 4 )
+    panel:NumSlider( "#tool.glide_missile_launcher.missile_model_scale", "glide_missile_launcher_missile_model_scale", 0.5, 3, 1 )
 end

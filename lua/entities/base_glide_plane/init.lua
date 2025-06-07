@@ -165,9 +165,8 @@ function ENT:OnPostThink( dt, selfTbl )
                 -- Approach towards the idle power plus the throttle input
                 power = Approach( power, 1 + throttle, dt * response )
 
-                -- Let the pilot turn the engine off
-                if throttle < 0 and power < 0.5 then
-                    self:TurnOff()
+                if throttle < 0 and power < 0.8 then
+                    power = 0.8
                 end
             end
         else

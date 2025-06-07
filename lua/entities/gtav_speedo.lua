@@ -77,7 +77,6 @@ if SERVER then
     function ENT:CreateFeatures()
         self.engineBrakeTorque = 600
 
-        self:SetSpringStrength( 700 )
         self:SetSteerConeMaxSpeed( 1000 )
         self:SetForwardTractionBias( -0.15 )
         self:SetForwardTractionMax( 2100 )

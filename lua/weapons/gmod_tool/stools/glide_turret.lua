@@ -31,6 +31,10 @@ local function IsGlideTurret( ent )
 end
 
 if SERVER then
+    function TOOL:Deploy()
+        Glide.ToolCheckMissingWiremod( self:GetOwner() )
+    end
+
     function TOOL:UpdateTurret( ent )
         local presetId = self:GetClientInfo( "sound_preset" )
         local delay = self:GetClientNumber( "delay" )

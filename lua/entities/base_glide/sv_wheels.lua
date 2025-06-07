@@ -87,13 +87,16 @@ function ENT:PhysicsSimulate( phys, dt )
         local traceFilter = self.traceFilter
         local surfaceGrip = self.surfaceGrip
         local surfaceResistance = self.surfaceResistance
+
+        local vehPos = phys:GetPos()
         local vehVel = phys:GetVelocity()
         local vehAngVel = phys:GetAngleVelocity()
 
         for _, w in ipairs( self.wheels ) do
-            w:DoPhysics( self, phys, traceFilter, linForce, angForce, dt, surfaceGrip, surfaceResistance, vehVel, vehAngVel )
+            w:DoPhysics( self, phys, traceFilter, linForce, angForce, dt, surfaceGrip, surfaceResistance, vehPos, vehVel, vehAngVel )
         end
 
+        phys:SetPos( vehPos )
         phys:SetVelocityInstantaneous( vehVel )
         phys:SetAngleVelocityInstantaneous( vehAngVel )
     end

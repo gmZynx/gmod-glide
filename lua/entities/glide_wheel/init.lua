@@ -20,8 +20,8 @@ function ENT:Initialize()
     self.params = {
         -- Suspension
         suspensionLength = 10,
-        springStrength = 800,
-        springDamper = 3000,
+        springStrength = 500,
+        springDamper = 2000,
 
         -- Brake force
         brakePower = 3000,
@@ -273,7 +273,7 @@ local slipAngle, sideForce
 local force, linearImp, angularImp
 local state, params, traceData
 
-function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfaceGrip, vehSurfaceResistance, vehVel, vehAngVel )
+function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfaceGrip, vehSurfaceResistance, vehPos, vehVel, vehAngVel )
     state, params = self.state, self.params
 
     -- Get the starting point of the raycast, where the suspension connects to the chassis
@@ -354,6 +354,10 @@ function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfa
         linearImp, angularImp = phys:CalculateVelocityOffset( ( -velU / dt ) * ray.HitNormal, pos )
         vehVel:Add( linearImp )
         vehAngVel:Add( angularImp )
+
+        -- Teleport back up, using phys:SetPos to prevent going through stuff.
+        linearImp = phys:CalculateVelocityOffset( ray.HitPos - ( contactPos + ray.HitNormal * velU * dt ), pos )
+        vehPos:Add( linearImp / dt )
     end
 
     -- Rolling resistance
@@ -364,7 +368,7 @@ function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfa
     maxTraction = params.forwardTractionMax * surfaceGrip * state.forwardTractionMult
 
     -- Grip loss logic
-    brakeForce = Clamp( -velF, -state.brake, state.brake ) * params.brakePower * surfaceGrip
+    brakeForce = ( velF > 0 and -state.brake or state.brake ) * params.brakePower * surfaceGrip
     forwardForce = state.torque + brakeForce
     signForwardForce = forwardForce > 0 and 1 or ( forwardForce < 0 and -1 or 0 )
 

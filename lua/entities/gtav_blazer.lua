@@ -188,8 +188,8 @@ if SERVER then
         self:SetMaxRPMTorque( 3000 )
 
         self:SetSuspensionLength( 10 )
-        self:SetSpringStrength( 450 )
-        self:SetSpringDamper( 2800 )
+        self:SetSpringStrength( 300 )
+        self:SetSpringDamper( 2000 )
 
         self:SetSideTractionMultiplier( 15 )
         self:SetSideTractionMax( 2800 )

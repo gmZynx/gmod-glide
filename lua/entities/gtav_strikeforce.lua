@@ -142,8 +142,8 @@ if CLIENT then
         end
     end
 
-    function ENT:OnUpdateSounds()
-        BaseClass.OnUpdateSounds( self )
+    function ENT:OnUpdateMisc()
+        BaseClass.OnUpdateMisc( self )
 
         local sounds = self.sounds
 
@@ -259,7 +259,9 @@ if SERVER then
             end
 
             local pos = self:LocalToWorld( self.MissileOffsets[self.missileIndex] )
-            self:FireMissile( pos, self:GetAngles(), attacker, target )
+            local missile = self:FireMissile( pos, self:GetAngles(), attacker, target )
+            missile:SetModel( "models/props_phx/amraam.mdl" )
+            missile:SetModelScale( 0.5 )
         end
     end
 

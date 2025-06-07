@@ -15,7 +15,9 @@ local ENT_VARS = {
     ["reloadDelay"] = true,
     ["missileLifetime"] = true,
     ["explosionRadius"] = true,
-    ["explosionDamage"] = true
+    ["explosionDamage"] = true,
+    ["missileModel"] = true,
+    ["missileScale"] = true
 }
 
 function ENT:OnEntityCopyTableFinish( data )
@@ -83,6 +85,9 @@ function ENT:Initialize()
     self.explosionRadius = 350
     self.explosionDamage = 100
 
+    self.missileModel = "models/glide/weapons/homing_rocket.mdl"
+    self.missileScale = 1
+
     self.isFiring = false
     self.nextShoot = 0
     self.homingTarget = NULL
@@ -118,6 +123,9 @@ function ENT:Think()
         missile.radius = self.explosionRadius
         missile.damage = self.explosionDamage
         missile.lifeTime = t + self.missileLifetime
+
+        missile:SetModel( self.missileModel )
+        missile:SetModelScale( self.missileScale )
     end
 
     self:NextThink( t )
@@ -144,6 +152,19 @@ end
 
 function ENT:SetExplosionDamage( damage )
     self.explosionDamage = math.Clamp( damage, 1, cvarMaxDamage and cvarMaxDamage:GetFloat() or 200 )
+end
+
+function ENT:SetMissileModel( model )
+    if not Glide.IsValidModel( model ) then return end
+
+    local modelData = list.Get( "GlideProjectileModels" )[model]
+    if not modelData then return end
+
+    self.missileModel = model
+end
+
+function ENT:SetMissileScale( scale )
+    self.missileScale = math.Clamp( scale, 0.5, 3 )
 end
 
 function ENT:TriggerInput( name, value )

@@ -28,8 +28,10 @@ end
 
 local RandomInt = math.random
 local RandomFloat = math.Rand
-local DEBRIS_GRAVITY = Vector( 0, 0, -40 )
 local Config = Glide.Config
+
+local debrisGravity = Vector( 0, 0, 0 )
+local debrisVelocity = Vector( 0, 0, 0 )
 
 function EFFECT:DoSurface( emitter, origin, scale, normal, fx )
     local p
@@ -46,19 +48,23 @@ function EFFECT:DoSurface( emitter, origin, scale, normal, fx )
             p:SetEndSize( fx.maxSize * scale * RandomFloat( 0.8, 1.5 ) )
             p:SetRoll( RandomFloat( -1, 1 ) )
 
-            DEBRIS_GRAVITY[3] = fx.gravity or -40
+            debrisGravity[3] = fx.gravity or -200
+
+            debrisVelocity[1] = 0
+            debrisVelocity[2] = 0
+            debrisVelocity[3] = fx.upVelocity
+            debrisVelocity:Add( normal * fx.throwVelocity )
 
             p:SetAirResistance( 50 )
-            p:SetGravity( DEBRIS_GRAVITY )
-            p:SetVelocity( normal * RandomFloat( 0.2, 1.0 ) * scale * fx.velocity )
-            p:SetColor( fx.r, fx.g, fx.b )
-            p:SetLighting( false )
+            p:SetGravity( debrisGravity )
+            p:SetVelocity( debrisVelocity * scale * RandomFloat( 0.3, 1.0 ) )
+            p:SetLighting( true )
             p:SetCollide( true )
         end
     end
 end
 
-local SMOKE_MAT = "particle/smokesprites_000"
+local SMOKE_MAT = "glide/effects/tire_particles/tire_slip_forward_"
 local SMOKE_GRAVITY = Vector( 0, 0, 60 )
 local DEFAULT_COLOR = Vector( 0, 0, 0 )
 
@@ -75,7 +81,7 @@ function EFFECT:DoSmoke( emitter, origin, scale, normal, vehicle )
     local lifetime = Config.reduceTireParticles and 0.4 or 1
 
     for _ = 1, count do
-        p = emitter:Add( SMOKE_MAT .. RandomInt( 9 ), origin )
+        p = emitter:Add( SMOKE_MAT .. RandomInt( 4 ), origin )
 
         if p then
             p:SetDieTime( lifetime * RandomFloat( 2, 4 ) )
@@ -92,63 +98,64 @@ function EFFECT:DoSmoke( emitter, origin, scale, normal, vehicle )
             p:SetGravity( SMOKE_GRAVITY * RandomFloat( 0.5, 1 ) )
             p:SetVelocity( normal * RandomFloat( 10, 30 ) * scale )
             p:SetColor( r, g, b )
-            p:SetLighting( false )
+            p:SetLighting( true )
             p:SetCollide( true )
         end
     end
 end
 
 surfaceFX[MAT_GRASS] = {
-    mat = Material( "glide/effects/grass_debris" ),
-    r = 100, g = 95, b = 40,
-    lifetime = 0.8,
+    mat = Material( "glide/effects/tire_particles/grass_debris" ),
+    lifetime = 0.9,
     alpha = 255,
-    minSize = 1,
-    maxSize = 3,
-    velocity = 30
+    minSize = 0.9,
+    maxSize = 2,
+    upVelocity = 12,
+    throwVelocity = 30
 }
 
 surfaceFX[MAT_FOLIAGE] = surfaceFX[MAT_GRASS]
 
 surfaceFX[MAT_SAND] = {
-    mat = Material( "particle/particle_composite" ),
-    r = 200, g = 170, b = 120,
-    lifetime = 1.5,
+    mat = Material( "glide/effects/tire_particles/sand" ),
+    lifetime = 1,
     alpha = 150,
-    minSize = 2,
-    maxSize = 6,
-    velocity = 30,
-    gravity = -90
+    minSize = 1.5,
+    maxSize = 3,
+    gravity = -300,
+    upVelocity = 15,
+    throwVelocity = 30
 }
 
 surfaceFX[MAT_DIRT] = {
-    mat = Material( "particle/particle_composite" ),
-    r = 70, g = 60, b = 50,
-    lifetime = 1,
-    alpha = 180,
+    mat = Material( "glide/effects/tire_particles/dirt" ),
+    lifetime = 1.5,
+    alpha = 150,
     minSize = 2,
-    maxSize = 4,
-    velocity = 30,
-    gravity = -100
+    maxSize = 0.8,
+    gravity = -400,
+    upVelocity = 18,
+    throwVelocity = 35
 }
 
 surfaceFX[MAT_SNOW] = {
-    mat = Material( "particle/particle_composite" ),
-    r = 230, g = 230, b = 230,
+    mat = Material( "glide/effects/tire_particles/snow" ),
     lifetime = 1,
     alpha = 100,
     minSize = 2,
-    maxSize = 4,
-    velocity = 30
+    maxSize = 1.5,
+    gravity = -400,
+    upVelocity = 18,
+    throwVelocity = 35
 }
 
 surfaceFX[MAT_SLOSH] = {
-    mat = Material( "effects/splash4" ),
-    r = 180, g = 180, b = 180,
-    lifetime = 0.3,
+    mat = Material( "glide/effects/tire_particles/water" ),
+    lifetime = 0.4,
     alpha = 100,
-    minSize = 1,
+    minSize = 0.5,
     maxSize = 3,
-    velocity = 50,
-    gravity = -150
+    gravity = -500,
+    upVelocity = 10,
+    throwVelocity = 35
 }

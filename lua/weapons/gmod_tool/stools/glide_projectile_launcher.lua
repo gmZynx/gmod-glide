@@ -15,7 +15,10 @@ TOOL.ClientConVar = {
     damage = 100,
     r = 60,
     g = 60,
-    b = 60
+    b = 60,
+
+    projectile_model = "models/props_phx/misc/flakshell_big.mdl",
+    projectile_model_scale = 1
 }
 
 local function IsGlideProjectileLauncher( ent )
@@ -23,6 +26,10 @@ local function IsGlideProjectileLauncher( ent )
 end
 
 if SERVER then
+    function TOOL:Deploy()
+        Glide.ToolCheckMissingWiremod( self:GetOwner() )
+    end
+
     function TOOL:UpdateProjectileLauncher( ent )
         local speed = self:GetClientNumber( "speed" )
         local gravity = self:GetClientNumber( "gravity" )
@@ -35,6 +42,9 @@ if SERVER then
         local g = self:GetClientNumber( "g", 60 )
         local b = self:GetClientNumber( "b", 60 )
 
+        local projectileModel = self:GetClientInfo( "projectile_model" )
+        local projectileScale = self:GetClientNumber( "projectile_model_scale" )
+
         ent:SetProjectileSpeed( speed )
         ent:SetProjectileGravity( gravity )
         ent:SetProjectileLifetime( lifetime )
@@ -42,6 +52,8 @@ if SERVER then
         ent:SetExplosionRadius( radius )
         ent:SetExplosionDamage( damage )
         ent:SetSmokeColor( r, g, b )
+        ent:SetProjectileModel( projectileModel )
+        ent:SetProjectileScale( projectileScale )
     end
 end
 
@@ -178,4 +190,13 @@ function TOOL.BuildCPanel( panel )
         blue = "glide_projectile_launcher_b",
         alpha = nil
     } ).Mixer:SetAlphaBar( false )
+
+    local models = {}
+
+    for path, _ in pairs( list.Get( "GlideProjectileModels" ) ) do
+        models[path] = { convar = path }
+    end
+
+    panel:PropSelect( "#tool.glide_projectile_launcher.projectile_model", "glide_projectile_launcher_projectile_model", models, 4 )
+    panel:NumSlider( "#tool.glide_projectile_launcher.projectile_model_scale", "glide_projectile_launcher_projectile_model_scale", 0.5, 3, 1 )
 end

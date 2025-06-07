@@ -185,3 +185,16 @@ function Glide.SendViewPunch( target, force )
     net.WriteFloat( force )
     net.Send( target )
 end
+
+--- Send a notification to a player when they try to use
+--- a tool that requires Wiremod, while it's is not installed.
+function Glide.ToolCheckMissingWiremod( target )
+    if WireLib then return end
+
+    Glide.SendNotification( target, {
+        text = "#glide.tool_wiremod_not_available",
+        icon = "materials/icon16/cancel.png",
+        sound = "glide/ui/radar_alert.wav",
+        immediate = true
+    } )
+end

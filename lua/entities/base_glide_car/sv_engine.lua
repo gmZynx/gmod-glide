@@ -32,13 +32,29 @@ function ENT:EngineInit()
     self.avgForwardSlip = 0
 end
 
+--- Returns a list of available transmission gears.
+--- Unlike `ENT:GetGears()` this will return overrides from
+--- the Transmission Editor tool, if they're set.
+function ENT:GetGearList()
+    local overrideGears = self.EntityMods["glide_transmission_overrides"]
+
+    if type( overrideGears ) == "table" then
+        return overrideGears
+    end
+
+    return self:GetGears()
+end
+
 function ENT:UpdateGearList()
+    local gears = self:GetGearList()
+    local ClampGearRatio = Glide.ClampGearRatio
+
     local minGear = 0
     local maxGear = 0
     local gearRatios = {}
 
-    for gear, ratio in pairs( self:GetGears() ) do
-        gearRatios[gear] = ratio
+    for gear, ratio in pairs( gears ) do
+        gearRatios[gear] = ClampGearRatio( ratio )
 
         if gear < minGear then minGear = gear end
         if gear > maxGear then maxGear = gear end

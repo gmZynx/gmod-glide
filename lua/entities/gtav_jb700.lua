@@ -97,6 +97,7 @@ if SERVER then
     function ENT:CreateFeatures()
         self:SetSuspensionLength( 8 )
         self:SetCounterSteer( 0.4 )
+        self:SetSpringStrength( 600 )
 
         self:CreateSeat( Vector( -38, 14, -17 ), Angle( 0, 270, 5 ), Vector( 20, 80, 0 ), true )
         self:CreateSeat( Vector( -18, -14, -12 ), Angle( 0, 270, 25 ), Vector( 20, -80, 0 ), true )

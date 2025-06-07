@@ -308,6 +308,9 @@ if SERVER then
     -- Play a heavy metal noise when hitting things hard
     ENT.IsHeavyVehicle = false
 
+    -- Can this vehicle be set on fire?
+    ENT.CanCatchOnFire = true
+
     -- Particle size multiplier for collisions
     ENT.CollisionParticleSize = 1
 

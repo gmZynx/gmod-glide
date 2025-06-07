@@ -33,15 +33,15 @@ function ENT:OnPostInitialize()
     self:SetEngineRPM( 0 )
     self:SetEngineThrottle( 0 )
 
-    self:SetTireSmokeColor( Vector( 0.6, 0.6, 0.6 ) )
+    self:SetTireSmokeColor( Vector( 0.8, 0.8, 0.8 ) )
     self:SetWheelRadius( 15 )
 
     -- Setup default NW wheel params
     local params = {
         -- Suspension
         suspensionLength = 10,
-        springStrength = 800,
-        springDamper = 3000,
+        springStrength = 500,
+        springDamper = 2000,
 
         -- Brake force
         brakePower = 3000,
@@ -89,7 +89,7 @@ function ENT:OnPostInitialize()
 
     -- Steering parameters
     self:SetMaxSteerAngle( 35 )
-    self:SetSteerConeChangeRate( 8 )
+    self:SetSteerConeChangeRate( 6 )
     self:SetSteerConeMaxSpeed( 1800 )
     self:SetSteerConeMaxAngle( 0.25 )
     self:SetCounterSteer( 0.1 )
@@ -219,7 +219,7 @@ function ENT:OnSeatInput( seatIndex, action, pressed )
             immediate = true
         } )
 
-    elseif action == "accelerate" and self:GetEngineState() == 0 then
+    elseif action == "accelerate" and self:GetEngineState() == 0 and self:GetEngineRPM() < 1 then
         self:TurnOn()
     end
 
@@ -293,6 +293,7 @@ function ENT:SetupWiremodPorts( inputs, outputs )
     inputs[#inputs + 1] = { "Brake", "NORMAL", "A value between 0.0 and 1.0\nAlso acts as throttle input when reversing." }
     inputs[#inputs + 1] = { "Handbrake", "NORMAL", "A value larger than 0 will set the handbrake" }
     inputs[#inputs + 1] = { "Horn", "NORMAL", "Set to 1 to sound the horn" }
+    inputs[#inputs + 1] = { "Gear", "NORMAL", "From 1 to MaxGear: Select gear\n-2: Automatic transmission\n-1: Reverse\n0: Neutral" }
 
     outputs[#outputs + 1] = { "MaxGear", "NORMAL", "Highest gear available for this vehicle" }
     outputs[#outputs + 1] = { "Gear", "NORMAL", "Current engine gear" }

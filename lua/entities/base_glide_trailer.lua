@@ -32,7 +32,8 @@ end
 
 if not SERVER then return end
 
-ENT.BlastDamageMultiplier = 0
+ENT.CanCatchOnFire = false
+ENT.BlastDamageMultiplier = 3
 ENT.BulletDamageMultiplier = 0
 ENT.CollisionDamageMultiplier = 0
 

@@ -20,9 +20,33 @@ end
 
 if CLIENT then
     function ENT:Initialize()
+        self:UpdateModelRenderMultiply()
+    end
+
+    function ENT:UpdateModelRenderMultiply()
+        local model = self:GetModel()
+        self.lastModel = model
+
+        local data = list.Get( "GlideProjectileModels" )[model]
+
+        if not data then
+            self:DisableMatrix( "RenderMultiply" )
+            return
+        end
+
+        local scale = data.scale or 1
+        local modelScale = self:GetModelScale()
         local m = Matrix()
-        m:SetAngles( Angle( 90, 0, 0 ) )
-        m:SetScale( Vector( 0.2, 0.2, 0.8 ) )
+        m:SetScale( Vector( scale, scale, scale ) )
+
+        if data.offset then
+            m:SetTranslation( data.offset * modelScale * scale )
+        end
+
+        if data.angle then
+            m:SetAngles( data.angle )
+        end
+
         self:EnableMatrix( "RenderMultiply", m )
     end
 
@@ -32,6 +56,12 @@ if CLIENT then
     function ENT:Think()
         if self:WaterLevel() > 0 then
             return false
+        end
+
+        local model = self:GetModel()
+
+        if model ~= self.lastModel then
+            self:UpdateModelRenderMultiply()
         end
 
         local eff = EffectData()
@@ -53,7 +83,6 @@ function ENT:Initialize()
     self:SetSmokeColor( Vector( 60, 60, 60 ) )
 
     self:SetModel( "models/props_phx/misc/flakshell_big.mdl" )
-    self:SetMaterial( "phoenix_storms/concrete0" )
     self:SetSolid( SOLID_VPHYSICS )
     self:SetMoveType( MOVETYPE_VPHYSICS )
     self:PhysicsInit( SOLID_VPHYSICS )

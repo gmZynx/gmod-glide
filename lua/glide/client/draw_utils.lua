@@ -17,8 +17,11 @@ local SetColor = surface.SetDrawColor
 local SetMaterial = surface.SetMaterial
 local DrawTexturedRectRotated = surface.DrawTexturedRectRotated
 
+local COLOR_WHITE = Color( 255, 255, 255, 255 )
+
 function Glide.DrawWeaponCrosshair( x, y, icon, size, color )
     size = Floor( ScrH() * size )
+    color = color or COLOR_WHITE
 
     if not cache[icon] then
         cache[icon] = Material( icon, "smooth" )
@@ -184,8 +187,6 @@ local Sin = math.sin
 local Cos = math.cos
 local DrawPoly = surface.DrawPoly
 local DrawFilledCircle = Glide.DrawFilledCircle
-
-local COLOR_WHITE = Color( 255, 255, 255, 255 )
 
 function Glide.DrawOutlinedCircle( r, x, y, thickness, color, blockStart, blockEnd )
     SetStencilEnable( true )

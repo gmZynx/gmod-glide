@@ -18,7 +18,9 @@ local ENT_VARS = {
     ["reloadDelay"] = true,
     ["explosionRadius"] = true,
     ["explosionDamage"] = true,
-    ["smokeColor"] = true
+    ["smokeColor"] = true,
+    ["projectileModel"] = true,
+    ["projectileScale"] = true
 }
 
 function ENT:OnEntityCopyTableFinish( data )
@@ -92,6 +94,9 @@ function ENT:Initialize()
     self.explosionDamage = 100
     self.smokeColor = Vector( 80, 80, 80 )
 
+    self.projectileModel = "models/props_phx/misc/flakshell_big.mdl"
+    self.projectileScale = 1
+
     self.isFiring = false
     self.nextShoot = 0
 
@@ -129,6 +134,9 @@ function ENT:Think()
         projectile:SetProjectileSpeed( self.projectileSpeed )
         projectile:SetProjectileGravity( self.projectileGravity )
         projectile:SetSmokeColor( self.smokeColor )
+
+        projectile:SetModel( self.projectileModel )
+        projectile:SetModelScale( self.projectileScale )
     end
 
     self:NextThink( t )
@@ -170,6 +178,19 @@ function ENT:SetSmokeColor( r, g, b )
     color[1] = math.Clamp( r, 0, 255 )
     color[2] = math.Clamp( g, 0, 255 )
     color[3] = math.Clamp( b, 0, 255 )
+end
+
+function ENT:SetProjectileModel( model )
+    if not Glide.IsValidModel( model ) then return end
+
+    local modelData = list.Get( "GlideProjectileModels" )[model]
+    if not modelData then return end
+
+    self.projectileModel = model
+end
+
+function ENT:SetProjectileScale( scale )
+    self.projectileScale = math.Clamp( scale, 0.5, 3 )
 end
 
 function ENT:TriggerInput( name, value )

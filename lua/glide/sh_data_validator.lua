@@ -148,3 +148,57 @@ function Glide.ValidateMiscSoundData( data )
 
     return true
 end
+
+Glide.MAX_GEAR = 8
+
+local Clamp = math.Clamp
+
+function Glide.ClampGearRatio( ratio )
+    return Clamp( ratio, 0.05, 4.0 )
+end
+
+local Type = type
+local ClampGearRatio = Glide.ClampGearRatio
+
+function Glide.ValidateTransmissionData( data )
+    local cleanData = {
+        [0] = 0 -- Neutral, this value does nothing
+    }
+
+    -- Check if the data has a valid reverse ratio
+    if Type( data[-1] ) == "number" then
+        cleanData[-1] = ClampGearRatio( data[-1] )
+    end
+
+    -- Check if the data has sequential indexes
+    local index = 0
+    local max = Glide.MAX_GEAR
+
+    while index < max do
+        index = index + 1
+
+        if Type( data[index] ) == "number" then
+            cleanData[index] = ClampGearRatio( data[index] )
+        else
+            break
+        end
+    end
+
+    return cleanData
+end
+
+function Glide.IsValidModel( model )
+    if type( model ) ~= "string" then
+        return false
+    end
+
+    if model:sub( -4, -1 ) ~= ".mdl" then
+        return false
+    end
+
+    if not file.Exists( model, "GAME" ) then
+        return false
+    end
+
+    return true
+end

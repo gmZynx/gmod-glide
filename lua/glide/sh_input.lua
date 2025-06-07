@@ -14,6 +14,7 @@ InputCategories["general_controls"] = {
     ["switch_weapon"] = KEY_R,
     ["toggle_engine"] = KEY_I,
     ["headlights"] = KEY_H,
+    ["free_look"] = KEY_LALT,
 }
 
 -- Inputs that only apply to land vehicle types
@@ -47,7 +48,6 @@ InputCategories["aircraft_controls"] = {
     ["attack"] = MOUSE_LEFT,
     ["attack_alt"] = KEY_SPACE,
 
-    ["free_look"] = KEY_LALT,
     ["landing_gear"] = KEY_G,
     ["countermeasures"] = KEY_F,
 

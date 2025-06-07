@@ -101,9 +101,9 @@ if SERVER then
         self:SetMinRPMTorque( 1500 )
         self:SetMaxRPMTorque( 1800 )
 
+        self:SetSpringStrength( 600 )
+        self:SetSpringDamper( 3000 )
         self:SetSuspensionLength( 7 )
-        self:SetSpringStrength( 1000 )
-        self:SetSpringDamper( 4500 )
 
         self:CreateSeat( Vector( -17, 0, 12 ), Angle( 0, 270, -16 ), Vector( 0, 60, 0 ), true )
         self:CreateSeat( Vector( -26, 0, 12 ), Angle( 0, 270, -5 ), Vector( 0, -60, 0 ), true )

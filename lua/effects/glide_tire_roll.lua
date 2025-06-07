@@ -28,8 +28,10 @@ end
 
 local RandomInt = math.random
 local RandomFloat = math.Rand
-local DEBRIS_GRAVITY = Vector( 0, 0, -40 )
 local Config = Glide.Config
+
+local debrisGravity = Vector( 0, 0, 0 )
+local debrisVelocity = Vector( 0, 0, 0 )
 
 function EFFECT:DoSurface( emitter, origin, velocity, scale, fx )
     local p
@@ -46,17 +48,23 @@ function EFFECT:DoSurface( emitter, origin, velocity, scale, fx )
             p:SetEndSize( fx.maxSize * scale * RandomFloat( 0.8, 1.5 ) )
             p:SetRoll( RandomFloat( -1, 1 ) )
 
-            p:SetAirResistance( 50 )
-            p:SetGravity( DEBRIS_GRAVITY )
-            p:SetVelocity( velocity * RandomFloat( 0.2, 0.4 ) )
-            p:SetColor( fx.r, fx.g, fx.b )
-            p:SetLighting( false )
+            debrisGravity[3] = fx.gravity or -200
+
+            debrisVelocity[1] = 0
+            debrisVelocity[2] = 0
+            debrisVelocity[3] = fx.upVelocity * scale
+            debrisVelocity:Add( velocity * RandomFloat( 0.2, 0.8 ) )
+
+            p:SetAirResistance( fx.resistance or 50 )
+            p:SetGravity( debrisGravity )
+            p:SetVelocity( debrisVelocity )
+            p:SetLighting( true )
             p:SetCollide( true )
         end
     end
 end
 
-local SMOKE_MAT = "particle/smokesprites_000"
+local SMOKE_MAT = "glide/effects/tire_particles/tire_slip_forward_"
 local SMOKE_GRAVITY = Vector( 0, 0, 60 )
 local DEFAULT_COLOR = Vector( 0, 0, 0 )
 
@@ -73,7 +81,7 @@ function EFFECT:DoSmoke( emitter, origin, velocity, scale, vehicle )
     local lifetime = Config.reduceTireParticles and 0.4 or 1
 
     for _ = 1, count do
-        p = emitter:Add( SMOKE_MAT .. RandomInt( 9 ), origin )
+        p = emitter:Add( SMOKE_MAT .. RandomInt( 4 ), origin )
 
         if p then
             p:SetDieTime( RandomFloat( 2, 3 ) * lifetime )
@@ -85,57 +93,64 @@ function EFFECT:DoSmoke( emitter, origin, velocity, scale, vehicle )
 
             p:SetAirResistance( 100 )
             p:SetGravity( SMOKE_GRAVITY * RandomFloat( 0.5, 1 ) )
-            p:SetVelocity( velocity * RandomFloat( 0.4, 0.8 ) )
+            p:SetVelocity( velocity * RandomFloat( 0.2, 0.6 ) )
             p:SetColor( r, g, b )
-            p:SetLighting( false )
+            p:SetLighting( true )
             p:SetCollide( true )
         end
     end
 end
 
 surfaceFX[MAT_GRASS] = {
-    mat = Material( "glide/effects/grass_debris" ),
-    r = 100, g = 95, b = 40,
+    mat = Material( "glide/effects/tire_particles/grass_debris" ),
     lifetime = 0.8,
     alpha = 255,
     minSize = 3,
-    maxSize = 7
+    maxSize = 1,
+    upVelocity = 15
 }
 
 surfaceFX[MAT_FOLIAGE] = surfaceFX[MAT_GRASS]
 
 surfaceFX[MAT_SAND] = {
-    mat = Material( "particle/particle_composite" ),
-    r = 200, g = 170, b = 120,
-    lifetime = 1.5,
+    mat = Material( "glide/effects/tire_particles/sand" ),
+    lifetime = 1.2,
     alpha = 150,
-    minSize = 2,
-    maxSize = 7,
+    minSize = 3,
+    maxSize = 6,
+    gravity = 10,
+    upVelocity = 1
 }
 
 surfaceFX[MAT_DIRT] = {
-    mat = Material( "particle/particle_composite" ),
-    r = 70, g = 60, b = 50,
+    mat = Material( "glide/effects/tire_particles/dirt" ),
     lifetime = 1,
     alpha = 180,
     minSize = 2,
-    maxSize = 4
+    maxSize = 0.5,
+    gravity = -300,
+    upVelocity = 18,
+    resistance = 200
 }
 
 surfaceFX[MAT_SNOW] = {
-    mat = Material( "particle/particle_composite" ),
-    r = 230, g = 230, b = 230,
-    lifetime = 1,
+    mat = Material( "glide/effects/tire_particles/snow" ),
+    lifetime = 0.8,
     alpha = 100,
     minSize = 2,
-    maxSize = 4
+    maxSize = 4,
+    gravity = -100,
+    upVelocity = 5,
+    resistance = 100
 }
 
 surfaceFX[MAT_SLOSH] = {
-    mat = Material( "effects/splash4" ),
-    r = 180, g = 180, b = 180,
+    mat = Material( "glide/effects/tire_particles/water" ),
     lifetime = 0.3,
     alpha = 100,
-    minSize = 2,
-    maxSize = 5
+    minSize = 1,
+    maxSize = 4,
+    gravity = -600,
+    upVelocity = 20,
+    resistance = 30
 }

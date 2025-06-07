@@ -50,6 +50,13 @@ Glide.MOUSE_FLY_MODE = {
     CAMERA = 2      -- Free camera
 }
 
+-- Mouse steering control modes
+Glide.MOUSE_STEER_MODE = {
+    DISABLED = 0,   -- Use keyboard only
+    AIM = 1,        -- Steer towards aim direction
+    DIRECT = 2      -- Control movement directly
+}
+
 -- Default color for vehicle lights
 Glide.DEFAULT_HEADLIGHT_COLOR = Color( 255, 231, 176 )
 Glide.DEFAULT_TURN_SIGNAL_COLOR = Color( 255, 164, 45 )

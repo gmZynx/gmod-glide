@@ -1,0 +1,8 @@
+"UnlitGeneric"
+{
+	"$basetexture" "glide/effects/tire_particles/grass_debris"
+	"$vertexcolor" "1"
+	"$vertexalpha" "1"
+	"$translucent" "1"
+	"$color" "[ 2.0 3.0 1.0 ]"
+}

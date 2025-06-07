@@ -201,6 +201,7 @@ local ExpDecayAngle = Glide.ExpDecayAngle
 
 local CAMERA_TYPE = Glide.CAMERA_TYPE
 local MOUSE_FLY_MODE = Glide.MOUSE_FLY_MODE
+local MOUSE_STEER_MODE = Glide.MOUSE_STEER_MODE
 
 function Camera:DoEffects( t, dt, speed )
     -- Update view punch
@@ -223,7 +224,7 @@ function Camera:DoEffects( t, dt, speed )
 
     -- Apply a small shake
     if self.mode == CAMERA_TYPE.CAR then
-        local mult = Clamp( speed * 0.001, 0, 1 )
+        local mult = Clamp( speed * 0.0005, 0, 1 ) * Config.shakeStrength
 
         self.shakeOffset[2] = Cos( t * 1.5 ) * 4 * mult
         self.shakeOffset[3] = ( ( Cos( t * 2 ) * 1.8 ) + ( Cos( t * 30 ) * 0.4 ) ) * mult
@@ -259,11 +260,19 @@ function Camera:Think()
     local velocity = vehicle:GetVelocity()
     local speed = Abs( velocity:Length() )
     local mode = vehicle:GetCameraType( self.seatIndex )
+    local freeLook = IsKeyDown( Config.binds.general_controls.free_look )
 
     self.mode = mode
     self:DoEffects( t, dt, speed )
 
     if self:IsFixed() then
+        if mode == CAMERA_TYPE.AIRCRAFT then
+            self.isUsingDirectMouse = Config.mouseFlyMode == MOUSE_FLY_MODE.DIRECT and self.seatIndex == 1 and not freeLook
+
+        elseif mode ~= CAMERA_TYPE.TURRET then
+            self.isUsingDirectMouse = Config.mouseSteerMode == MOUSE_STEER_MODE.DIRECT and self.seatIndex == 1 and not freeLook
+        end
+
         return
     end
 
@@ -276,19 +285,30 @@ function Camera:Think()
         decay = 0
 
     elseif mode == CAMERA_TYPE.AIRCRAFT then
-        self.isUsingDirectMouse = Config.mouseFlyMode == MOUSE_FLY_MODE.DIRECT and self.seatIndex == 1 and not IsKeyDown( Config.binds.aircraft_controls.free_look )
+        self.isUsingDirectMouse = Config.mouseFlyMode == MOUSE_FLY_MODE.DIRECT and self.seatIndex == 1 and not freeLook
         self.allowRolling = Config.mouseFlyMode ~= MOUSE_FLY_MODE.AIM
 
-        -- Make the camera angles smoothly point towards the vehicle's forward direction.
+        -- Only make the camera angles point towards the vehicle's
+        -- forward direction while moving.
         decay = ( self.isUsingDirectMouse or self.isInFirstPerson ) and 6 or Clamp( ( speed - 5 ) * 0.01, 0, 1 ) * 3
         decay = decay * self.centerStrength
 
     else
-        self.isUsingDirectMouse = false
+        self.isUsingDirectMouse = Config.mouseSteerMode == MOUSE_STEER_MODE.DIRECT and self.seatIndex == 1 and not freeLook
 
-        if self.isInFirstPerson then
+        if self.isUsingDirectMouse then
+            self.allowRolling = self.isInFirstPerson
+
+            -- Make the camera angles always point towards
+            -- the vehicle's forward direction.
+            decay = 6 * self.centerStrength
+            rollDecay = 8
+
+        elseif self.isInFirstPerson then
             self.allowRolling = true
 
+            -- Only make the camera angles point towards the vehicle's
+            -- forward direction while moving.
             decay = Clamp( ( speed - 5 ) * 0.002, 0, 1 ) * 8 * self.centerStrength
             rollDecay = 8
         else
@@ -297,6 +317,9 @@ function Camera:Think()
             vehicleAngles = velocity:Angle()
             vehicleAngles[1] = vehicleAngles[1] + 5 * self.trailerFraction
             vehicleAngles[3] = 0
+
+            -- Only make the camera angles point towards the vehicle's
+            -- forward direction while moving.
             decay = Clamp( ( speed - 10 ) * 0.002, 0, 1 ) * 4 * self.centerStrength
         end
     end
@@ -317,7 +340,8 @@ function Camera:Think()
             Config.enableAutoCenter and
             mode ~= CAMERA_TYPE.TURRET and
             t > self.lastMouseMoveTime + Config.autoCenterDelay and
-            ( Config.mouseFlyMode ~= MOUSE_FLY_MODE.AIM or mode == CAMERA_TYPE.CAR or self.seatIndex > 1 )
+            ( Config.mouseFlyMode ~= MOUSE_FLY_MODE.AIM or mode == CAMERA_TYPE.CAR or self.seatIndex > 1 ) and
+            ( Config.mouseSteerMode ~= MOUSE_STEER_MODE.AIM or self.seatIndex > 1 )
         )
     then
         self.centerStrength = ExpDecay( self.centerStrength, 1, 2, dt )
@@ -334,6 +358,13 @@ function Camera:CalcView()
     local angles = self.angles
 
     if self:IsFixed() then
+        -- Force to stay behind the vehicle while
+        -- using direct mouse flying/steering mode.
+        if self.isUsingDirectMouse then
+            angles[1] = 0
+            angles[2] = 0
+        end
+
         angles[3] = 0
         angles = vehicle:LocalToWorldAngles( angles )
     end

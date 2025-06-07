@@ -84,7 +84,7 @@ if SERVER then
 
     function ENT:CreateFeatures()
         self:SetHeadlightColor( Vector( 1, 1, 1 ) )
-        self:SetSteerConeChangeRate( 12 )
+        self:SetSteerConeChangeRate( 10 )
         self:SetCounterSteer( 0.2 )
 
         self:SetDifferentialRatio( 1.3 )

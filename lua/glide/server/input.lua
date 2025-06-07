@@ -48,7 +48,8 @@ do
             binds = binds,
             manualGearShifting = data.manualGearShifting == true,
             autoTurnOffLights = data.autoTurnOffLights == true,
-            mouseFlyMode = math.Round( Glide.ValidateNumber( data.mouseFlyMode, 0, 2, 0 ) )
+            mouseFlyMode = math.Round( Glide.ValidateNumber( data.mouseFlyMode, 0, 2, 0 ) ),
+            mouseSteerMode = math.Round( Glide.ValidateNumber( data.mouseSteerMode, 0, 2, 0 ) )
         }
 
         -- Replace yaw actions with roll actions when the client asks for it,
@@ -217,11 +218,10 @@ local function HandleInput( ply, button, active, pressed )
     end
 end
 
-local FrameTime = FrameTime
 local Clamp = math.Clamp
 
 --- Handle mouse inputs when required.
-local function HandleMouseInput( ply, active )
+local function HandleMouseInput( ply, active, dt )
     local vehicle = active.vehicle
 
     if not IsValid( vehicle ) then
@@ -233,14 +233,40 @@ local function HandleMouseInput( ply, active )
     if not settings then return end
 
     local vehTbl = getTable( vehicle )
-    -- Ignore is this vehicle is not an aircraft
-    if vehTbl.VehicleType ~= 3 and vehTbl.VehicleType ~= 4 then return end
+    local vehType = vehTbl.VehicleType
+    local seatIndex = active.seatIndex
+
+    -- If this vehicle is not an aircraft
+    if vehType ~= 3 and vehType ~= 4 then
+        -- Glide.MOUSE_STEER_MODE.AIM
+        if settings.mouseSteerMode == 1 then
+            local phys = vehicle:GetPhysicsObject()
+            if not IsValid( phys ) then return end
+
+            local angVel = phys:GetAngleVelocity()
+            local targetDir = ply:GlideGetAimPos() - phys:GetPos()
+            targetDir:Normalize()
+
+            local steerDrag = Clamp( angVel[3] * 0.1, -2, 2 ) * dt * 3
+            local steer = Clamp( ( targetDir:Dot( vehicle:GetRight() ) * 3 ) + steerDrag, -1, 1 )
+
+            if vehicle:GetInputBool( 1, "free_look" ) then
+                steer = 0
+            end
+
+            vehicle:SetInputFloat( seatIndex, "steer", steer )
+
+        -- Glide.MOUSE_STEER_MODE.DIRECT
+        elseif settings.mouseSteerMode == 2 then
+            vehicle:SetInputFloat( seatIndex, "steer", ply:GetInfoNum( "glide_input_pitch", 0 ) )
+        end
+
+        -- Don't run the logic below this
+        return
+    end
 
     -- Ignore if the mouse aim mode is "Free camera"
     if settings.mouseFlyMode == 2 then return end
-
-    local dt = FrameTime()
-    local seatIndex = active.seatIndex
 
     -- Glide.MOUSE_FLY_MODE.AIM
     if settings.mouseFlyMode == 0 then
@@ -300,9 +326,13 @@ hook.Add( "StartCommand", "Glide.MouseWheelInput", function( ply, cmd )
     end
 end )
 
+local FrameTime = FrameTime
+
 hook.Add( "Think", "Glide.ProcessMouseInput", function()
+    local dt = FrameTime()
+
     for ply, active in pairs( activeData ) do
-        HandleMouseInput( ply, active )
+        HandleMouseInput( ply, active, dt )
     end
 end )
 

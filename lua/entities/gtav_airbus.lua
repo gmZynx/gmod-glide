@@ -102,8 +102,8 @@ if SERVER then
     ENT.SuspensionDownSound = "Glide.Suspension.Stress"
 
     function ENT:CreateFeatures()
-        self:SetSpringStrength( 1300 )
-        self:SetSpringDamper( 6000 )
+        self:SetSpringStrength( 1000 )
+        self:SetSpringDamper( 4000 )
 
         self:SetSuspensionLength( 13 )
         self:SetDifferentialRatio( 1.6 )
@@ -111,7 +111,6 @@ if SERVER then
 
         self:SetBrakePower( 2500 )
         self:SetMaxSteerAngle( 60 )
-        self:SetSteerConeChangeRate( 6 )
         self:SetSteerConeMaxSpeed( 800 )
         self:SetSteerConeMaxAngle( 0.2 )
 

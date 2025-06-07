@@ -110,8 +110,8 @@ if SERVER then
         self.engineBrakeTorque = 4000
 
         self:SetSuspensionLength( 14 )
-        self:SetSpringStrength( 1900 )
-        self:SetSpringDamper( 8000 )
+        self:SetSpringStrength( 1500 )
+        self:SetSpringDamper( 6000 )
 
         self:SetSideTractionMultiplier( 90 )
         self:SetForwardTractionMax( 6000 )
@@ -128,7 +128,6 @@ if SERVER then
 
         self:SetBrakePower( 6000 )
         self:SetMaxSteerAngle( 40 )
-        self:SetSteerConeChangeRate( 8 )
         self:SetSteerConeMaxSpeed( 800 )
         self:SetSteerConeMaxAngle( 0.4 )
         self:SetCounterSteer( 0.2 )
