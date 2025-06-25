@@ -144,6 +144,17 @@ end
 local FrameTime = FrameTime
 local Approach = math.Approach
 local GetClosestFlare = Glide.GetClosestFlare
+local TraceHull = util.TraceHull
+
+local ray = {}
+
+local traceData = {
+    output = ray,
+    filter = { NULL, NULL },
+    mask = MASK_PLAYERSOLID,
+    maxs = Vector(),
+    mins = Vector()
+}
 
 function ENT:Think()
     local t = CurTime()
@@ -205,6 +216,18 @@ function ENT:Think()
         end
     else
         self:SetHasTarget( false )
+    end
+
+    traceData.start = myPos
+    traceData.endpos = myPos + self:GetVelocity() * dt * 2
+    traceData.filter[1] = self
+    traceData.filter[2] = self:GetOwner()
+
+    -- Trace result is stored on `ray`
+    TraceHull( traceData )
+
+    if not ray.HitSky and ray.Hit then
+        self:Explode()
     end
 
     return true

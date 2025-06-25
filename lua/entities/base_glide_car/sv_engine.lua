@@ -78,13 +78,15 @@ function ENT:OnEntityReload()
     self:UpdateGearList()
 end
 
+local EntityPairs = Glide.EntityPairs
+
 function ENT:UpdatePowerDistribution()
     self.shouldUpdatePowerDistribution = false
 
     local frontCount, rearCount = 0, 0
 
     -- First, count how many wheels are in the front/rear
-    for _, w in ipairs( self.wheels ) do
+    for _, w in EntityPairs( self.wheels ) do
         if w.isFrontWheel then
             frontCount = frontCount + 1
         else
@@ -99,7 +101,7 @@ function ENT:UpdatePowerDistribution()
     frontDistribution = frontDistribution / frontCount
     rearDistribution = rearDistribution / rearCount
 
-    for _, w in ipairs( self.wheels ) do
+    for _, w in EntityPairs( self.wheels ) do
         w.distributionFactor = w.isFrontWheel and frontDistribution or rearDistribution
     end
 end
@@ -190,7 +192,7 @@ function ENT:AutoGearSwitch( throttle )
 
     -- Switch up early while using reduced throttle
     if self.reducedThrottle then
-        maxRPM = maxRPM * ( 1 - throttle * 0.3 )
+        maxRPM = maxRPM * ( 1 - throttle * 0.2 )
     end
 
     local gearRPM
@@ -334,7 +336,7 @@ function ENT:EngineThink( dt )
         self.frontTractionMult = frontBurnout and 0.25 or 2
         self.rearTractionMult = frontBurnout and 2 or 0.25
 
-        for _, w in ipairs( self.wheels ) do
+        for _, w in EntityPairs( self.wheels ) do
             if w.isFrontWheel == frontBurnout then
                 local pos = w:GetLocalPos()
 

@@ -36,7 +36,7 @@ function TOOL:LeftClick( trace )
             return false
         end
 
-        for _, wheel in ipairs( veh.wheels ) do
+        for _, wheel in Glide.EntityPairs( veh.wheels ) do
             wheel.traceData.mask = MASK_SOLID + CONTENTS_WATER + CONTENTS_SLIME
         end
     end
@@ -49,7 +49,7 @@ function TOOL:RightClick( trace )
     if not veh then return false end
 
     if SERVER then
-        for _, wheel in ipairs( veh.wheels ) do
+        for _, wheel in Glide.EntityPairs( veh.wheels ) do
             wheel.traceData.mask = nil
         end
     end

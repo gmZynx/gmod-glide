@@ -97,8 +97,10 @@ function ENT:CreateWheel( offset, params )
     return wheel
 end
 
+local EntityPairs = Glide.EntityPairs
+
 function ENT:ChangeSuspensionLengthMultiplier( multiplier )
-    for _, w in ipairs( self.wheels ) do
+    for _, w in EntityPairs( self.wheels ) do
         w.state.suspensionLengthMult = multiplier
     end
 

@@ -249,7 +249,7 @@ function EngineStream:Think( dt, eyePos, eyeRight )
     if self.wobbleTime > 0 then
         self.wobbleTime = self.wobbleTime - dt * ( 0.1 + inputs.throttle )
 
-        pitch = pitch + Cos( self.wobbleTime * self.wobbleFrequency ) * self.wobbleTime * ( 1 - self.wobbleTime ) * self.wobbleStrength
+        pitch = pitch + Cos( self.wobbleTime * self.wobbleFrequency ) * self.wobbleTime * self.wobbleStrength * 0.3
     end
 
     pitch = pitch * self.pitch

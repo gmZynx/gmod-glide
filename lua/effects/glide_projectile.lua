@@ -20,8 +20,8 @@ function EFFECT:Init( data )
 
     local step = 1000 * Max( FrameTime(), 0.03 )
 
-    for i = 1, 10 do
-        local p = emitter:Add( SMOKE_MATERIAL .. RandomInt( 9 ), origin - normal * i * step )
+    for i = 1, 8 do
+        local p = emitter:Add( SMOKE_MATERIAL .. RandomInt( 9 ), origin + normal * i * step )
 
         if p then
             p:SetDieTime( RandomFloat( 0.5, 1 ) )

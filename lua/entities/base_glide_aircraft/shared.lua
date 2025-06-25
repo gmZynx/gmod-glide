@@ -89,6 +89,11 @@ if SERVER then
         [3] = { "glide/aircraft/gear_down.wav", 0.65, 90 }
     }
 
+    --- Override this base class function.
+    function ENT:GetInputGroups( seatIndex )
+        return seatIndex > 1 and { "general_controls" } or { "general_controls", "aircraft_controls" }
+    end
+
     -- You can override these on your child classes.
     function ENT:OnLandingGearStateChange( _state ) end
 

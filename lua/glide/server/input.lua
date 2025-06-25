@@ -28,18 +28,18 @@ do
             return
         end
 
-        -- Filter out categories/actions that do not exist, and validate buttons
+        -- Filter out input groups/actions that do not exist, and validate buttons
         local receivedBinds = type( data.binds ) == "table" and data.binds or {}
         local binds = {}
 
-        for category, actions in pairs( Glide.InputCategories ) do
-            binds[category] = {}
+        for groupId, actions in pairs( Glide.InputGroups ) do
+            binds[groupId] = {}
 
             for action, button in pairs( actions ) do
-                local receivedCategory = receivedBinds[category]
+                local receivedGroup = receivedBinds[groupId]
 
-                if type( receivedCategory ) == "table" then
-                    SetNumber( binds[category], action, receivedCategory[action], KEY_NONE, BUTTON_CODE_LAST, button )
+                if type( receivedGroup ) == "table" then
+                    SetNumber( binds[groupId], action, receivedGroup[action], KEY_NONE, BUTTON_CODE_LAST, button )
                 end
             end
         end
@@ -71,22 +71,12 @@ do
 end
 
 do
-    local VEHICLE_ACTION_CATEGORY = {
-        [Glide.VEHICLE_TYPE.UNDEFINED] = "land_controls",
-        [Glide.VEHICLE_TYPE.CAR] = "land_controls",
-        [Glide.VEHICLE_TYPE.MOTORCYCLE] = "land_controls",
-        [Glide.VEHICLE_TYPE.HELICOPTER] = "aircraft_controls",
-        [Glide.VEHICLE_TYPE.PLANE] = "aircraft_controls",
-        [Glide.VEHICLE_TYPE.TANK] = "land_controls",
-        [Glide.VEHICLE_TYPE.BOAT] = "land_controls"
-    }
-
-    --- Given a category of input actions, get all actions
-    --- from that category, and then separate them per button.
-    local function AddActions( binds, category, buttons )
+    --- Given a list of input actions, get all actions
+    --- from that list, and then separate them per button.
+    local function AddActions( binds, groupId, buttons )
         local t
 
-        for action, button in pairs( binds[category] ) do
+        for action, button in pairs( binds[groupId] ) do
             t = buttons[button]
 
             -- Theres no actions for this button yet, create a new list.
@@ -117,14 +107,15 @@ do
         end
 
         -- Separate actions for each button, and filter only the
-        -- actions relevant to the current vehicle type.
+        -- actions relevant to the current vehicle's input action group.
         local buttons = {}
 
-        -- Add button actions that apply to all vehicles
-        AddActions( settings.binds, "general_controls", buttons )
+        -- Add button actions that apply for this vehicle
+        local inputGroups = vehicle:GetInputGroups( seatIndex )
 
-        -- Add button actions that apply to this vehicle type
-        AddActions( settings.binds, VEHICLE_ACTION_CATEGORY[vehicle.VehicleType], buttons )
+        for _, groupId in ipairs( inputGroups ) do
+            AddActions( settings.binds, groupId, buttons )
+        end
 
         -- Let our input hooks handle this
         activeData[ply] = {

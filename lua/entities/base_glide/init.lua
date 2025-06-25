@@ -29,7 +29,7 @@ function ENT:OnEntityCopyTableFinish( data )
     local wheelRadius = {}
     local wheelCount = 0
 
-    for i, w in ipairs( self.wheels ) do
+    for i, w in Glide.EntityPairs( self.wheels ) do
         if IsValid( w ) then
             wheelRadius[i] = w:GetRadius()
             wheelCount = wheelCount + 1
@@ -310,7 +310,7 @@ do
 
         local ply
 
-        for seatIndex, seat in ipairs( self.seats ) do
+        for seatIndex, seat in Glide.EntityPairs( self.seats ) do
             ply = seat:GetDriver()
 
             if IsValid( ply ) and self:CanFallOnCollision( seatIndex ) then
@@ -413,7 +413,7 @@ do
         traceData.filter[#traceData.filter + 1] = "player"
 
         -- Try the original exit position first
-        local origin = self:GetPos()
+        local origin = self:LocalToWorld( self:OBBCenter() )
         local blocked, pos = ValidateExitPos( self, origin, seat.GlideExitPos )
 
         if blocked then
@@ -469,11 +469,13 @@ do
     end
 end
 
+local EntityPairs = Glide.EntityPairs
+
 --- Returns how many players are inside of this vehicle.
 function ENT:GetPlayerCount()
     local count = 0
 
-    for _, seat in ipairs( self.seats ) do
+    for _, seat in EntityPairs( self.seats ) do
         if IsValid( seat ) and IsValid( seat:GetDriver() ) then
             count = count + 1
         end
@@ -487,7 +489,7 @@ function ENT:GetAllPlayers()
     local players = {}
     local driver
 
-    for _, seat in ipairs( self.seats ) do
+    for _, seat in EntityPairs( self.seats ) do
         if IsValid( seat ) then
             driver = seat:GetDriver()
 
@@ -511,7 +513,7 @@ end
 
 --- Gets the first free seat entity, or returns `nil` if none are available.
 function ENT:GetFreeSeat()
-    for i, seat in ipairs( self.seats ) do
+    for i, seat in EntityPairs( self.seats ) do
         if not IsValid( seat:GetDriver() ) then
             return seat, i
         end
@@ -523,7 +525,7 @@ function ENT:GetClosestAvailableSeat( pos )
     local closestSeat = nil
     local closestDistance = math.huge
 
-    for _, seat in ipairs( self.seats ) do
+    for _, seat in EntityPairs( self.seats ) do
         local distance = pos:DistToSqr( seat:GetPos() )
 
         if distance < closestDistance and not IsValid( seat:GetDriver() ) then

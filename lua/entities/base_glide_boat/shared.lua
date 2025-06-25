@@ -81,4 +81,9 @@ if SERVER then
 
     -- How long does it take for the vehicle to start up?
     ENT.StartupTime = 0.9
+
+    --- Override this base class function.
+    function ENT:GetInputGroups( seatIndex )
+        return seatIndex > 1 and { "general_controls" } or { "general_controls", "land_controls" }
+    end
 end

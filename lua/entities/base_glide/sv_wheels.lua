@@ -36,10 +36,12 @@ function ENT:CreateWheel( offset, params )
     return wheel
 end
 
+local EntityPairs = Glide.EntityPairs
+
 function ENT:ChangeWheelRadius( radius )
     if not self.wheels then return end
 
-    for _, w in ipairs( self.wheels ) do
+    for _, w in EntityPairs( self.wheels ) do
         if IsValid( w ) then
             w.params.radius = radius
             w:ChangeRadius( radius )
@@ -57,7 +59,7 @@ function ENT:WheelThink( dt )
     local phys = self:GetPhysicsObject()
     local isAsleep = phys:IsValid() and phys:IsAsleep()
 
-    for _, w in ipairs( self.wheels ) do
+    for _, w in EntityPairs( self.wheels ) do
         w:Update( self, self.steerAngle, isAsleep, dt )
     end
 end
@@ -92,7 +94,7 @@ function ENT:PhysicsSimulate( phys, dt )
         local vehVel = phys:GetVelocity()
         local vehAngVel = phys:GetAngleVelocity()
 
-        for _, w in ipairs( self.wheels ) do
+        for _, w in EntityPairs( self.wheels ) do
             w:DoPhysics( self, phys, traceFilter, linForce, angForce, dt, surfaceGrip, surfaceResistance, vehPos, vehVel, vehAngVel )
         end
 

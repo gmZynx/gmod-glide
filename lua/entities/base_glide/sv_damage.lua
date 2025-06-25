@@ -34,7 +34,7 @@ function ENT:Explode( attacker, inflictor )
     if self.wheels and IsValid( phys ) then
         local vehPos = self:GetPos()
 
-        for _, w in ipairs( self.wheels ) do
+        for _, w in Glide.EntityPairs( self.wheels ) do
             if IsValid( w ) and not w:GetNoDraw() then
                 local gibPos = w:GetPos()
                 local gib = ents.Create( "glide_gib" )

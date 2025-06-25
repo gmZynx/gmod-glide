@@ -124,7 +124,7 @@ function ENT:UpdateWheelParameters()
     local sideTractionMax = self:GetSideTractionMax()
     local sideTractionMin = self:GetSideTractionMin()
 
-    for _, w in ipairs( self.wheels ) do
+    for _, w in Glide.EntityPairs( self.wheels ) do
         local p = w.params
 
         p.suspensionLength = suspensionLength
@@ -588,6 +588,8 @@ function ENT:OnSimulatePhysics( phys, dt, outLin, outAng )
     end
 end
 
+local EntityPairs = Glide.EntityPairs
+
 local traction, tractionFront, tractionRear
 local frontTorque, rearTorque, steerAngle, frontBrake, rearBrake
 local groundedCount, rpm, avgRPM, totalSideSlip, totalForwardSlip, state
@@ -612,7 +614,7 @@ function ENT:WheelThink( dt )
     frontBrake, rearBrake = selfTbl.frontBrake, selfTbl.rearBrake
     groundedCount, avgRPM, totalSideSlip, totalForwardSlip = 0, 0, 0, 0
 
-    for _, w in ipairs( selfTbl.wheels ) do
+    for _, w in EntityPairs( selfTbl.wheels ) do
         w:Update( self, steerAngle, isAsleep, dt )
 
         totalSideSlip = totalSideSlip + w:GetSideSlip()

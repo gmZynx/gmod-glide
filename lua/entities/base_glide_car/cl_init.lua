@@ -94,6 +94,7 @@ function ENT:UpdateTurboSound( sounds )
 end
 
 local Min = math.min
+local Pow = math.pow
 
 --- Implement this base class function.
 function ENT:OnUpdateSounds()
@@ -217,10 +218,15 @@ function ENT:OnUpdateSounds()
     stream.firstPerson = self.isLocalPlayerInFirstPerson
 
     local health = self:GetEngineHealth()
+    local engineThrottle = self:GetEngineThrottle()
     local inputs = stream.inputs
 
+    if engineThrottle > inputs.throttle and self.doWobble then
+        stream.wobbleTime = 1
+    end
+
     inputs.rpmFraction = self.rpmFraction or 0
-    inputs.throttle = self:GetEngineThrottle()
+    inputs.throttle = Pow( engineThrottle, 0.6 )
 
     local isRedlining = self:GetIsRedlining() and inputs.throttle > 0.9
 
@@ -230,11 +236,6 @@ function ENT:OnUpdateSounds()
         if isRedlining and ( self:GetGear() < 3 or health < 0.1 ) then
             self:DoExhaustPop()
         end
-    end
-
-    if self.doWobble and inputs.throttle > 0.9 then
-        self.doWobble = false
-        stream.wobbleTime = 1
     end
 
     -- Handle damaged engine sounds
@@ -525,13 +526,9 @@ function ENT:DrawVehicleHUD( screenW, screenH )
     -- Speed
     speedLerp = ExpDecay( speedLerp, self:GetVelocity():Length(), 20, dt )
 
-    -- Convert Source units to MPH
-    local speed = speedLerp * 0.0568182
-
-    if Config.useKMH then
-        speed = speed * 1.60934 -- Convert MPH to km/h
-    end
-
+    -- Convert from Source Units to either km/h or mph
+    -- Formula source: https://github.com/wiremod/wire/blob/master/lua/entities/gmod_wire_speedometer.lua
+    local speed = Config.useKMH and ( speedLerp * 3600 * 0.0000254 * 0.75 ) or ( speedLerp * 3600 / 63360 * 0.75 )
     local unit = Config.useKMH and " km/h" or " mph"
     local cornerRadius = Floor( screenH * 0.008 )
 

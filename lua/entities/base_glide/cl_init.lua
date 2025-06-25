@@ -164,6 +164,8 @@ function ENT:UpdateSounds()
     self:OnUpdateSounds()
 end
 
+local EntityPairs = Glide.EntityPairs
+
 function ENT:ActivateMisc()
     -- Find and store the wheel and seat entities we have
     local wheels = {}
@@ -193,17 +195,15 @@ function ENT:ActivateMisc()
     self:OnActivateMisc()
 
     -- Let children classes setup wheels clientside
-    for i, w in ipairs( self.wheels ) do
+    for i, w in EntityPairs( self.wheels ) do
         self:OnActivateWheel( w, i )
     end
 end
 
 function ENT:DeactivateMisc()
     if self.wheels then
-        for _, w in ipairs( self.wheels ) do
-            if IsValid( w ) then
-                w:CleanupSounds()
-            end
+        for _, w in EntityPairs( self.wheels ) do
+            w:CleanupSounds()
         end
     end
 

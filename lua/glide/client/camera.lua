@@ -91,8 +91,8 @@ function Camera:Deactivate()
     hook.Remove( "InputMouseApply", "GlideCamera.InputMouseApply" )
     hook.Remove( "PlayerBindPress", "GlideCamera.PlayerBindPress" )
 
-    if IsValid( self.vehicle ) and self.vehicle.stream then
-        self.vehicle.stream.firstPerson = false
+    if IsValid( self.vehicle ) then
+        self.vehicle.isLocalPlayerInFirstPerson = false
     end
 
     if IsValid( self.user ) then

@@ -68,16 +68,16 @@ function Config:Reset()
     self.enableTips = true
 end
 
---- Reset binds to their default buttons.
+--- Reset bind actions to their default buttons.
 function Config:ResetBinds()
     local binds = {}
 
-    -- Setup default action categories and buttons
-    for category, actions in pairs( Glide.InputCategories ) do
-        binds[category] = {}
+    -- Setup default action groups and buttons
+    for groupId, actions in pairs( Glide.InputGroups ) do
+        binds[groupId] = {}
 
         for action, button in pairs( actions ) do
-            binds[category][action] = button
+            binds[groupId][action] = button
         end
     end
 
@@ -85,10 +85,10 @@ function Config:ResetBinds()
 end
 
 -- Utility function to get the button bound to a certain input action.
-function Config:GetInputActionButton( action, categoryName )
-    local category = self.binds[categoryName]
-    if category then
-        return category[action]
+function Config:GetInputActionButton( action, groupId )
+    local group = self.binds[groupId]
+    if group then
+        return group[action]
     end
 end
 
@@ -169,7 +169,7 @@ function Config:Save( immediate )
         autoTurnOffLights = self.autoTurnOffLights,
         enableTips = self.enableTips,
 
-        -- Category-action-button dictionary
+        -- Group-to-action-to-button dictionary
         binds = self.binds
     }, true )
 
@@ -281,15 +281,15 @@ function Config:Load()
     LoadBool( "autoTurnOffLights", true )
     LoadBool( "enableTips", true )
 
-    -- Category-action-button dictionary
+    -- Group-to-action-to-button dictionary
     local loadedBinds = type( data.binds ) == "table" and data.binds or {}
 
-    for category, actions in pairs( self.binds ) do
+    for groupId, actions in pairs( self.binds ) do
         for action, button in pairs( actions ) do
-            local loadedCategory = loadedBinds[category]
+            local loadedGroup = loadedBinds[groupId]
 
-            if type( loadedCategory ) == "table" then
-                SetNumber( actions, action, loadedCategory[action], KEY_NONE, BUTTON_CODE_LAST, button )
+            if type( loadedGroup ) == "table" then
+                SetNumber( actions, action, loadedGroup[action], KEY_NONE, BUTTON_CODE_LAST, button )
             end
         end
     end
@@ -349,11 +349,13 @@ function Config:ApplySkidMarkLimits( immediate )
     Glide.SetupSkidMarkMeshes()
 end
 
-Config:Load()
-
 hook.Add( "InitPostEntity", "Glide.TransmitInputSettings", function()
+    Config:Load()
     Config:TransmitInputSettings()
-    hook.Run( "Glide_OnConfigChange" )
+
+    -- Skidmarks need some values from Config, so
+    -- do this here after we've called Config:Load
+    Glide.SetupSkidMarkMeshes()
 end )
 
 ----------
@@ -383,6 +385,43 @@ function Config:CloseFrame()
     end
 end
 
+-- Bind some panel creation functions from the theme library
+-- into the Config table.
+Config.CreateHeader = StyledTheme.CreateFormHeader
+Config.CreateButton = StyledTheme.CreateFormButton
+Config.CreateToggle = StyledTheme.CreateFormToggle
+Config.CreateSlider = StyledTheme.CreateFormSlider
+Config.CreateCombo = StyledTheme.CreateFormCombo
+
+-- Utility to create a button binder row.
+do
+    local OnBinderChange = function( self, value )
+        if self._ignoreChange then return end
+
+        if Glide.SEAT_SWITCH_BUTTONS[value] then
+            self._ignoreChange = true
+            self:SetValue( self.inputDefaultKey )
+            self._ignoreChange = nil
+
+            local msg = Glide.GetLanguageText( "input.reserved_seat_key" ):format( input.GetKeyName( value ) )
+            Derma_Message( msg, "#glide.input.invalid_bind", "#glide.ok" )
+        else
+            self.inputCallback( self.inputActionId, value )
+        end
+    end
+
+    function Config.CreateBinderButton( parent, text, actionId, defaultKey, callback )
+        local binder = StyledTheme.CreateFormBinder( parent, text, defaultKey )
+
+        binder.inputActionId = actionId
+        binder.inputDefaultKey = defaultKey
+        binder.inputCallback = callback
+        binder.OnChange = OnBinderChange
+
+        return binder
+    end
+end
+
 function Config:OpenFrame()
     if IsValid( self.frame ) then
         self:CloseFrame()
@@ -402,11 +441,11 @@ function Config:OpenFrame()
     self.frame = frame
 
     local L = Glide.GetLanguageText
-    local CreateHeader = StyledTheme.CreateFormHeader
-    local CreateButton = StyledTheme.CreateFormButton
-    local CreateToggle = StyledTheme.CreateFormToggle
-    local CreateSlider = StyledTheme.CreateFormSlider
-    local CreateCombo = StyledTheme.CreateFormCombo
+    local CreateHeader = Config.CreateHeader
+    local CreateButton = Config.CreateButton
+    local CreateToggle = Config.CreateToggle
+    local CreateSlider = Config.CreateSlider
+    local CreateCombo =  Config.CreateCombo
 
     ----- Camera settings -----
 
@@ -499,7 +538,7 @@ function Config:OpenFrame()
 
     local panelMouse = frame:AddTab( "styledstrike/icons/mouse.png", L"settings.mouse" )
 
-    local MouseSubPanelLayout = function( s )
+    local SizeToChindrenLayout = function( s )
         if #s:GetChildren() > 0 then
             s:SizeToChildren( false, true )
         else
@@ -528,7 +567,7 @@ function Config:OpenFrame()
     local directMouseSteerPanel = vgui.Create( "DPanel", panelMouse )
     directMouseSteerPanel:SetPaintBackground( false )
     directMouseSteerPanel:Dock( TOP )
-    directMouseSteerPanel.PerformLayout = MouseSubPanelLayout
+    directMouseSteerPanel.PerformLayout = SizeToChindrenLayout
 
     SetupMouseSteerModeSettings = function()
         directMouseSteerPanel:Clear()
@@ -571,7 +610,7 @@ function Config:OpenFrame()
     local directMouseFlyPanel = vgui.Create( "DPanel", panelMouse )
     directMouseFlyPanel:SetPaintBackground( false )
     directMouseFlyPanel:Dock( TOP )
-    directMouseFlyPanel.PerformLayout = MouseSubPanelLayout
+    directMouseFlyPanel.PerformLayout = SizeToChindrenLayout
 
     SetupFlyMouseModeSettings = function()
         directMouseFlyPanel:Clear()
@@ -637,104 +676,54 @@ function Config:OpenFrame()
 
     ----- Keyboard settings -----
 
-    local CreateBinderButton = function( parent, text, actionId, defaultKey, callback )
-        local binder = StyledTheme.CreateFormBinder( parent, text, defaultKey )
+    local panelKeyboard = frame:AddTab( "styledstrike/icons/keyboard.png", L"settings.input" )
 
-        function binder:OnChange( value )
-            if self._ignoreChange then return end
+    local groupList = {}
 
-            if Glide.SEAT_SWITCH_BUTTONS[value] then
-                self._ignoreChange = true
-                binder:SetValue( defaultKey )
-                self._ignoreChange = nil
+    -- Display built-in input groups first
+    local groupOrder = {
+        ["general_controls"] = 1,
+        ["land_controls"] = 2,
+        ["aircraft_controls"] = 3
+    }
 
-                local msg = Glide.GetLanguageText( "input.reserved_seat_key" ):format( input.GetKeyName( value ) )
-                Derma_Message( msg, "#glide.input.invalid_bind", "#glide.ok" )
-            else
-                callback( actionId, value )
-            end
+    for groupdId, _ in pairs( Glide.InputGroups ) do
+        groupList[#groupList + 1] = {
+            id = groupdId,
+            order = groupOrder[groupdId] or 999
+        }
+    end
+
+    table.SortByMember( groupList, "order", true )
+
+    local binds = self.binds
+    local CreateBinderButton = Config.CreateBinderButton
+
+    for _, listData in ipairs( groupList ) do
+        local groupId = listData.id
+        local groupBinds = binds[groupId]
+        local actions = Glide.InputGroups[groupId]
+
+        CreateHeader( panelKeyboard, "#glide.input." .. groupId, 0 )
+
+        if groupId == "land_controls" then
+            CreateToggle( panelKeyboard, L"input.manual_shift", self.manualGearShifting, function( value )
+                self.manualGearShifting = value
+                self:Save()
+                self:TransmitInputSettings()
+            end )
+        end
+
+        local OnChangeGroupBind = function( action, key )
+            groupBinds[action] = key
+            self:Save()
+            self:TransmitInputSettings()
+        end
+
+        for action, _ in SortedPairs( actions ) do
+            CreateBinderButton( panelKeyboard, "#glide.input." .. action, action, groupBinds[action], OnChangeGroupBind )
         end
     end
-
-    local panelKeyboard = frame:AddTab( "styledstrike/icons/keyboard.png", L"settings.input" )
-    local binds = self.binds
-
-    local generalBinds = binds["general_controls"]
-
-    local function OnChangeGeneralBind( action, key )
-        generalBinds[action] = key
-        self:Save()
-        self:TransmitInputSettings()
-    end
-
-    CreateHeader( panelKeyboard, L"input.general_controls", 0 )
-    CreateBinderButton( panelKeyboard, L"input.switch_weapon", "switch_weapon", generalBinds.switch_weapon, OnChangeGeneralBind )
-    CreateBinderButton( panelKeyboard, L"input.toggle_engine", "toggle_engine", generalBinds.toggle_engine, OnChangeGeneralBind )
-    CreateBinderButton( panelKeyboard, L"input.headlights", "headlights", generalBinds.headlights, OnChangeGeneralBind )
-    CreateBinderButton( panelKeyboard, L"input.free_look", "free_look", generalBinds.free_look, OnChangeGeneralBind )
-
-    local landBinds = binds["land_controls"]
-
-    local function OnChangeLandBind( action, key )
-        landBinds[action] = key
-        self:Save()
-        self:TransmitInputSettings()
-    end
-
-    CreateHeader( panelKeyboard, L"input.land_controls" )
-    CreateBinderButton( panelKeyboard, L"input.attack", "attack", landBinds.attack, OnChangeLandBind )
-
-    CreateBinderButton( panelKeyboard, L"input.steer_left", "steer_left", landBinds.steer_left, OnChangeLandBind )
-    CreateBinderButton( panelKeyboard, L"input.steer_right", "steer_right", landBinds.steer_right, OnChangeLandBind )
-    CreateBinderButton( panelKeyboard, L"input.accelerate", "accelerate", landBinds.accelerate, OnChangeLandBind )
-    CreateBinderButton( panelKeyboard, L"input.brake", "brake", landBinds.brake, OnChangeLandBind )
-    CreateBinderButton( panelKeyboard, L"input.handbrake", "handbrake", landBinds.handbrake, OnChangeLandBind )
-
-    CreateBinderButton( panelKeyboard, L"input.horn", "horn", landBinds.horn, OnChangeLandBind )
-    CreateBinderButton( panelKeyboard, L"input.siren", "siren", landBinds.siren, OnChangeLandBind )
-    CreateBinderButton( panelKeyboard, L"input.reduce_throttle", "reduce_throttle", landBinds.reduce_throttle, OnChangeLandBind )
-    CreateBinderButton( panelKeyboard, L"input.detach_trailer", "detach_trailer", landBinds.detach_trailer, OnChangeLandBind )
-
-    CreateBinderButton( panelKeyboard, L"input.lean_forward", "lean_forward", landBinds.lean_forward, OnChangeLandBind )
-    CreateBinderButton( panelKeyboard, L"input.lean_back", "lean_back", landBinds.lean_back, OnChangeLandBind )
-
-    CreateBinderButton( panelKeyboard, L"input.signal_left", "signal_left", landBinds.signal_left, OnChangeLandBind )
-    CreateBinderButton( panelKeyboard, L"input.signal_right", "signal_right", landBinds.signal_right, OnChangeLandBind )
-
-    CreateHeader( panelKeyboard, L"input.manual_shift" )
-    CreateToggle( panelKeyboard, L"input.manual_shift", self.manualGearShifting, function( value )
-        self.manualGearShifting = value
-        self:Save()
-        self:TransmitInputSettings()
-    end )
-
-    CreateBinderButton( panelKeyboard, L"input.shift_up", "shift_up", landBinds.shift_up, OnChangeLandBind )
-    CreateBinderButton( panelKeyboard, L"input.shift_down", "shift_down", landBinds.shift_down, OnChangeLandBind )
-    CreateBinderButton( panelKeyboard, L"input.shift_neutral", "shift_neutral", landBinds.shift_neutral, OnChangeLandBind )
-
-    local airBinds = binds["aircraft_controls"]
-
-    local function OnChangeAirBind( action, key )
-        airBinds[action] = key
-        self:Save()
-        self:TransmitInputSettings()
-    end
-
-    CreateHeader( panelKeyboard, L"input.aircraft_controls" )
-    CreateBinderButton( panelKeyboard, L"input.attack", "attack", airBinds.attack, OnChangeAirBind )
-    CreateBinderButton( panelKeyboard, L"input.attack_alt", "attack_alt", airBinds.attack_alt, OnChangeAirBind )
-
-    CreateBinderButton( panelKeyboard, L"input.landing_gear", "landing_gear", airBinds.landing_gear, OnChangeAirBind )
-    CreateBinderButton( panelKeyboard, L"input.countermeasures", "countermeasures", airBinds.countermeasures, OnChangeAirBind )
-
-    CreateBinderButton( panelKeyboard, L"input.pitch_up", "pitch_up", airBinds.pitch_up, OnChangeAirBind )
-    CreateBinderButton( panelKeyboard, L"input.pitch_down", "pitch_down", airBinds.pitch_down, OnChangeAirBind )
-    CreateBinderButton( panelKeyboard, L"input.yaw_left", "yaw_left", airBinds.yaw_left, OnChangeAirBind )
-    CreateBinderButton( panelKeyboard, L"input.yaw_right", "yaw_right", airBinds.yaw_right, OnChangeAirBind )
-    CreateBinderButton( panelKeyboard, L"input.roll_left", "roll_left", airBinds.roll_left, OnChangeAirBind )
-    CreateBinderButton( panelKeyboard, L"input.roll_right", "roll_right", airBinds.roll_right, OnChangeAirBind )
-    CreateBinderButton( panelKeyboard, L"input.throttle_up", "throttle_up", airBinds.throttle_up, OnChangeAirBind )
-    CreateBinderButton( panelKeyboard, L"input.throttle_down", "throttle_down", airBinds.throttle_down, OnChangeAirBind )
 
     ----- Audio settings -----
 
@@ -911,53 +900,101 @@ function Config:OpenFrame()
     end )
 
     ----- Console variables -----
-    if not LocalPlayer():IsSuperAdmin() then return end
-
-    local panelCVars = frame:AddTab( "styledstrike/icons/feature_list.png", L"settings.cvars" )
-
-    CreateHeader( panelCVars, L"settings.cvars", 0 )
-
-    local cvarList = {
-        { name = "sbox_maxglide_vehicles", decimals = 0, min = 0, max = 100 },
-        { name = "sbox_maxglide_standalone_turrets", decimals = 0, min = 0, max = 100 },
-        { name = "sbox_maxglide_missile_launchers", decimals = 0, min = 0, max = 100 },
-        { name = "sbox_maxglide_projectile_launchers", decimals = 0, min = 0, max = 100 },
-        { name = "glide_gib_lifetime", decimals = 0, min = 0, max = 60 },
-        { name = "glide_gib_enable_collisions", decimals = 0, min = 0, max = 1 },
-
-        { name = "glide_ragdoll_enable", decimals = 0, min = 0, max = 1 },
-        { name = "glide_ragdoll_max_time", decimals = 0, min = 0, max = 30 },
-
-        { category = "#tool.glide_turret.name" },
-        { name = "glide_turret_max_damage", decimals = 0, min = 0, max = 1000 },
-        { name = "glide_turret_min_delay", decimals = 2, min = 0, max = 1 },
-
-        { category = "#tool.glide_missile_launcher.name" },
-        { name = "glide_missile_launcher_min_delay", decimals = 2, min = 0.1, max = 5 },
-        { name = "glide_missile_launcher_max_lifetime", decimals = 1, min = 1, max = 30 },
-        { name = "glide_missile_launcher_max_radius", decimals = 0, min = 10, max = 1000 },
-        { name = "glide_missile_launcher_max_damage", decimals = 0, min = 0, max = 1000 },
-
-        { category = "#tool.glide_projectile_launcher.name" },
-        { name = "glide_projectile_launcher_min_delay", decimals = 2, min = 0.1, max = 5 },
-        { name = "glide_projectile_launcher_max_lifetime", decimals = 1, min = 1, max = 30 },
-        { name = "glide_projectile_launcher_max_radius", decimals = 0, min = 10, max = 1000 },
-        { name = "glide_projectile_launcher_max_damage", decimals = 0, min = 0, max = 1000 },
-    }
-
     local NOOP = function() end
 
-    for _, data in ipairs( cvarList ) do
-        if data.category then
-            CreateHeader( panelCVars, L( "settings.cvars" ) .. ": " ..  language.GetPhrase( data.category ) )
-        else
-            local cvar = GetConVar( data.name )
+    if LocalPlayer():IsSuperAdmin() then
+        local panelCVars = frame:AddTab( "styledstrike/icons/feature_list.png", L"settings.cvars" )
 
-            if cvar then
-                local slider = CreateSlider( panelCVars, data.name, cvar:GetFloat(), data.min, data.max, data.decimals, NOOP )
-                slider:SetConVar( data.name )
+        CreateHeader( panelCVars, L"settings.cvars", 0 )
+
+        local cvarList = {
+            { name = "sbox_maxglide_vehicles", decimals = 0, min = 0, max = 100 },
+            { name = "sbox_maxglide_standalone_turrets", decimals = 0, min = 0, max = 100 },
+            { name = "sbox_maxglide_missile_launchers", decimals = 0, min = 0, max = 100 },
+            { name = "sbox_maxglide_projectile_launchers", decimals = 0, min = 0, max = 100 },
+            { name = "glide_gib_lifetime", decimals = 0, min = 0, max = 60 },
+            { name = "glide_gib_enable_collisions", decimals = 0, min = 0, max = 1 },
+
+            { name = "glide_ragdoll_enable", decimals = 0, min = 0, max = 1 },
+            { name = "glide_ragdoll_max_time", decimals = 0, min = 0, max = 30 },
+
+            { category = "#tool.glide_turret.name" },
+            { name = "glide_turret_max_damage", decimals = 0, min = 0, max = 1000 },
+            { name = "glide_turret_min_delay", decimals = 2, min = 0, max = 1 },
+
+            { category = "#tool.glide_missile_launcher.name" },
+            { name = "glide_missile_launcher_min_delay", decimals = 2, min = 0.1, max = 5 },
+            { name = "glide_missile_launcher_max_lifetime", decimals = 1, min = 1, max = 30 },
+            { name = "glide_missile_launcher_max_radius", decimals = 0, min = 10, max = 1000 },
+            { name = "glide_missile_launcher_max_damage", decimals = 0, min = 0, max = 1000 },
+
+            { category = "#tool.glide_projectile_launcher.name" },
+            { name = "glide_projectile_launcher_min_delay", decimals = 2, min = 0.1, max = 5 },
+            { name = "glide_projectile_launcher_max_lifetime", decimals = 1, min = 1, max = 30 },
+            { name = "glide_projectile_launcher_max_radius", decimals = 0, min = 10, max = 1000 },
+            { name = "glide_projectile_launcher_max_damage", decimals = 0, min = 0, max = 1000 },
+        }
+
+        for _, data in ipairs( cvarList ) do
+            if data.category then
+                CreateHeader( panelCVars, L( "settings.cvars" ) .. ": " ..  language.GetPhrase( data.category ) )
+            else
+                local cvar = GetConVar( data.name )
+
+                if cvar then
+                    local slider = CreateSlider( panelCVars, data.name, cvar:GetFloat(), data.min, data.max, data.decimals, NOOP )
+                    slider:SetConVar( data.name )
+                end
             end
         end
+    end
+
+    ----- Custom extension tabs -----
+
+    local panelExtension = frame:AddTab( "styledstrike/icons/extension.png", L"settings.extensions", "DPanel" )
+    panelExtension:SetPaintBackground( false )
+
+    local extensionCallbacks = list.Get( "GlideConfigExtensions" )
+
+    if table.Count( extensionCallbacks ) == 0 then
+        CreateHeader( panelExtension, L"settings.no_extensions", 0 )
+        return
+    end
+
+    local sheet = vgui.Create( "DPropertySheet", panelExtension )
+    sheet:Dock( FILL )
+    sheet:SetPadding( StyledTheme.ScaleSize( 4 ) )
+
+    sheet.Paint = function( _, w, h )
+        StyledTheme.DrawRect( 0, 0, w, h, StyledTheme.colors.panelBackground )
+    end
+
+    local GetTabHeight = function( s )
+        return s:GetTall()
+    end
+
+    local ApplyTabScheme = function( s )
+        s.isToggle = true
+        s.isChecked = s:IsActive()
+        s:SetTextInset( 10, 4 )
+
+        local w, h = s:GetContentSize()
+        s:SetSize( w + 10, h + 6 )
+    end
+
+    for extensionId, callback in pairs( extensionCallbacks ) do
+        local panel = vgui.Create( "DScrollPanel", sheet )
+
+        StyledTheme.Apply( panel )
+        callback( self, panel )
+
+        local s = sheet:AddSheet( extensionId, panel )
+
+        StyledTheme.Apply( s.Tab, "DButton" )
+
+        s.Tab.GetTabHeight = GetTabHeight
+        s.Tab.ApplySchemeSettings = ApplyTabScheme
+        s.Tab:SetFont( "DermaDefault" )
     end
 end
 

@@ -44,9 +44,9 @@ end
 commands[Glide.CMD_SHOW_KEY_NOTIFICATION] = function()
     local text = net.ReadString()
     local icon = net.ReadString()
-    local inputCategory = net.ReadString()
+    local inputGroup = net.ReadString()
     local inputAction = net.ReadString()
-    local button = Glide.Config:GetInputActionButton( inputAction, inputCategory )
+    local button = Glide.Config:GetInputActionButton( inputAction, inputGroup )
 
     if button then
         Glide.ShowKeyTip( text, button, icon, true )

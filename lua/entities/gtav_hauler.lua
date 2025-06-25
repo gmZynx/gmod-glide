@@ -94,15 +94,15 @@ if SERVER then
 
     function ENT:GetGears()
         return {
-            [-1] = 2.5, -- Reverse
+            [-1] = 10, -- Reverse
             [0] = 0, -- Neutral (this number has no effect)
-            [1] = 2.8,
-            [2] = 1.7,
-            [3] = 1.2,
-            [4] = 0.9,
-            [5] = 0.75,
-            [6] = 0.68,
-            [7] = 0.64
+            [1] = 12,
+            [2] = 7.5,
+            [3] = 5.2,
+            [4] = 4,
+            [5] = 3.3,
+            [6] = 2.9,
+            [7] = 2.7
         }
     end
 
@@ -118,7 +118,7 @@ if SERVER then
         self:SetSideTractionMax( 4000 )
         self:SetSideTractionMin( 5500 )
 
-        self:SetDifferentialRatio( 1.3 )
+        self:SetDifferentialRatio( 0.3 )
         self:SetPowerDistribution( -0.7 )
 
         self:SetMinRPM( 600 )

@@ -140,7 +140,6 @@ function Glide.SetupSkidMarkMeshes()
     end
 end
 
-hook.Add( "InitPostEntity", "Glide.CreateSkidMarkMeshes", Glide.SetupSkidMarkMeshes )
 hook.Add( "PreCleanupMap", "Glide.RemoveSkidMarkMeshes", Glide.DestroySkidMarkMeshes )
 hook.Add( "PostCleanupMap", "Glide.RecreateSkidMarkMeshes", Glide.SetupSkidMarkMeshes )
 

@@ -178,6 +178,8 @@ function ENT:OnWeaponFire( weapon )
     end
 end
 
+local EntityPairs = Glide.EntityPairs
+
 --- Override this base class function.
 function ENT:UpdatePowerDistribution()
     -- Let the base class do front/rear power distribution
@@ -187,7 +189,7 @@ function ENT:UpdatePowerDistribution()
     local rCount, lCount = 0, 0
 
     -- First, count how many wheels are in the left/right
-    for _, w in ipairs( self.wheels ) do
+    for _, w in EntityPairs( self.wheels ) do
         w.isOnRightSide = w.params.basePos[2] > 0
 
         if w.isOnRightSide then
@@ -204,7 +206,7 @@ function ENT:UpdatePowerDistribution()
     rDistribution = rDistribution / rCount
     lDistribution = lDistribution / lCount
 
-    for _, w in ipairs( self.wheels ) do
+    for _, w in EntityPairs( self.wheels ) do
         w.sideDistributionFactor = w.isOnRightSide and rDistribution or lDistribution
     end
 end
@@ -326,7 +328,7 @@ function ENT:WheelThink( dt )
     frontBrake, rearBrake = selfTbl.frontBrake, selfTbl.rearBrake
     groundedCount, avgRPM, totalSideSlip, totalForwardSlip, totalAngVel = 0, 0, 0, 0, 0
 
-    for _, w in ipairs( selfTbl.wheels ) do
+    for _, w in EntityPairs( selfTbl.wheels ) do
         w:Update( self, steerAngle, isAsleep, dt )
 
         totalSideSlip = totalSideSlip + w:GetSideSlip()

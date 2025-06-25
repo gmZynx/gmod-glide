@@ -346,8 +346,6 @@ function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfa
     damperForce = ( state.lastSpringOffset - offset ) * params.springDamper
     state.lastSpringOffset = offset
 
-    force = ( springForce - damperForce ) * up:Dot( ray.HitNormal ) * ray.HitNormal
-
     -- If the suspension spring is going to be fully compressed on the next frame...
     if velU < 0 and offset + Abs( velU * dt ) > params.suspensionLength then
         -- Completely negate the downwards velocity at the local position
@@ -358,7 +356,12 @@ function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfa
         -- Teleport back up, using phys:SetPos to prevent going through stuff.
         linearImp = phys:CalculateVelocityOffset( ray.HitPos - ( contactPos + ray.HitNormal * velU * dt ), pos )
         vehPos:Add( linearImp / dt )
+
+        -- Remove the damping force, to prevent a excessive bounce.
+        damperForce = 0
     end
+
+    force = ( springForce - damperForce ) * up:Dot( ray.HitNormal ) * ray.HitNormal
 
     -- Rolling resistance
     force:Add( ( vehSurfaceResistance[surfaceId] or 0.05 ) * -velF * fw )

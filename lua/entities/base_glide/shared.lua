@@ -429,6 +429,12 @@ if SERVER then
         return true
     end
 
+    --- Return which input groups should be activated
+    --- for a specific seat on this vehicle.
+    function ENT:GetInputGroups( _seatIndex )
+        return { "general_controls" }
+    end
+
     -- You can safely override these on children classes
     function ENT:CreateFeatures() end
 
