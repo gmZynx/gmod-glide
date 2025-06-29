@@ -349,14 +349,27 @@ function Config:ApplySkidMarkLimits( immediate )
     Glide.SetupSkidMarkMeshes()
 end
 
-hook.Add( "InitPostEntity", "Glide.TransmitInputSettings", function()
-    Config:Load()
-    Config:TransmitInputSettings()
+-- Set settings to default right away, to prevent errors
+Config:Reset()
+Config:ResetBinds()
 
-    -- Skidmarks need some values from Config, so
-    -- do this here after we've called Config:Load
-    Glide.SetupSkidMarkMeshes()
-end )
+if game.SinglePlayer() then
+    -- On singleplayer, load settings on InitPostEntity
+    hook.Add( "InitPostEntity", "Glide.LoadSettings", function()
+        Config:Load()
+        Config:TransmitInputSettings()
+        Config:ApplySkidMarkLimits()
+    end )
+else
+    -- SetupMove seems like a better time to send network messages
+    hook.Add( "SetupMove", "Glide.LoadSettings", function()
+        hook.Remove( "SetupMove", "Glide.LoadSettings" )
+
+        Config:Load()
+        Config:TransmitInputSettings()
+        Config:ApplySkidMarkLimits()
+    end )
+end
 
 ----------
 

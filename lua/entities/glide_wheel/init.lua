@@ -12,6 +12,16 @@ local ray = Glide.LastWheelTraceResult or {}
 -- Prevents errors on existing wheels when updating this file.
 Glide.LastWheelTraceResult = ray
 
+if game.SinglePlayer() then
+    -- Workaround for updating the TraceResult
+    -- table reference after a level transition.
+    hook.Add( "InitPostEntity", "Glide.WheelTraceResultWorkaround", function()
+        for _, w in ipairs( ents.FindByClass( "glide_wheel" ) ) do
+            w.traceData.output = ray
+        end
+    end )
+end
+
 function ENT:Initialize()
     self:SetModel( "models/editor/axis_helper.mdl" )
     self:SetSolid( SOLID_NONE )
