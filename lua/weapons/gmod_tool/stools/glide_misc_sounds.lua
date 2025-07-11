@@ -7,12 +7,6 @@ TOOL.Information = {
     { name = "reload" }
 }
 
-local SUPPORTED_VEHICLE_TYPES = {
-    [Glide.VEHICLE_TYPE.CAR] = true,
-    [Glide.VEHICLE_TYPE.MOTORCYCLE] = true,
-    [Glide.VEHICLE_TYPE.BOAT] = true
-}
-
 local presetData = Glide.miscSoundsToolData or {}
 Glide.miscSoundsToolData = presetData
 
@@ -38,25 +32,17 @@ do
     end
 end
 
-local function IsGlideVehicle( ent )
-    return IsValid( ent ) and ent.IsGlideVehicle
-end
-
 local function GetGlideVehicle( trace )
     local ent = trace.Entity
 
-    if IsGlideVehicle( ent ) then
+    if Glide.DoesEntitySupportMiscSoundsPreset( ent ) then
         return ent
     end
 
     return false
 end
 
-function TOOL:CanSendData( veh )
-    if not SUPPORTED_VEHICLE_TYPES[veh.VehicleType] then
-        return false
-    end
-
+function TOOL:CanSendData()
     local t = CurTime()
 
     if self.fireCooldown and t < self.fireCooldown then
@@ -71,7 +57,7 @@ end
 function TOOL:LeftClick( trace )
     local veh = GetGlideVehicle( trace )
     if not veh then return false end
-    if not self:CanSendData( veh ) then return end
+    if not self:CanSendData() then return end
 
     if SERVER and game.SinglePlayer() then
         self:GetOwner():SendLua( "LocalPlayer():GetTool():LeftClick( LocalPlayer():GetEyeTrace() )" )
@@ -88,7 +74,7 @@ function TOOL:LeftClick( trace )
             return
         end
 
-        Glide.StartCommand( Glide.CMD_UPLOAD_SOUND_PRESET, false )
+        Glide.StartCommand( Glide.CMD_UPLOAD_MISC_SOUNDS_PRESET, false )
         net.WriteEntity( veh )
         net.WriteUInt( size, 16 )
         net.WriteData( data )
@@ -101,7 +87,6 @@ end
 function TOOL:RightClick( trace )
     local veh = GetGlideVehicle( trace )
     if not veh then return false end
-    if not SUPPORTED_VEHICLE_TYPES[veh.VehicleType] then return false end
 
     if SERVER and game.SinglePlayer() then
         self:GetOwner():SendLua( "LocalPlayer():GetTool():RightClick( LocalPlayer():GetEyeTrace() )" )
@@ -125,10 +110,10 @@ end
 function TOOL:Reload( trace )
     local veh = GetGlideVehicle( trace )
     if not veh then return false end
-    if not self:CanSendData( veh ) then return false end
+    if not self:CanSendData() then return false end
 
     if SERVER then
-        Glide.RemoveMiscSoundsModifier( veh )
+        Glide.ClearMiscSoundsPresetModifier( veh )
     end
 
     return true

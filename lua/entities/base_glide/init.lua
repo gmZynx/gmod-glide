@@ -119,9 +119,13 @@ function ENT:Initialize()
     self.forwardSpeed = 0
     self.totalSpeed = 0
 
-    -- Setup trace filter used for hitscan weapons and other things
-    -- that need to ignore the vehicle's chassis and seats.
-    self.traceFilter = { self }
+    -- Setup trace filter used by systems that
+    -- need to ignore the vehicle's chassis and seats.
+    self.selfTraceFilter = { self }
+
+    -- Setup trace filter used by wheels to
+    -- to ignore the vehicle's chassis and seats.
+    self.wheelTraceFilter = { self, "player" }
 
     -- Copy default surface multipliers to this vehicle.
     self.surfaceGrip = table.Copy( Glide.SURFACE_GRIP )
@@ -290,7 +294,7 @@ do
     --- Utility function to setup trace data that
     --- ignores the vehicle's chassis and seats.
     function ENT:GetTraceData( startPos, endPos )
-        data.filter = self.traceFilter
+        data.filter = self.selfTraceFilter
         data.start = startPos
         data.endpos = endPos
 
@@ -595,8 +599,9 @@ function ENT:CreateSeat( offset, angle, exitPos, isHidden )
     self.inputBools[index] = {}
     self.inputFloats[index] = {}
 
-    -- Don't let weapon fire or other traces hit this seat
-    self.traceFilter[#self.traceFilter + 1] = seat
+    -- Don't let our traces hit this seat
+    self.selfTraceFilter[#self.selfTraceFilter + 1] = seat
+    self.wheelTraceFilter[#self.wheelTraceFilter + 1] = seat
 
     -- Update seat wire outputs
     if TriggerOutput then

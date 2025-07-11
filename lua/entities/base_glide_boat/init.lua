@@ -196,7 +196,7 @@ function ENT:UpdateEngine( dt, selfTbl )
         power = power * 0.4
 
     elseif waterState > 0 then
-        power = power * ( 0.4 + Clamp( Abs( speed ) / self.BoatParams.maxSpeed, 0, 1 ) * 0.6 )
+        power = power * ( waterState > 1 and ( 0.4 + Clamp( Abs( speed ) / self.BoatParams.maxSpeed, 0, 1 ) * 0.6 ) or 1.0 )
         power = power * ( waterState > 1 and 0.6 or 1 )
     end
 

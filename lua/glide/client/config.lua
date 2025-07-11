@@ -47,23 +47,26 @@ function Config:Reset()
     self.mouseSteerSensitivity = 0.5
     self.mouseSteerDecayRate = 1.5
 
-    -- Misc. settings
+    -- Performance settings
+    self.maxSkidMarkPieces = 500
+    self.maxTireRollPieces = 400
+    self.skidmarkTimeLimit = 15
+
+    self.headlightShadows = true
+    self.reduceTireParticles = false
+
+    -- HUD settings
     self.showHUD = true
     self.showPassengerList = true
     self.showCustomHealth = true
     self.showEmptyVehicleHealth = false
     self.showSkybox = true
-    self.reduceTireParticles = false
-    self.useKMH = false  -- Option to display speed in KM/H instead of MPH
+    self.useKMH = false
 
-    self.maxSkidMarkPieces = 500
-    self.maxTireRollPieces = 400
-    self.skidmarkTimeLimit = 15
-
+    -- Misc. settings
     self.manualGearShifting = false
     self.autoHeadlightOn = true
     self.autoHeadlightOff = true
-    self.headlightShadows = true
     self.autoTurnOffLights = true
     self.enableTips = true
 end
@@ -149,23 +152,25 @@ function Config:Save( immediate )
         mouseDeadzone = self.mouseDeadzone,
         mouseShow = self.mouseShow,
 
-        -- Misc. settings
+        -- Performance settings
         maxSkidMarkPieces = self.maxSkidMarkPieces,
         maxTireRollPieces = self.maxTireRollPieces,
         skidmarkTimeLimit = self.skidmarkTimeLimit,
 
+        headlightShadows = self.headlightShadows,
+        reduceTireParticles = self.reduceTireParticles,
+
+        -- Misc. settings
         showHUD = self.showHUD,
         showPassengerList = self.showPassengerList,
         showCustomHealth = self.showCustomHealth,
         showEmptyVehicleHealth = self.showEmptyVehicleHealth,
         showSkybox = self.showSkybox,
-        reduceTireParticles = self.reduceTireParticles,
         useKMH = self.useKMH,
 
         manualGearShifting = self.manualGearShifting,
         autoHeadlightOn = self.autoHeadlightOn,
         autoHeadlightOff = self.autoHeadlightOff,
-        headlightShadows = self.headlightShadows,
         autoTurnOffLights = self.autoTurnOffLights,
         enableTips = self.enableTips,
 
@@ -261,23 +266,25 @@ function Config:Load()
     SetNumber( self, "mouseSteerSensitivity", data.mouseSteerSensitivity, 0.05, 3, self.mouseSteerSensitivity )
     SetNumber( self, "mouseSteerDecayRate", data.mouseSteerDecayRate, 0, 3, self.mouseSteerDecayRate )
 
-    -- Misc. settings
+    -- Performance settings
     SetNumber( self, "maxSkidMarkPieces", data.maxSkidMarkPieces, 0, 1000, self.maxSkidMarkPieces )
     SetNumber( self, "maxTireRollPieces", data.maxTireRollPieces, 0, 1000, self.maxTireRollPieces )
     SetNumber( self, "skidmarkTimeLimit", data.skidmarkTimeLimit, 3, 300, self.skidmarkTimeLimit )
 
+    LoadBool( "headlightShadows", true )
+    LoadBool( "reduceTireParticles", false )
+
+    -- Misc. settings
     LoadBool( "showHUD", true )
     LoadBool( "showPassengerList", true )
     LoadBool( "showCustomHealth", true )
     LoadBool( "showEmptyVehicleHealth", false )
     LoadBool( "showSkybox", true )
-    LoadBool( "reduceTireParticles", false )
     LoadBool( "useKMH", false )
 
     LoadBool( "manualGearShifting", false )
     LoadBool( "autoHeadlightOn", true )
     LoadBool( "autoHeadlightOff", true )
-    LoadBool( "headlightShadows", true )
     LoadBool( "autoTurnOffLights", true )
     LoadBool( "enableTips", true )
 
@@ -783,14 +790,14 @@ function Config:OpenFrame()
 
     local panelMisc = frame:AddTab( "styledstrike/icons/cog.png", L"settings.misc" )
 
-    CreateHeader( panelMisc, L"settings.skidmarks", 0 )
+    CreateHeader( panelMisc, L"settings.performance", 0 )
 
-    local maxSkidSlider
+    local maxSkidPiecesSlider
 
-    maxSkidSlider = CreateSlider( panelMisc, L"misc.skid_mark_max", self.maxSkidMarkPieces, 0, 1000, 0, function( value )
+    maxSkidPiecesSlider = CreateSlider( panelMisc, L"performance.skid_mark_max", self.maxSkidMarkPieces, 0, 1000, 0, function( value )
         if value < 10 then
             value = 0
-            maxSkidSlider:SetValue( value )
+            maxSkidPiecesSlider:SetValue( value )
         end
 
         self.maxSkidMarkPieces = value
@@ -798,12 +805,12 @@ function Config:OpenFrame()
         self:ApplySkidMarkLimits()
     end )
 
-    local maxRollSlider
+    local maxRollPiecesSlider
 
-    maxRollSlider = CreateSlider( panelMisc, L"misc.roll_mark_max", self.maxTireRollPieces, 0, 1000, 0, function( value )
+    maxRollPiecesSlider = CreateSlider( panelMisc, L"performance.roll_mark_max", self.maxTireRollPieces, 0, 1000, 0, function( value )
         if value < 10 then
             value = 0
-            maxRollSlider:SetValue( value )
+            maxRollPiecesSlider:SetValue( value )
         end
 
         self.maxTireRollPieces = value
@@ -811,13 +818,23 @@ function Config:OpenFrame()
         self:ApplySkidMarkLimits()
     end )
 
-    CreateSlider( panelMisc, L"misc.skid_mark_time", self.skidmarkTimeLimit, 3, 300, 0, function( value )
+    CreateSlider( panelMisc, L"performance.skid_mark_time", self.skidmarkTimeLimit, 3, 300, 0, function( value )
         self.skidmarkTimeLimit = value
         self:Save()
         self:ApplySkidMarkLimits()
     end )
 
-    CreateHeader( panelMisc, L"settings.misc" )
+    CreateToggle( panelMisc, L"performance.headlight_shadows", self.headlightShadows, function( value )
+        self.headlightShadows = value
+        self:Save()
+    end )
+
+    CreateToggle( panelMisc, L"performance.reduce_tire_particles", self.reduceTireParticles, function( value )
+        self.reduceTireParticles = value
+        self:Save()
+    end )
+
+    CreateHeader( panelMisc, L"settings.hud", 0 )
 
     CreateToggle( panelMisc, L"misc.show_hud", self.showHUD, function( value )
         self.showHUD = value
@@ -845,10 +862,12 @@ function Config:OpenFrame()
         Glide.EnableSkyboxIndicator()
     end )
 
-    CreateToggle( panelMisc, L"misc.reduce_tire_particles", self.reduceTireParticles, function( value )
-        self.reduceTireParticles = value
+    CreateToggle( panelMisc, L"misc.use_kmh", self.useKMH, function( value )
+        self.useKMH = value
         self:Save()
     end )
+
+    CreateHeader( panelMisc, L"settings.misc" )
 
     CreateToggle( panelMisc, L"misc.auto_headlights_on", self.autoHeadlightOn, function( value )
         self.autoHeadlightOn = value
@@ -860,11 +879,6 @@ function Config:OpenFrame()
         self:Save()
     end )
 
-    CreateToggle( panelMisc, L"misc.headlight_shadows", self.headlightShadows, function( value )
-        self.headlightShadows = value
-        self:Save()
-    end )
-
     CreateToggle( panelMisc, L"misc.turn_off_headlights", self.autoTurnOffLights, function( value )
         self.autoTurnOffLights = value
         self:Save()
@@ -873,11 +887,6 @@ function Config:OpenFrame()
 
     CreateToggle( panelMisc, L"misc.tips", self.enableTips, function( value )
         self.enableTips = value
-        self:Save()
-    end )
-
-    CreateToggle( panelMisc, L"misc.use_kmh", self.useKMH, function( value )
-        self.useKMH = value
         self:Save()
     end )
 

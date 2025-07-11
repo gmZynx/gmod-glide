@@ -137,6 +137,23 @@ hook.Add( "InitPostEntity", "Glide.RegisterEntityClasses", function()
     end
 end )
 
+-- Call a hook when a player finishes loading into the server
+-- and is ready to receive network events.
+hook.Add( "ClientSignOnStateChanged", "Glide.TriggerOnPlayerLoad", function( user, _, new )
+    if new ~= SIGNONSTATE_FULL then return end
+
+    -- We can only retrieve the player entity after this hook runs, so lets use a timer.
+    -- It could have been 0 seconds, its just higher here to put less strain on the network.
+    timer.Simple( 3, function()
+        local ply = Player( user )
+
+        if IsValid( ply ) and not ply:IsBot() then
+            ply.GlideLoaded = true
+            hook.Run( "Glide_OnPlayerLoad", ply )
+        end
+    end )
+end )
+
 local IsValid = IsValid
 
 function Glide.CanSpawnVehicle( ply )

@@ -76,6 +76,7 @@ end
 ]]
 Glide.SetupInputGroup( "general_controls", "#glide.input.general_controls" )
 
+Glide.AddInputAction( "general_controls", "attack", MOUSE_LEFT )
 Glide.AddInputAction( "general_controls", "switch_weapon", KEY_R )
 Glide.AddInputAction( "general_controls", "toggle_engine", KEY_I )
 Glide.AddInputAction( "general_controls", "headlights", KEY_H )
@@ -86,7 +87,6 @@ Glide.AddInputAction( "general_controls", "free_look", KEY_LALT )
 ]]
 Glide.SetupInputGroup( "land_controls", "#glide.input.land_controls" )
 
-Glide.AddInputAction( "land_controls", "attack", MOUSE_LEFT )
 Glide.AddInputAction( "land_controls", "steer_left", KEY_A )
 Glide.AddInputAction( "land_controls", "steer_right", KEY_D )
 Glide.AddInputAction( "land_controls", "accelerate", KEY_W )

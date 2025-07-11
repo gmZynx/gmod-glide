@@ -342,10 +342,17 @@ function ENT:WheelThink( dt )
         state.forwardTractionMult = w.isFrontWheel and tractionFront or tractionRear
         state.sideTractionMult = w.isFrontWheel and selfTbl.frontSideTractionMult or selfTbl.rearSideTractionMult
 
-        if isTurningInPlace then
-            state.torque = w.sideDistributionFactor * ( w.isOnRightSide and frontTorque or rearTorque )
+        if state.isOnGround then
+            groundedCount = groundedCount + 1
+            totalAngVel = totalAngVel + Abs( state.angularVelocity )
+
+            if isTurningInPlace then
+                state.torque = w.sideDistributionFactor * ( w.isOnRightSide and frontTorque or rearTorque )
+            else
+                state.torque = w.distributionFactor * ( w.isFrontWheel and frontTorque or rearTorque )
+            end
         else
-            state.torque = w.distributionFactor * ( w.isFrontWheel and frontTorque or rearTorque )
+            state.torque = 0
         end
 
         if inputHandbrake and not w.isFrontWheel then
@@ -355,12 +362,6 @@ function ENT:WheelThink( dt )
         if rpm > maxRPM then
             w:SetRPM( maxRPM )
         end
-
-        if state.isOnGround then
-            groundedCount = groundedCount + 1
-        end
-
-        totalAngVel = totalAngVel + Abs( state.angularVelocity )
     end
 
     selfTbl.avgPoweredRPM = avgRPM

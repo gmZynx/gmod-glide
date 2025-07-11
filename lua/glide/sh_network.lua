@@ -3,7 +3,7 @@ if SERVER then
 end
 
 -- Size limit for JSON data
-Glide.MAX_JSON_SIZE = 8192 -- 8 kibibytes
+Glide.MAX_JSON_SIZE = 4096 -- 4 kibibytes
 
 -- Used on net.WriteUInt for the command ID
 Glide.CMD_SIZE = 4
@@ -17,11 +17,10 @@ Glide.CMD_LAST_AIM_ENTITY = 4
 Glide.CMD_VIEW_PUNCH = 5
 Glide.CMD_SET_HEADLIGHTS = 6
 Glide.CMD_NOTIFY = 7
-Glide.CMD_SYNC_SOUND_ENTITY_MODIFIER = 8
-Glide.CMD_UPLOAD_STREAM_PRESET = 9
-Glide.CMD_UPLOAD_SOUND_PRESET = 10
-Glide.CMD_SHOW_KEY_NOTIFICATION = 11
-Glide.CMD_SET_CURRENT_VEHICLE = 12
+Glide.CMD_SHOW_KEY_NOTIFICATION = 8
+Glide.CMD_SET_CURRENT_VEHICLE = 9
+Glide.CMD_UPLOAD_ENGINE_STREAM_PRESET = 10
+Glide.CMD_UPLOAD_MISC_SOUNDS_PRESET = 11
 
 function Glide.StartCommand( id, unreliable )
     net.Start( "glide.command", unreliable or false )

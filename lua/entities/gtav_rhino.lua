@@ -169,6 +169,10 @@ if SERVER then
     }
 
     function ENT:CreateFeatures()
+        self:SetMinRPMTorque( 55000 )
+        self:SetMaxRPMTorque( 40000 )
+        self:SetBrakePower( 20000 )
+
         self:CreateSeat( Vector( 90, 0, -10 ), Angle( 0, 270, 30 ), Vector( 60, 100, 0 ), false )
 
         -- Front left

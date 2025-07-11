@@ -71,7 +71,7 @@ function ENT:SetInputBool( seatIndex, action, pressed )
         bools[action] = pressed
     end
 
-    if not pressed then return end
+    if not pressed or seatIndex > 1 then return end
 
     if action == "switch_weapon" then
         self:SelectWeaponIndex( self:GetWeaponIndex() + 1 )
@@ -102,8 +102,6 @@ function ENT:SetInputBool( seatIndex, action, pressed )
     elseif action == "detach_trailer" and self.socketCount > 0 then
         self:DisconnectAllSockets()
     end
-
-    if seatIndex > 1 then return end
 
     if action == "toggle_engine" then
         if self:GetEngineState() == 0 then

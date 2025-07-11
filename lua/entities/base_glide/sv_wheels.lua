@@ -86,7 +86,7 @@ function ENT:PhysicsSimulate( phys, dt )
 
     -- Do wheel physics
     if self.wheelCount > 0 and self.wheelsEnabled then
-        local traceFilter = self.traceFilter
+        local traceFilter = self.wheelTraceFilter
         local surfaceGrip = self.surfaceGrip
         local surfaceResistance = self.surfaceResistance
 

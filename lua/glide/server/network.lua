@@ -21,11 +21,11 @@ commands[Glide.CMD_SET_HEADLIGHTS] = function( ply )
     end
 end
 
-commands[Glide.CMD_UPLOAD_STREAM_PRESET] = function( ply )
+commands[Glide.CMD_UPLOAD_ENGINE_STREAM_PRESET] = function( ply )
     local veh = net.ReadEntity()
 
     if not IsValid( veh ) then return end
-    if not veh.IsGlideVehicle then return end
+    if not veh.IsGlideVehicle and veh:GetClass() ~= "glide_engine_stream_chip" then return end
 
     -- Make sure this player can tool this vehicle
     local tr = ply:GetEyeTrace()
@@ -45,10 +45,13 @@ commands[Glide.CMD_UPLOAD_STREAM_PRESET] = function( ply )
     data = util.Decompress( data )
     if not data then return end
 
-    Glide.ApplyEngineStreamModifier( ply, veh, { json = data } )
+    data = Glide.FromJSON( data )
+    if not data then return end
+
+    Glide.StoreEngineStreamPresetModifier( ply, veh, data )
 end
 
-commands[Glide.CMD_UPLOAD_SOUND_PRESET] = function( ply )
+commands[Glide.CMD_UPLOAD_MISC_SOUNDS_PRESET] = function( ply )
     local veh = net.ReadEntity()
 
     if not IsValid( veh ) then return end
@@ -72,7 +75,10 @@ commands[Glide.CMD_UPLOAD_SOUND_PRESET] = function( ply )
     data = util.Decompress( data )
     if not data then return end
 
-    Glide.ApplyMiscSoundsModifier( ply, veh, { json = data } )
+    data = Glide.FromJSON( data )
+    if not data then return end
+
+    Glide.StoreMiscSoundsPresetModifier( ply, veh, data )
 end
 
 -- Store the last entity the CLIENT told it was aiming at.
@@ -95,8 +101,8 @@ local cooldowns = {
     [Glide.CMD_SWITCH_SEATS] = { interval = 0.5, players = {} },
     [Glide.CMD_SET_HEADLIGHTS] = { interval = 0.5, players = {} },
     [Glide.CMD_LAST_AIM_ENTITY] = { interval = 0.01, players = {} },
-    [Glide.CMD_UPLOAD_STREAM_PRESET] = { interval = 0.4, players = {} },
-    [Glide.CMD_UPLOAD_SOUND_PRESET] = { interval = 0.4, players = {} }
+    [Glide.CMD_UPLOAD_ENGINE_STREAM_PRESET] = { interval = 0.4, players = {} },
+    [Glide.CMD_UPLOAD_MISC_SOUNDS_PRESET] = { interval = 0.4, players = {} }
 }
 
 -- Receive and validate network commands

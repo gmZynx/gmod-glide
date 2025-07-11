@@ -53,66 +53,6 @@ commands[Glide.CMD_SHOW_KEY_NOTIFICATION] = function()
     end
 end
 
-commands[Glide.CMD_SYNC_SOUND_ENTITY_MODIFIER] = function()
-    local modEntity = net.ReadEntity()
-    if not IsValid( modEntity ) then return end
-
-    local modType = net.ReadUInt( 3 )
-    local modSize = net.ReadUInt( 16 )
-    local modData = net.ReadData( modSize )
-
-    if not modData then return end
-
-    modData = util.Decompress( modData )
-    if not modData then return end
-
-    local shouldClear = Glide.FromJSON( modData ).clear == true
-
-    -- Entity modifier: Engine Stream preset
-    if modType == 1 then
-        if shouldClear then
-            modEntity.streamJSONOverride = nil
-        else
-            modEntity.streamJSONOverride = modData
-        end
-
-        if modEntity.stream then
-            modEntity.stream:Destroy()
-            modEntity.stream = nil
-        end
-
-    -- Entity modifier: Misc. Sounds
-    elseif modType == 2 then
-
-        -- Stop existing sounds
-        local sounds = modEntity.sounds
-
-        if sounds then
-            for k, snd in pairs( sounds ) do
-                snd:Stop()
-                sounds[k] = nil
-            end
-        end
-
-        local data = Glide.FromJSON( modData )
-        local originalSounds = modEntity._originalSounds or {}
-        modEntity._originalSounds = originalSounds
-
-        -- Restore original sounds
-        for k, path in pairs( originalSounds ) do
-            modEntity[k] = path
-        end
-
-        if shouldClear then return end
-
-        -- Apply custom sounds
-        for k, path in pairs( data ) do
-            originalSounds[k] = modEntity[k]
-            modEntity[k] = path
-        end
-    end
-end
-
 commands[Glide.CMD_SET_CURRENT_VEHICLE] = function()
     local ply = LocalPlayer()
     local vehicle = net.ReadEntity()

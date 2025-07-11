@@ -123,7 +123,7 @@ function ENT:FireBullet( params )
         params.shellDirection:Normalize()
     end
 
-    FireBullet( params, self.traceFilter )
+    FireBullet( params, self.selfTraceFilter )
 end
 
 local CanLockOnEntity = Glide.CanLockOnEntity
@@ -190,13 +190,13 @@ function ENT:WeaponThink()
         end
 
         -- Stick to the same target for as long as possible
-        if CanLockOnEntity( target, myPos, myDir, self.LockOnThreshold, self.LockOnMaxDistance, driver, true, self.traceFilter ) then
+        if CanLockOnEntity( target, myPos, myDir, self.LockOnThreshold, self.LockOnMaxDistance, driver, true, self.selfTraceFilter ) then
             return
         end
     end
 
     -- Find a new target
-    target = FindLockOnTarget( myPos, myDir, self.LockOnThreshold, self.LockOnMaxDistance, driver, self.traceFilter, self.seats )
+    target = FindLockOnTarget( myPos, myDir, self.LockOnThreshold, self.LockOnMaxDistance, driver, self.selfTraceFilter, self.seats )
 
     if target ~= self:GetLockOnTarget() then
         self:SetLockOnTarget( target )

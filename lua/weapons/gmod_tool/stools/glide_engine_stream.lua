@@ -7,14 +7,10 @@ TOOL.Information = {
     { name = "reload" }
 }
 
-local function IsGlideVehicle( ent )
-    return IsValid( ent ) and ent.IsGlideVehicle
-end
-
 local function GetGlideVehicle( trace )
     local ent = trace.Entity
 
-    if IsGlideVehicle( ent ) then
+    if Glide.DoesEntitySupportEngineStreamPreset( ent ) then
         return ent
     end
 
@@ -71,7 +67,7 @@ function TOOL:LeftClick( trace )
             return
         end
 
-        Glide.StartCommand( Glide.CMD_UPLOAD_STREAM_PRESET, false )
+        Glide.StartCommand( Glide.CMD_UPLOAD_ENGINE_STREAM_PRESET, false )
         net.WriteEntity( veh )
         net.WriteUInt( size, 16 )
         net.WriteData( data )
@@ -101,7 +97,7 @@ function TOOL:Reload( trace )
     if not self:CanSendData( veh ) then return false end
 
     if SERVER then
-        Glide.RemoveEngineStreamModifier( veh )
+        Glide.ClearEngineStreamPresetModifier( veh )
     end
 
     return true

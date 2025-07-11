@@ -1,3 +1,42 @@
+function Glide.HasBaseClass( ent, class )
+    local depth = 0
+    local base = ent.BaseClass
+
+    while depth < 10 do
+        if base and base.ClassName == class then
+            return true
+        end
+
+        depth = depth + 1
+
+        if base then
+            base = base.BaseClass
+        else
+            break
+        end
+    end
+
+    return false
+end
+
+--- Hides entity, without preventing the entity from being
+--- transmitted (like how ENT:SetNoDraw does).
+function Glide.HideEntity( ent, hide )
+    ent.GlideIsHidden = Either( hide, true, nil )
+    ent:SetRenderMode( hide and RENDERMODE_NONE or RENDERMODE_NORMAL )
+    ent:SetColor( Color( 255, 255, 255, hide and 0 or 255 ) )
+
+    if hide then
+        ent:AddEffects( EF_NOSHADOW )
+    else
+        ent:RemoveEffects( EF_NOSHADOW )
+    end
+end
+
+function Glide.IsAircraft( vehicle )
+    return vehicle.VehicleType == Glide.VEHICLE_TYPE.HELICOPTER or vehicle.VehicleType == Glide.VEHICLE_TYPE.PLANE
+end
+
 function Glide.IsValidModel( model )
     if type( model ) ~= "string" then
         return false
@@ -13,6 +52,94 @@ function Glide.IsValidModel( model )
 
     return true
 end
+
+do
+    local Band = bit.band
+    local PointContents = util.PointContents
+
+    local CONTENTS_SLIME = CONTENTS_SLIME
+    local CONTENTS_WATER = CONTENTS_WATER
+
+    function Glide.IsUnderWater( pos )
+        local contents = PointContents( pos )
+
+        return Band( contents, CONTENTS_SLIME ) == CONTENTS_SLIME or
+            Band( contents, CONTENTS_WATER ) == CONTENTS_WATER
+    end
+end
+
+do
+    local Exp = math.exp
+
+    --- If you ever need `Lerp()`, use this instead.
+    --- `Lerp()` is not consistent on different framerates, this is.
+    function Glide.ExpDecay( a, b, decay, dt )
+        return b + ( a - b ) * Exp( -decay * dt )
+    end
+end
+
+do
+    local function AngleDifference( a, b )
+        return ( ( ( ( b - a ) % 360 ) + 540 ) % 360 ) - 180
+    end
+
+    Glide.AngleDifference = AngleDifference
+
+    local ExpDecay = Glide.ExpDecay
+
+    function Glide.ExpDecayAngle( a, b, decay, dt )
+        return ExpDecay( a, a + AngleDifference( a, b ), decay, dt )
+    end
+end
+
+do
+    local TraceLine = util.TraceLine
+
+    local ray = {}
+    local traceData = { mask = MASK_WATER, output = ray }
+    local offset = Vector()
+
+    function Glide.FindWaterSurfaceAbove( origin, maxHeight )
+        offset[3] = maxHeight or 100
+
+        traceData.start = origin + offset
+        traceData.endpos = origin
+        TraceLine( traceData )
+
+        if ray.Hit then
+            return ray.HitPos, ray.Fraction
+        end
+    end
+end
+
+if CLIENT then
+    function Glide.GetLanguageText( id )
+        return language.GetPhrase( "glide." .. id )
+    end
+
+    local lastViewPos = Vector()
+    local lastViewAng = Angle()
+
+    --- Get the cached position/angle of the local player's render view.
+    function Glide.GetLocalViewLocation()
+        return lastViewPos, lastViewAng
+    end
+
+    local EyePos = EyePos
+    local EyeAngles = EyeAngles
+
+    -- `PreDrawEffects` seems like a good place to get values from EyePos/EyeAngles reliably.
+    -- `PreDrawOpaqueRenderables`/`PostDrawOpaqueRenderables` were being called
+    -- twice when there was water, and `PreRender`/`PostRender`
+    -- were causing `EyeAngles` to return incorrect angles.
+    hook.Add( "PreDrawEffects", "Glide.CachePlayerView", function( bDepth, bSkybox, b3DSkybox )
+        if bDepth or bSkybox or b3DSkybox then return end
+
+        lastViewPos = EyePos()
+        lastViewAng = EyeAngles()
+    end )
+end
+
 
 do
     -- Custom iterator, similar to ipairs, but made to iterate
@@ -78,6 +205,43 @@ do
         end
 
         return cleanData
+    end
+end
+
+do
+    -- Utility function to make sure a entity is a Glide vehicle
+    -- that supports the "glide_engine_stream" modifier.
+    local SUPPORTED_VEHICLE_TYPES = {
+        [Glide.VEHICLE_TYPE.CAR] = true,
+        [Glide.VEHICLE_TYPE.MOTORCYCLE] = true,
+        [Glide.VEHICLE_TYPE.TANK] = true,
+        [Glide.VEHICLE_TYPE.BOAT] = true
+    }
+
+    function Glide.DoesEntitySupportEngineStreamPreset( ent )
+        if not IsValid( ent ) then
+            return false
+        end
+
+        if ent:GetClass() == "glide_engine_stream_chip" then
+            return true
+        end
+
+        return ent.IsGlideVehicle and SUPPORTED_VEHICLE_TYPES[ent.VehicleType]
+    end
+end
+
+do
+    -- Utility function to make sure a entity is a Glide vehicle
+    -- that supports the "glide_misc_sounds" modifier.
+    local SUPPORTED_VEHICLE_TYPES = {
+        [Glide.VEHICLE_TYPE.CAR] = true,
+        [Glide.VEHICLE_TYPE.MOTORCYCLE] = true,
+        [Glide.VEHICLE_TYPE.BOAT] = true
+    }
+
+    function Glide.DoesEntitySupportMiscSoundsPreset( ent )
+        return IsValid( ent ) and ent.IsGlideVehicle and SUPPORTED_VEHICLE_TYPES[ent.VehicleType]
     end
 end
 
