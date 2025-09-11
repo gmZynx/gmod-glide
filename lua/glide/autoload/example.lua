@@ -2,7 +2,7 @@
 -- all Glide files have been included.
 
 -- You can safely access the `Glide` global table in here.
-Glide.Print( "Hello from the %s extension!", "example" )
+-- Glide.Print( "Hello from the %s extension!", "example" )
 
 --[[----------------------------------------
     Example: Add panel on the extensions page

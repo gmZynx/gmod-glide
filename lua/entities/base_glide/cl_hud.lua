@@ -1,114 +1,47 @@
 local IsValid = IsValid
+local RealTime = RealTime
+local LocalPlayer = LocalPlayer
 
 do
-    local TraceLine = util.TraceLine
-    local ZERO_VEC = Vector()
-    local ZERO_ANG = Angle()
-
-    local crosshairTraceData = {
-        filter = { NULL, "glide_missile", "glide_projectile" }
-    }
-
-    function ENT:UpdateCrosshairPosition()
-        local target = self:GetLockOnTarget()
-
-        if IsValid( target ) then
-            self.crosshair.origin = target:GetPos()
-            return
-        end
-
-        -- Use this weapon's crosshair position and angle offset, if set
-        local info = self.CrosshairInfo[self:GetWeaponIndex()]
-
-        if info then
-            local pos = self:LocalToWorld( info.traceOrigin or ZERO_VEC )
-            local ang = self:LocalToWorldAngles( info.traceAngle or ZERO_ANG )
-
-            crosshairTraceData.start = pos
-            crosshairTraceData.endpos = pos + ang:Forward() * 10000
-            crosshairTraceData.filter[1] = self
-
-            self.crosshair.origin = TraceLine( crosshairTraceData ).HitPos
-        end
-    end
-end
-
-do
+    -- NOTE: This is a separate crosshair from what VSWEPs use.
     local CROSSHAIR_ICONS = {
         ["dot"] = "glide/aim_dot.png",
         ["tank"] = "glide/aim_tank.png",
         ["square"] = "glide/aim_square.png"
     }
 
-    local LOCKON_STATE_COLORS = {
-        [0] = Color( 255, 255, 255 ),
-        [1] = Color( 100, 255, 100 ),
-        [2] = Color( 255, 0, 0 ),
-    }
-
     function ENT:EnableCrosshair( params )
         params = params or {}
 
-        local crosshair = self.crosshair
+        self.crosshair = {
+            origin = Vector(),
+            icon = CROSSHAIR_ICONS[params.iconType or "dot"],
 
-        crosshair.enabled = true
-        crosshair.origin = Vector()
-        crosshair.icon = CROSSHAIR_ICONS[params.iconType or "dot"]
-
-        crosshair.size = params.size or 0.05
-        crosshair.color = params.color or LOCKON_STATE_COLORS[0]
+            size = params.size or 0.05,
+            color = params.color or Color( 100, 255, 100 )
+        }
     end
 
     function ENT:DisableCrosshair()
-        local crosshair = self.crosshair
-
-        crosshair.enabled = false
-        crosshair.origin = nil
-        crosshair.icon = nil
-        crosshair.size = nil
-        crosshair.color = nil
+        self.crosshair = nil
     end
 
-    function ENT:OnLockOnStateChange( _, _, state )
-        if self:GetDriver() ~= LocalPlayer() then return end
-
-        if self.crosshair.enabled then
-            self.crosshair.color = LOCKON_STATE_COLORS[state]
-        end
-
-        if self.lockOnSound then
-            self.lockOnSound:Stop()
-            self.lockOnSound = nil
-        end
-
-        if state > 0 then
-            self.lockOnSound = CreateSound( self, state == 1 and "glide/weapons/lockstart.wav" or "glide/weapons/locktone.wav" )
-            self.lockOnSound:SetSoundLevel( 90 )
-            self.lockOnSound:PlayEx( 1.0, 98 )
-        end
-    end
+    function ENT:UpdateCrosshairPosition() end
 end
 
-local RealTime = RealTime
-local LocalPlayer = LocalPlayer
+function ENT:OnLockOnStateChange( _, _, state )
+    if self:GetDriver() ~= LocalPlayer() then return end
 
-function ENT:OnWeaponIndexChange( _, _, index )
-    local driver = self:GetDriver()
-
-    if driver == LocalPlayer() then
-        -- Show the weapon switch notification
-        self.weaponNotifyTimer = RealTime() + 1.5
-        EmitSound( "glide/ui/hud_switch.wav", Vector(), -2, nil, 1.0, nil, nil, 100 )
-
-        -- Change the crosshair
-        local info = self.CrosshairInfo[index]
-
-        if info then
-            self:EnableCrosshair( info )
-        end
+    if self.lockOnSound then
+        self.lockOnSound:Stop()
+        self.lockOnSound = nil
     end
 
-    self:OnSwitchWeapon( index )
+    if state > 0 then
+        self.lockOnSound = CreateSound( self, state == 1 and "glide/weapons/lockstart.wav" or "glide/weapons/locktone.wav" )
+        self.lockOnSound:SetSoundLevel( 90 )
+        self.lockOnSound:PlayEx( 1.0, 98 )
+    end
 end
 
 function ENT:OnDriverChange( _, _, _ )
@@ -116,11 +49,86 @@ function ENT:OnDriverChange( _, _, _ )
         self.lockOnSound:Stop()
         self.lockOnSound = nil
     end
+
+    self.weapons = {}
+    self.weaponSlotIndex = 0
+end
+
+function ENT:OnActivateWeapon( weapon, slotIndex )
+    -- Backwards compatibility with `ENT.CrosshairInfo`
+    if self.CrosshairInfo and self.CrosshairInfo[slotIndex] then
+        local data = self.CrosshairInfo[slotIndex]
+
+        local crosshairIcons = {
+            ["dot"] = "glide/aim_dot.png",
+            ["tank"] = "glide/aim_tank.png",
+            ["square"] = "glide/aim_square.png"
+        }
+
+        if data.iconType and crosshairIcons[data.iconType] then
+            weapon.CrosshairImage = crosshairIcons[data.iconType]
+        end
+
+        if data.traceOrigin then
+            weapon.LocalCrosshairOrigin = data.traceOrigin
+        end
+    end
+
+    -- Backwards compatibility with `ENT.WeaponInfo`
+    if self.WeaponInfo and self.WeaponInfo[slotIndex] then
+        local data = self.WeaponInfo[slotIndex]
+
+        if data.name then
+            weapon.Name = data.name
+        end
+
+        if data.icon then
+            weapon.Icon = data.icon
+        end
+    end
+end
+
+function ENT:OnSyncWeaponData()
+    -- Read metadata
+    local slotIndex = net.ReadUInt( 5 )
+    local className = net.ReadString()
+
+    -- If it does not exist, create a client-side instance of
+    -- this weapon class on the new active slot index.
+    local weapon = self.weapons[slotIndex]
+
+    if not weapon then
+        weapon = Glide.CreateVehicleWeapon( className )
+        weapon.Vehicle = self
+        weapon:Initialize()
+
+        self.weapons[slotIndex] = weapon
+        self:OnActivateWeapon( weapon, slotIndex )
+    end
+
+    -- Let the weapon class read custom data
+    weapon.SlotIndex = slotIndex
+    weapon:OnReadData()
+
+    -- Check if the weapon index has changed
+    if self.weaponSlotIndex ~= slotIndex then
+        self.weaponSlotIndex = slotIndex
+
+        self.weaponSwitchNotification = {
+            time = RealTime() + 1.5,
+            name = weapon.Name or "MISSING",
+            icon = weapon.Icon or "glide/aim_dot.png"
+        }
+
+        EmitSound( "glide/ui/hud_switch.wav", Vector(), -2, nil, 1.0, nil, nil, 100 )
+    end
 end
 
 local Config = Glide.Config
-local DrawWeaponCrosshair = Glide.DrawWeaponCrosshair
 local DrawWeaponSelection = Glide.DrawWeaponSelection
+local DrawWeaponCrosshair = Glide.DrawWeaponCrosshair
+local CanUseWeaponry = Glide.CanUseWeaponry
+local LocalPlayer = LocalPlayer
 
 function ENT:DrawVehicleHUD( screenW, screenH )
     local playerListWidth = 0
@@ -129,22 +137,42 @@ function ENT:DrawVehicleHUD( screenW, screenH )
         playerListWidth = self:DrawPlayerListHUD( screenW, screenH )
     end
 
-    local crosshair = self.crosshair
+    -- Draw weapon switch notification
+    if self.weaponSwitchNotification then
+        local notif = self.weaponSwitchNotification
 
-    if crosshair.enabled then
-        local data = crosshair.origin:ToScreen()
-        if data.visible then
-            DrawWeaponCrosshair( data.x, data.y, crosshair.icon, crosshair.size, crosshair.color )
+        DrawWeaponSelection( notif.name, notif.icon )
+
+        if RealTime() > notif.time then
+            self.weaponSwitchNotification = nil
         end
     end
 
-    if self.weaponNotifyTimer then
-        local info = self.WeaponInfo[self:GetWeaponIndex()] or {}
+    local localPly = LocalPlayer()
 
-        DrawWeaponSelection( info.name or "MISSING", info.icon or "glide/aim_dot.png" )
+    if not CanUseWeaponry( localPly ) then
+        return playerListWidth
+    end
 
-        if RealTime() > self.weaponNotifyTimer then
-            self.weaponNotifyTimer = nil
+    -- Let the weapon class draw it's own HUD
+    if self:GetDriver() == localPly then
+        local weapon = self.weapons[self.weaponSlotIndex]
+
+        if weapon then
+            weapon:DrawHUD( screenW, screenH )
+        end
+    end
+
+    -- If we have a custom crosshair, draw it now
+    local crosshair = self.crosshair
+
+    if crosshair then
+        self:UpdateCrosshairPosition()
+
+        local pos = crosshair.origin:ToScreen()
+
+        if pos.visible then
+            DrawWeaponCrosshair( pos.x, pos.y, crosshair.icon, crosshair.size, crosshair.color )
         end
     end
 
@@ -152,8 +180,6 @@ function ENT:DrawVehicleHUD( screenW, screenH )
 end
 
 local FrameTime = FrameTime
-local LocalPlayer = LocalPlayer
-
 local Floor = math.floor
 local ExpDecay = Glide.ExpDecay
 

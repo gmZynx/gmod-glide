@@ -65,6 +65,7 @@ function Config:Reset()
 
     -- Misc. settings
     self.manualGearShifting = false
+    self.throttleModifierMode = 0
     self.autoHeadlightOn = true
     self.autoHeadlightOff = true
     self.autoTurnOffLights = true
@@ -169,6 +170,7 @@ function Config:Save( immediate )
         useKMH = self.useKMH,
 
         manualGearShifting = self.manualGearShifting,
+        throttleModifierMode = self.throttleModifierMode,
         autoHeadlightOn = self.autoHeadlightOn,
         autoHeadlightOff = self.autoHeadlightOff,
         autoTurnOffLights = self.autoTurnOffLights,
@@ -205,7 +207,7 @@ function Config:CheckVersion( data )
     if upgraded then
         Glide.Print( "glide.json: Upgraded from version %i", data.version )
     else
-        Glide.Print( "glide.json: Version %i", data.version )
+        Glide.PrintDev( "glide.json: Version %i", data.version )
     end
 
     return data
@@ -282,6 +284,7 @@ function Config:Load()
     LoadBool( "showSkybox", true )
     LoadBool( "useKMH", false )
 
+    SetNumber( self, "throttleModifierMode", data.throttleModifierMode, 0, 2, self.throttleModifierMode )
     LoadBool( "manualGearShifting", false )
     LoadBool( "autoHeadlightOn", true )
     LoadBool( "autoHeadlightOff", true )
@@ -325,6 +328,7 @@ function Config:TransmitInputSettings( immediate )
 
         -- Keyboard settings
         manualGearShifting = self.manualGearShifting,
+        throttleModifierMode = self.throttleModifierMode,
 
         -- Misc. settings
         autoTurnOffLights = self.autoTurnOffLights,
@@ -333,7 +337,7 @@ function Config:TransmitInputSettings( immediate )
         binds = self.binds
     }
 
-    Glide.Print( "Transmitting input data to the server." )
+    Glide.PrintDev( "Transmitting input data to the server." )
 
     Glide.StartCommand( Glide.CMD_INPUT_SETTINGS )
     Glide.WriteTable( data )
@@ -415,28 +419,77 @@ Config.CreateCombo = StyledTheme.CreateFormCombo
 
 -- Utility to create a button binder row.
 do
+    local function UpdateResetButton( button, currentKey, invalidateLayout )
+        local groupId, actionId = button.inputGroupId, button.inputActionId
+        button:SetVisible( currentKey ~= Glide.InputGroups[groupId][actionId] )
+
+        if invalidateLayout then
+            button:InvalidateParent()
+        end
+    end
+
     local OnBinderChange = function( self, value )
         if self._ignoreChange then return end
 
         if Glide.SEAT_SWITCH_BUTTONS[value] then
             self._ignoreChange = true
-            self:SetValue( self.inputDefaultKey )
+            self:SetValue( self.inputLastKey )
             self._ignoreChange = nil
 
             local msg = Glide.GetLanguageText( "input.reserved_seat_key" ):format( input.GetKeyName( value ) )
             Derma_Message( msg, "#glide.input.invalid_bind", "#glide.ok" )
         else
+            self.inputLastKey = value
             self.inputCallback( self.inputActionId, value )
+            UpdateResetButton( self.inputResetButton, value, true )
         end
     end
 
-    function Config.CreateBinderButton( parent, text, actionId, defaultKey, callback )
-        local binder = StyledTheme.CreateFormBinder( parent, text, defaultKey )
+    local OnClickReset = function( self )
+        local groupId, actionId = self.inputGroupId, self.inputActionId
+        local binder = self.inputBinder
+
+        Derma_Query( "#glide.input.reset_bind_query", "#glide.input." .. actionId, "#glide.yes", function()
+            local defaultKey = Glide.InputGroups[groupId][actionId]
+
+            Config.binds[groupId][actionId] = defaultKey
+            Config:Save()
+            Config:TransmitInputSettings()
+
+            if IsValid( binder ) then
+                binder:SetValue( defaultKey or KEY_NONE )
+            end
+
+            if IsValid( self ) then
+                UpdateResetButton( self, defaultKey, true )
+            end
+        end, "#glide.no" )
+    end
+
+    function Config.CreateBinderButton( parent, actionId, groupId, currentKey, callback )
+        local binder = StyledTheme.CreateFormBinder( parent, "#glide.input." .. actionId, currentKey )
 
         binder.inputActionId = actionId
-        binder.inputDefaultKey = defaultKey
+        binder.inputLastKey = currentKey
         binder.inputCallback = callback
         binder.OnChange = OnBinderChange
+
+        local buttonReset = vgui.Create( "DBinder", binder:GetParent() )
+        buttonReset:SetText( "" )
+        buttonReset:SetTooltip( "#glide.input.reset_bind" )
+        buttonReset:SetIcon( "icon16/arrow_undo.png" )
+        buttonReset:Dock( RIGHT )
+
+        StyledTheme.Apply( buttonReset )
+        buttonReset:SizeToContents()
+
+        binder.inputResetButton = buttonReset
+        buttonReset.inputBinder = binder
+        buttonReset.inputGroupId = groupId
+        buttonReset.inputActionId = actionId
+        buttonReset.DoClick = OnClickReset
+
+        UpdateResetButton( buttonReset, currentKey )
 
         return binder
     end
@@ -455,10 +508,19 @@ function Config:OpenFrame()
     frame:MakePopup()
 
     frame.OnClose = function()
+        self.lastTabIndex = frame.lastTabIndex
         self.frame = nil
     end
 
     self.frame = frame
+
+    ----- Go back to last open tab ----- 
+
+    timer.Simple( 0, function()
+        if IsValid( self.frame ) then
+            self.frame:SetActiveTabByIndex( self.lastTabIndex or 1 )
+        end
+    end )
 
     local L = Glide.GetLanguageText
     local CreateHeader = Config.CreateHeader
@@ -716,6 +778,30 @@ function Config:OpenFrame()
 
     table.SortByMember( groupList, "order", true )
 
+    -- Create extra panels for some actions
+    local extraActionFunctions = {
+        ["shift_up"] = function()
+            CreateToggle( panelKeyboard, L"input.manual_shift", self.manualGearShifting, function( value )
+                self.manualGearShifting = value
+                self:Save()
+                self:TransmitInputSettings()
+            end )
+        end,
+        ["throttle_modifier"] = function()
+            local throttleModOptions = {
+                L"input.throttle_mod.hold_to_full",
+                L"input.throttle_mod.hold_to_reduce",
+                L"input.throttle_mod.tap_to_toggle"
+            }
+
+            CreateCombo( panelKeyboard, L"input.throttle_mod_mode", throttleModOptions, self.throttleModifierMode + 1, function( value )
+                self.throttleModifierMode = value - 1
+                self:Save()
+                self:TransmitInputSettings()
+            end )
+        end
+    }
+
     local binds = self.binds
     local CreateBinderButton = Config.CreateBinderButton
 
@@ -726,14 +812,6 @@ function Config:OpenFrame()
 
         CreateHeader( panelKeyboard, "#glide.input." .. groupId, 0 )
 
-        if groupId == "land_controls" then
-            CreateToggle( panelKeyboard, L"input.manual_shift", self.manualGearShifting, function( value )
-                self.manualGearShifting = value
-                self:Save()
-                self:TransmitInputSettings()
-            end )
-        end
-
         local OnChangeGroupBind = function( action, key )
             groupBinds[action] = key
             self:Save()
@@ -741,7 +819,11 @@ function Config:OpenFrame()
         end
 
         for action, _ in SortedPairs( actions ) do
-            CreateBinderButton( panelKeyboard, "#glide.input." .. action, action, groupBinds[action], OnChangeGroupBind )
+            CreateBinderButton( panelKeyboard, action, groupId, groupBinds[action], OnChangeGroupBind )
+
+            if extraActionFunctions[action] then
+                extraActionFunctions[action]()
+            end
         end
     end
 
@@ -901,7 +983,6 @@ function Config:OpenFrame()
 
             timer.Simple( 1, function()
                 self:OpenFrame()
-                self.frame:SetActiveTabByIndex( 5 )
             end )
         end, L"no" )
     end )
@@ -916,7 +997,6 @@ function Config:OpenFrame()
 
             timer.Simple( 1, function()
                 self:OpenFrame()
-                self.frame:SetActiveTabByIndex( 5 )
             end )
         end, L"no" )
     end )
@@ -936,6 +1016,8 @@ function Config:OpenFrame()
             { name = "sbox_maxglide_projectile_launchers", decimals = 0, min = 0, max = 100 },
             { name = "glide_gib_lifetime", decimals = 0, min = 0, max = 60 },
             { name = "glide_gib_enable_collisions", decimals = 0, min = 0, max = 1 },
+            { name = "glide_pacifist_mode", decimals = 0, min = 0, max = 1 },
+            { name = "glide_allow_gravity_gun_punt", decimals = 0, min = 0, max = 1 },
 
             { name = "glide_ragdoll_enable", decimals = 0, min = 0, max = 1 },
             { name = "glide_ragdoll_max_time", decimals = 0, min = 0, max = 30 },

@@ -24,6 +24,18 @@ function ENT:AllowFirstPersonMuffledSound()
 end
 
 --- Override this base class function.
+function ENT:OnActivateWeapon( weapon, slotIndex )
+    if slotIndex > 1 then
+        BaseClass.OnActivateWeapon( self, weapon, slotIndex )
+    else
+        -- Disable default cannon crosshair, since we'll draw our own
+        weapon.CrosshairImage = ""
+        weapon.Name = "#glide.weapons.cannon"
+        weapon.Icon = "glide/icons/rocket.png"
+    end
+end
+
+--- Override this base class function.
 function ENT:OnPostInitialize()
     BaseClass.OnPostInitialize( self )
 
@@ -158,12 +170,15 @@ do
 
     local matBody = Material( "materials/glide/tank_body.png", "smooth" )
     local matTurret = Material( "materials/glide/tank_turret.png", "smooth" )
+    local CanUseWeaponry = Glide.CanUseWeaponry
 
     --- Override this base class function.
     function ENT:DrawVehicleHUD( screenW, screenH )
         BaseClass.DrawVehicleHUD( self, screenW, screenH )
 
-        DrawWeaponCrosshair( screenW * 0.5, screenH * 0.5, "glide/aim_tank.png", 0.14, crosshairColor[self:GetIsAimingAtTarget()] )
+        if CanUseWeaponry( LocalPlayer() ) then
+            DrawWeaponCrosshair( screenW * 0.5, screenH * 0.5, "glide/aim_tank.png", 0.14, crosshairColor[self:GetIsAimingAtTarget()] )
+        end
 
         if not Camera.isInFirstPerson then return end
 

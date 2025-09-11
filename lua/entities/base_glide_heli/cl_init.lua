@@ -72,18 +72,20 @@ function ENT:OnUpdateSounds()
 
     local power = self:GetPower()
 
-    sounds.distant:ChangePitch( Clamp( power, 0, 1 ) * 100 )
-    sounds.distant:ChangeVolume( Clamp( power - 0.2, 0, 0.8 ) * 0.5 * vol )
+    if not self.isLazyThink then
+        sounds.distant:ChangePitch( Clamp( power, 0, 1 ) * 100 )
+        sounds.distant:ChangeVolume( Clamp( power - 0.2, 0, 0.8 ) * 0.5 * vol )
 
-    sounds.engine:ChangePitch( Clamp( 0.6 + power * 0.4, 0, 1 ) * 100 )
-    sounds.engine:ChangeVolume( ( Clamp( power - 0.2, 0, 1 ) * ( 1.3 - power ) ) * self.EngineSoundVolume * vol )
+        sounds.engine:ChangePitch( Clamp( 0.6 + power * 0.4, 0, 1 ) * 100 )
+        sounds.engine:ChangeVolume( ( Clamp( power - 0.2, 0, 1 ) * ( 1.3 - power ) ) * self.EngineSoundVolume * vol )
 
-    sounds.jet:ChangePitch( Clamp( 0.6 + power * 0.4, 0, 1 ) * 100 )
-    sounds.jet:ChangeVolume( Clamp( power - 0.2, 0, 1 ) * self.JetSoundVolume * vol )
+        sounds.jet:ChangePitch( Clamp( 0.6 + power * 0.4, 0, 1 ) * 100 )
+        sounds.jet:ChangeVolume( Clamp( power - 0.2, 0, 1 ) * self.JetSoundVolume * vol )
 
-    if sounds.tail then
-        sounds.tail:ChangePitch( Clamp( 0.5 + power * 0.5, 0, 1 ) * 100 )
-        sounds.tail:ChangeVolume( Clamp( power - 0.1, 0, 1 ) * 0.6 * vol )
+        if sounds.tail then
+            sounds.tail:ChangePitch( Clamp( 0.5 + power * 0.5, 0, 1 ) * 100 )
+            sounds.tail:ChangeVolume( Clamp( power - 0.1, 0, 1 ) * 0.6 * vol )
+        end
     end
 
     local isEngineDying = self:GetIsEngineDying() and LocalPlayer():GlideGetVehicle() == self

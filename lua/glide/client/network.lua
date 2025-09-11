@@ -69,10 +69,24 @@ commands[Glide.CMD_SET_CURRENT_VEHICLE] = function()
     ply:SetNWInt( "GlideSeatIndex", seatIndex )
 end
 
+commands[Glide.CMD_RELOAD_VSWEP] = function()
+    Glide.ReloadWeaponScript( net.ReadString() )
+end
+
 net.Receive( "glide.command", function()
     local cmd = net.ReadUInt( Glide.CMD_SIZE )
 
     if commands[cmd] then
         commands[cmd]()
+    end
+end )
+
+-- This net event can run frequently, so it was
+-- separated from the `glide.command` event.
+net.Receive( "glide.sync_weapon_data", function()
+    local vehicle = Glide.currentVehicle
+
+    if IsValid( vehicle ) then
+        vehicle:OnSyncWeaponData()
     end
 end )

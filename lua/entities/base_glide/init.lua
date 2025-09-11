@@ -110,6 +110,8 @@ function ENT:Initialize()
     self.inputFlyMode = 0           -- User mouse flying mode
     self.inputManualShift = false   -- User manual gear shifting setting
     self.autoTurnOffLights = false  -- User "turn off headlights" setting
+    self.inputThrottleModifierMode = 0  -- User throttle modifier setting
+    self.inputThrottleModifierToggle = false
 
     -- Setup collision variables
     self.collisionShakeCooldown = 0
@@ -118,6 +120,7 @@ function ENT:Initialize()
     self.localVelocity = Vector()
     self.forwardSpeed = 0
     self.totalSpeed = 0
+    self.forwardAcceleration = 0
 
     -- Setup trace filter used by systems that
     -- need to ignore the vehicle's chassis and seats.
@@ -234,6 +237,10 @@ function ENT:UpdateTransmitState()
     return 2 -- TRANSMIT_PVS
 end
 
+function ENT:OnRemove()
+    self:ClearWeapons()
+end
+
 function ENT:Use( activator )
     if not IsValid( activator ) then return end
     if not activator:IsPlayer() then return end
@@ -306,23 +313,33 @@ do
     local ragdollEnableCvar = GetConVar( "glide_ragdoll_enable" )
     local maxRagdollTimeCvar = GetConVar( "glide_ragdoll_max_time" )
 
-    --- Kicks out all passengers, then ragdoll them.
-    function ENT:RagdollPlayers( time, vel )
+    --- Kicks out the passenger from a specific seat entity, then ragdoll them.
+    function ENT:RagdollPlayerOnSeat( seat, time, vel )
+        if not IsValid( seat ) then return end
+        if not seat.GlideSeatIndex then return end
         if not ragdollEnableCvar:GetBool() then return end
+
         time = time or maxRagdollTimeCvar:GetFloat()
         vel = vel or self:GetVelocity()
 
-        local ply
+        local ply = seat:GetDriver()
 
-        for seatIndex, seat in Glide.EntityPairs( self.seats ) do
-            ply = seat:GetDriver()
+        if IsValid( ply ) and self:CanFallOnCollision( seat.GlideSeatIndex ) then
+            Glide.RagdollPlayer( ply, vel, time )
 
-            if IsValid( ply ) and self:CanFallOnCollision( seatIndex ) then
-                Glide.RagdollPlayer( ply, vel, time )
+            if seat.GlideSeatIndex == 1 then
+                self.hasTheDriverBeenRagdolled = true
             end
         end
+    end
 
-        self.hasRagdolledAllPlayers = true
+    --- Kicks out all passengers, then ragdoll them.
+    function ENT:RagdollPlayers( time, vel )
+        vel = vel or self:GetVelocity()
+
+        for _, seat in Glide.EntityPairs( self.seats ) do
+            self:RagdollPlayerOnSeat( seat, time, vel )
+        end
     end
 end
 
@@ -480,7 +497,7 @@ function ENT:GetPlayerCount()
     local count = 0
 
     for _, seat in EntityPairs( self.seats ) do
-        if IsValid( seat ) and IsValid( seat:GetDriver() ) then
+        if IsValid( seat:GetDriver() ) then
             count = count + 1
         end
     end
@@ -626,6 +643,7 @@ local TickInterval = engine.TickInterval
 local GetDevMode = Glide.GetDevMode
 
 function ENT:Think()
+    local dt = TickInterval()
     local selfTbl = getTable( self )
 
     -- Run again next tick
@@ -634,8 +652,12 @@ function ENT:Think()
 
     -- Update speed variables
     selfTbl.localVelocity = self:WorldToLocal( self:GetPos() + self:GetVelocity() )
-    selfTbl.forwardSpeed = selfTbl.localVelocity[1]
     selfTbl.totalSpeed = selfTbl.localVelocity:Length()
+
+    local forwardSpeed = selfTbl.localVelocity[1]
+
+    selfTbl.forwardAcceleration = ( forwardSpeed - selfTbl.forwardSpeed ) / dt
+    selfTbl.forwardSpeed = forwardSpeed
 
     -- If we have at least one seat...
     if #selfTbl.seats > 0 then
@@ -664,7 +686,7 @@ function ENT:Think()
                 self:OnDriverExit()
             end
 
-            selfTbl.hasRagdolledAllPlayers = nil
+            selfTbl.hasTheDriverBeenRagdolled = nil
         end
     end
 
@@ -675,8 +697,6 @@ function ENT:Think()
 
     -- Update water logic
     self:WaterThink( selfTbl )
-
-    local dt = TickInterval()
 
     -- Deal engine fire damage over time
     if self:GetIsEngineOnFire() then

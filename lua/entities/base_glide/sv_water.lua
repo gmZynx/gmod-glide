@@ -41,6 +41,7 @@ end
 
 local IsUnderWater = Glide.IsUnderWater
 local GetDevMode = Glide.GetDevMode
+local EntityPairs = Glide.EntityPairs
 
 function ENT:WaterThink( selfTbl )
     -- Update buoyancy points
@@ -65,8 +66,16 @@ function ENT:WaterThink( selfTbl )
     self:SetWaterState( waterState )
 
     -- If necessary, kick passengers when underwater
-    if selfTbl.FallWhileUnderWater and waterState > 2 and self:GetPlayerCount() > 0 then
-        self:RagdollPlayers( 3 )
+    if selfTbl.FallWhileUnderWater and waterState > 2 then
+        local ply
+
+        for _, seat in EntityPairs( self.seats ) do
+            ply = seat:GetDriver()
+
+            if IsValid( ply ) and ply:WaterLevel() > 2 then
+                self:RagdollPlayerOnSeat( seat, 3 )
+            end
+        end
     end
 
     -- Draw buoyancy debug overlays, if `developer` cvar is active

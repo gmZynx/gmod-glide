@@ -105,12 +105,12 @@ end
 function Glide.DestroySkidMarkMeshes()
     if Glide.skidMarkHandler then
         Glide.skidMarkHandler:Destroy()
-        Glide.Print( "Skid mark mesh has been destroyed." )
+        Glide.PrintDev( "Skid mark mesh has been destroyed." )
     end
 
     if Glide.tireRollHandler then
         Glide.tireRollHandler:Destroy()
-        Glide.Print( "Tire roll mesh has been destroyed." )
+        Glide.PrintDev( "Tire roll mesh has been destroyed." )
     end
 
     Glide.tireRollHandler = nil
@@ -128,7 +128,7 @@ function Glide.SetupSkidMarkMeshes()
         skidMarkHandler = SkidHandler.Instantiate( Config.maxSkidMarkPieces, "glide/skidmarks/skid_asphalt" )
 
         Glide.skidMarkHandler = skidMarkHandler
-        Glide.Print( "Initialized skid mark mesh with %d max. quads.", skidMarkHandler.maxPieces )
+        Glide.PrintDev( "Initialized skid mark mesh with %d max. quads.", skidMarkHandler.maxPieces )
     end
 
     -- Mesh handler for tire roll marks
@@ -136,7 +136,7 @@ function Glide.SetupSkidMarkMeshes()
         tireRollHandler = SkidHandler.Instantiate( Config.maxTireRollPieces, "glide/skidmarks/roll_dirt" )
 
         Glide.tireRollHandler = tireRollHandler
-        Glide.Print( "Initialized tire roll mesh with %d max. quads.", tireRollHandler.maxPieces )
+        Glide.PrintDev( "Initialized tire roll mesh with %d max. quads.", tireRollHandler.maxPieces )
     end
 end
 

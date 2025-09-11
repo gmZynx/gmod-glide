@@ -233,7 +233,7 @@ function ENT:OnUpdateSounds()
     if isRedlining ~= stream.isRedlining then
         stream.isRedlining = isRedlining
 
-        if isRedlining and ( self:GetGear() < 3 or health < 0.1 ) then
+        if not isRedlining and inputs.rpmFraction > 0.5 and ( self:GetGear() < 3 or health < 0.1 ) then
             self:DoExhaustPop()
         end
     end

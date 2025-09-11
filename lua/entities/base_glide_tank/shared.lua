@@ -74,6 +74,7 @@ end
 
 -- Children classes should override this function
 -- to update the turret/cannon bones.
+--
 -- This exists both on the client and server side,
 -- to allow returning the correct bone position
 -- when creating the projectile serverside.
@@ -86,11 +87,6 @@ if CLIENT then
     function ENT:GetCameraType( _seatIndex )
         return 1 -- Glide.CAMERA_TYPE.TURRET
     end
-
-    -- Setup default cannon
-    ENT.WeaponInfo = {
-        { name = "#glide.weapons.cannon" }
-    }
 
     -- Track sound parameters
     ENT.TrackSound = ")glide/tanks/tracks_leopard.wav"
@@ -119,11 +115,6 @@ if SERVER then
 
     ENT.SuspensionHeavySound = "Glide.Suspension.CompressTruck"
     ENT.SuspensionDownSound = "Glide.Suspension.Stress"
-
-    -- Setup a weapon slot for the turret
-    ENT.WeaponSlots = {
-        { maxAmmo = 0, fireRate = 2.0 },
-    }
 
     -- Can this tank "turn in place"?
     ENT.CanTurnInPlace = true

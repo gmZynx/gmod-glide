@@ -10,7 +10,6 @@ function ENT:EngineInit()
     self.engineBrakeTorque = 2000
 
     -- Fake engine variables
-    self.reducedThrottle = false
     self.flywheelVelocity = 0
     self.clutch = 1
     self.switchCD = 0
@@ -190,9 +189,9 @@ function ENT:AutoGearSwitch( throttle )
     -- Avoid hitting the redline
     maxRPM = maxRPM * 0.98
 
-    -- Switch up early while using reduced throttle
-    if self.reducedThrottle then
-        maxRPM = maxRPM * ( 1 - throttle * 0.2 )
+    -- When accelerating, switch up early when the throttle is low
+    if self.forwardAcceleration > 0 then
+        maxRPM = maxRPM * ( 0.6 + throttle * 0.4 )
     end
 
     local gearRPM
@@ -304,9 +303,6 @@ function ENT:EngineThink( dt )
     -- When the engine is on fire, reduce the throttle
     if self:GetIsEngineOnFire() then
         inputThrottle = inputThrottle * 0.7
-
-    elseif self.reducedThrottle then
-        inputThrottle = inputThrottle * 0.65
     end
 
     rpm = self:GetFlywheelRPM()
@@ -455,10 +451,6 @@ local ExpDecay = Glide.ExpDecay
 function ENT:BoatEngineThink( dt )
     local waterState = self:GetWaterState()
     local speed = self.forwardSpeed
-
-    if self.reducedThrottle then
-        inputThrottle = inputThrottle * 0.65
-    end
 
     throttle = 0
 

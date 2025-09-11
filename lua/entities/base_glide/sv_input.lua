@@ -15,6 +15,8 @@ function ENT:ResetInputs( seatIndex )
             floats[action] = 0
         end
     end
+
+    self.inputThrottleModifierToggle = false
 end
 
 --- Get the action's boolean value from a specific seat.
@@ -38,6 +40,13 @@ do
         ["lean_pitch"] = { "lean_back", "lean_forward" }
     }
 
+    -- Actions affected by the throttle modifier
+    local THROTTLE_MOD_ACTIONS = {
+        ["accelerate"] = true,
+        ["brake"] = true
+    }
+
+    local Abs = math.abs
     local Clamp = math.Clamp
 
     --- Get the action's float value from a specific seat.
@@ -54,7 +63,13 @@ do
         local bools = self.inputBools[seatIndex]
         if bools then
             local indexes = BOOL_TO_FLOAT[action]
-            value = value + ( bools[indexes[1]] and -1 or ( bools[indexes[2]] and 1 or 0 ) )
+            local boolState = bools[indexes[1]] and -1 or ( bools[indexes[2]] and 1 or 0 )
+
+            value = value + boolState
+
+            if THROTTLE_MOD_ACTIONS[action] and Abs( boolState ) > 0 then
+                value = value * self:GetInputThrottleModifier()
+            end
         end
 
         return Clamp( value, -1, 1 )
@@ -101,6 +116,15 @@ function ENT:SetInputBool( seatIndex, action, pressed )
 
     elseif action == "detach_trailer" and self.socketCount > 0 then
         self:DisconnectAllSockets()
+
+    elseif action == "throttle_modifier" and self.inputThrottleModifierMode == 2 then
+        self.inputThrottleModifierToggle = not self.inputThrottleModifierToggle
+
+        Glide.SendNotification( self:GetAllPlayers(), {
+            text = "#glide.notify.reduced_throttle_" .. ( self.inputThrottleModifierToggle and "on" or "off" ),
+            icon = "materials/glide/icons/" .. ( self.inputThrottleModifierToggle and "play_next" or "fast_forward" ) .. ".png",
+            immediate = true
+        } )
     end
 
     if action == "toggle_engine" then
@@ -124,4 +148,17 @@ function ENT:OnInputMouseWheel( seatIndex, value )
     if seatIndex < 2 then
         self:SelectWeaponIndex( self:GetWeaponIndex() + ( value > 0 and -1 or 1 ) )
     end
+end
+
+function ENT:GetInputThrottleModifier()
+    local mode = self.inputThrottleModifierMode
+
+    if mode == 2 then
+        return self.inputThrottleModifierToggle and 0.7 or 1.0
+
+    elseif mode == 1 then
+        return self:GetInputBool( 1, "throttle_modifier" ) and 0.7 or 1.0
+    end
+
+    return self:GetInputBool( 1, "throttle_modifier" ) and 1.0 or 0.7
 end

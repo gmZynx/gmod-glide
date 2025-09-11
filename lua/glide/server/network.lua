@@ -3,7 +3,7 @@ local commands = {}
 commands[Glide.CMD_INPUT_SETTINGS] = function( ply )
     local data = Glide.ReadTable()
 
-    Glide.Print( "Received input data from %s <%s>", ply:Nick(), ply:SteamID() )
+    Glide.PrintDev( "Received input data from %s <%s>", ply:Nick(), ply:SteamID() )
     Glide.SetupPlayerInput( ply, data )
 end
 

@@ -49,7 +49,8 @@ do
             manualGearShifting = data.manualGearShifting == true,
             autoTurnOffLights = data.autoTurnOffLights == true,
             mouseFlyMode = math.Round( Glide.ValidateNumber( data.mouseFlyMode, 0, 2, 0 ) ),
-            mouseSteerMode = math.Round( Glide.ValidateNumber( data.mouseSteerMode, 0, 2, 0 ) )
+            mouseSteerMode = math.Round( Glide.ValidateNumber( data.mouseSteerMode, 0, 2, 0 ) ),
+            throttleModifierMode = math.Round( Glide.ValidateNumber( data.throttleModifierMode, 0, 2, 0 ) ),
         }
 
         -- Replace yaw actions with roll actions when the client asks for it,
@@ -103,6 +104,7 @@ do
             vehicle.inputFlyMode = settings.mouseFlyMode
             vehicle.inputManualShift = settings.manualGearShifting
             vehicle.autoTurnOffLights = settings.autoTurnOffLights
+            vehicle.inputThrottleModifierMode = settings.throttleModifierMode
             vehicle:ResetInputs( 1 )
         end
 

@@ -12,6 +12,13 @@ local GetTable = EntityMeta.GetTable
 function ENT:OnPostInitialize()
     BaseClass.OnPostInitialize( self )
 
+    -- Create a weapon. We'll implement a
+    -- custom fire logic on our `ENT:OnWeaponFire`.
+    self:CreateWeapon( "base", {
+        MaxAmmo = 0,
+        FireDelay = 2.0
+    } )
+
     -- Setup variables used on all tanks
     self.isTurningInPlace = false
     self.isCannonInsideWall = false
@@ -136,12 +143,20 @@ function ENT:GetTurretAimPosition()
 end
 
 --- Implement this base class function.
-function ENT:OnWeaponFire( weapon )
-    if self:WaterLevel() > 2 then return end
+function ENT:OnWeaponFire( weapon, slotIndex )
+    -- If this vehicle has more than one weapon,
+    -- let the VSWEP class handle the logic.
+    if slotIndex > 1 then
+        return true
+    end
+
+    if self:WaterLevel() > 2 then
+        return false
+    end
 
     if self.isCannonInsideWall then
         weapon.nextFire = 0
-        return
+        return false
     end
 
     local aimPos = self:GetTurretAimPosition()
@@ -176,6 +191,8 @@ function ENT:OnWeaponFire( weapon )
     if IsValid( driver ) then
         Glide.SendViewPunch( driver, -0.2 )
     end
+
+    return false
 end
 
 local EntityPairs = Glide.EntityPairs

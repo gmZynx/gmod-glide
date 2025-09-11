@@ -90,6 +90,8 @@ local GetVolume = Glide.Config.GetVolume
 
 --- Implement this base class function.
 function ENT:OnUpdateSounds()
+    if self.isLazyThink then return end
+
     local sounds = self.sounds
     local vol = GetVolume( "aircraftVolume" )
 

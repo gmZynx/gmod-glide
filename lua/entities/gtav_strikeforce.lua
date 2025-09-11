@@ -22,15 +22,14 @@ if CLIENT then
     ENT.CameraOffset = Vector( -600, 0, 150 )
 
     ENT.WeaponInfo = {
-        { name = "#glide.weapons.explosive_cannon", icon = "glide/icons/bullets.png" },
-        { name = "#glide.weapons.homing_missiles", icon = "glide/icons/rocket.png" },
-        { name = "#glide.weapons.barrage_missiles", icon = "glide/icons/rocket.png" }
+        -- Rename "Missiles" to "Barrage" 
+        [3] = { name = "#glide.weapons.barrage_missiles" }
     }
 
     ENT.CrosshairInfo = {
-        { iconType = "dot", traceOrigin = Vector( 0, 0, -18.5 ) },
-        { iconType = "square", traceOrigin = Vector( 0, 0, -19 ) },
-        { iconType = "square", traceOrigin = Vector( 0, 0, -19 ) }
+        { traceOrigin = Vector( 0, 0, -18.5 ) },
+        { traceOrigin = Vector( 0, 0, -19 ) },
+        { traceOrigin = Vector( 0, 0, -19 ) }
     }
 
     ENT.ExhaustPositions = {
@@ -188,22 +187,42 @@ if SERVER then
         rollForce = 5000
     }
 
-    ENT.WeaponSlots = {
-        { maxAmmo = 0, fireRate = 0.08, replenishDelay = 0, ammoType = "explosive_cannon" },
-        { maxAmmo = 0, fireRate = 1.0, replenishDelay = 0, ammoType = "missile", lockOn = true },
-        { maxAmmo = 6, fireRate = 0.15, replenishDelay = 6, ammoType = "barrage" }
-    }
-
-    -- Custom weapon logic
-    ENT.BulletOffset = Vector( 268, 0, -18.5 )
-
-    ENT.MissileOffsets = {
-        Vector( 50, 122, -24 ),
-        Vector( 50, -122, -24 )
-    }
-
     function ENT:CreateFeatures()
         self:CreateSeat( Vector( 157, 0, 4 ), Angle( 0, 270, 10 ), Vector( -160, 120, 0 ), true )
+
+        self:CreateWeapon( "explosive_cannon", {
+            FireDelay = 0.08,
+            ProjectileOffsets = {
+                Vector( 268, 0, -18.5 )
+            }
+        } )
+
+        self:CreateWeapon( "homing_launcher", {
+            AmmoType = "missile",
+            MaxAmmo = 0,
+            FireDelay = 1.0,
+            ProjectileOffsets = {
+                Vector( 50, 122, -24 ),
+                Vector( 50, -122, -24 )
+            },
+        } )
+
+        self:CreateWeapon( "missile_launcher", {
+            AmmoType = "barrage",
+            MaxAmmo = 6,
+            FireDelay = 0.15,
+            ReloadDelay = 6.0,
+            MissileModel = "models/props_phx/amraam.mdl",
+            MissileModelScale = 0.5,
+            ProjectileOffsets = {
+                Vector( 50, 160, -19 ),
+                Vector( 50, -160, -19 ),
+                Vector( 50, 197, -15 ),
+                Vector( 50, -197, -15 ),
+                Vector( 50, 235, -12 ),
+                Vector( 50, -235, -12 )
+            },
+        } )
 
         local wheelParams = {
             suspensionLength = 38,
@@ -227,42 +246,17 @@ if SERVER then
         for _, w in ipairs( self.wheels ) do
             Glide.HideEntity( w, true )
         end
-
-        self.missileIndex = 0
     end
 
-    function ENT:OnWeaponFire( weapon )
-        local attacker = self:GetSeatDriver( 1 )
-
-        if weapon.ammoType == "explosive_cannon" then
+    function ENT:OnWeaponFire( _weapon, slotIndex )
+        -- The explosive cannon is firing, set this entity
+        -- variable to `true` (to play a custom sound clientside)
+        if slotIndex == 1 then
             self:SetFiringGun( true )
-
-            self:FireBullet( {
-                pos = self:LocalToWorld( self.BulletOffset ),
-                ang = self:GetAngles(),
-                attacker = attacker,
-                isExplosive = true
-            } )
-        else
-            self.missileIndex = self.missileIndex + 1
-
-            if self.missileIndex > #self.MissileOffsets then
-                self.missileIndex = 1
-            end
-
-            local target
-
-            -- Only make the missile follow the target when
-            -- using the homing missiles and with a "hard" lock-on
-            if weapon.lockOn and self:GetLockOnState() == 2 then
-                target = self:GetLockOnTarget()
-            end
-
-            local pos = self:LocalToWorld( self.MissileOffsets[self.missileIndex] )
-            local missile = self:FireMissile( pos, self:GetAngles(), attacker, target )
-            missile:SetModel( "models/props_phx/amraam.mdl" )
-            missile:SetModelScale( 0.5 )
         end
+
+        -- Then let the VSWEP handle the fire logic
+        return true
     end
 
     function ENT:OnWeaponStop()

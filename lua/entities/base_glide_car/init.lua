@@ -149,7 +149,7 @@ end
 function ENT:OnDriverExit()
     local keepOn = IsValid( self.lastDriver ) and self.lastDriver:KeyDown( IN_WALK )
 
-    if not self.hasRagdolledAllPlayers and not keepOn then
+    if not self.hasTheDriverBeenRagdolled and not keepOn then
         self:TurnOff()
     end
 
@@ -160,7 +160,6 @@ end
 function ENT:TurnOn()
     BaseClass.TurnOn( self )
 
-    self.reducedThrottle = false
     self:SetGear( 0 )
     self:SetFlywheelRPM( 0 )
 end
@@ -174,7 +173,6 @@ function ENT:TurnOff()
     self.startupTimer = nil
 
     self.clutch = 1
-    self.reducedThrottle = false
     self.availableFrontTorque = 0
     self.availableRearTorque = 0
 end
@@ -209,15 +207,6 @@ function ENT:OnSeatInput( seatIndex, action, pressed )
 
     if action == "siren" then
         self:ChangeSirenState( self:GetSirenState() + 1 )
-
-    elseif action == "reduce_throttle" then
-        self.reducedThrottle = not self.reducedThrottle
-
-        Glide.SendNotification( self:GetAllPlayers(), {
-            text = "#glide.notify.reduced_throttle_" .. ( self.reducedThrottle and "on" or "off" ),
-            icon = "materials/glide/icons/" .. ( self.reducedThrottle and "play_next" or "fast_forward" ) .. ".png",
-            immediate = true
-        } )
 
     elseif action == "accelerate" and self:GetEngineState() == 0 and self:GetEngineRPM() < 1 then
         self:TurnOn()
@@ -306,15 +295,21 @@ function ENT:SetupWiremodPorts( inputs, outputs )
     outputs[#outputs + 1] = { "SirenState", "NORMAL", "0: Off\n1: Lights only\n2: Lights + sounds" }
 end
 
-function ENT:CheckWaterLevel()
-    if self:WaterLevel() > 2 then
+function ENT:CheckWaterLevel( dt )
+    if self:WaterLevel() < 3 then return end
+
+    local health = self:GetEngineHealth()
+
+    if health > 0 then
+        self:TakeEngineDamage( dt * 0.2 )
+        self:UpdateHealthOutputs()
+    else
         if self:GetEngineState() == 2 then
             self:TurnOff()
         end
 
         self:SetEngineHealth( 0 )
         self:SetFlywheelRPM( 0 )
-        self:UpdateHealthOutputs()
     end
 end
 
@@ -355,7 +350,7 @@ function ENT:OnPostThink( dt, selfTbl )
     end
 
     -- Damage the engine when underwater
-    self:CheckWaterLevel()
+    self:CheckWaterLevel( dt )
 
     local health = self:GetEngineHealth()
 

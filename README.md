@@ -67,6 +67,7 @@ A pack of content and entity classes to add cars, motorcycles, planes, helicopte
 | Command | Description
 | ------- | -----------
 | `glide_homing_launcher_lock_required` `<number>` | Should the homing launcher require a lock to fire?
+| `glide_pacifist_mode` `<number>` | When set to `1`, disables all VSWEPs and vehicle turrets
 
 ### Vehicle damage multipliers
 

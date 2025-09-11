@@ -33,6 +33,7 @@ function Glide.CreateEngineStream( parent )
         isPlaying = false,
         isRedlining = false,
         firstPerson = false,
+        volumeMultiplier = 0,
 
         inputs = {
             throttle = 0,
@@ -190,6 +191,7 @@ end
 
 function EngineStream:Play()
     self.isPlaying = true
+    self.volumeMultiplier = 0
 
     for _, layer in pairs( self.layers ) do
         if IsValid( layer.channel ) then
@@ -200,6 +202,7 @@ end
 
 function EngineStream:Pause()
     self.isPlaying = false
+    self.volumeMultiplier = 0
 
     for _, layer in pairs( self.layers ) do
         if IsValid( layer.channel ) then
@@ -222,7 +225,11 @@ function EngineStream:Think( dt, eyePos, eyeRight )
     if not self.isPlaying then return end
     if not IsValid( self.parent ) then return end
 
-    vol = self.volume * GetVolume( "carVolume" )
+    if self.volumeMultiplier < 1 then
+        self.volumeMultiplier = math.min( 1, Glide.ExpDecay( self.volumeMultiplier, 1.01, 4, dt ) )
+    end
+
+    vol = self.volume * self.volumeMultiplier * GetVolume( "carVolume" )
     pitch = 1
     pan = 0
 

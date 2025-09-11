@@ -19,16 +19,10 @@ end
 if CLIENT then
     ENT.CameraOffset = Vector( -600, 0, 110 )
 
-    ENT.WeaponInfo = {
-        { name = "#glide.weapons.explosive_cannon", icon = "glide/icons/bullets.png" },
-        { name = "#glide.weapons.homing_missiles", icon = "glide/icons/rocket.png" },
-        { name = "#glide.weapons.missiles", icon = "glide/icons/rocket.png" }
-    }
-
     ENT.CrosshairInfo = {
-        { iconType = "dot", traceOrigin = Vector( 0, 0, 15 ) },
-        { iconType = "square", traceOrigin = Vector( 0, 0, -12 ) },
-        { iconType = "square", traceOrigin = Vector( 0, 0, -12 ) }
+        { traceOrigin = Vector( 0, 0, 15 ) },
+        { traceOrigin = Vector( 0, 0, -12 ) },
+        { traceOrigin = Vector( 0, 0, -12 ) }
     }
 
     ENT.ExhaustPositions = {
@@ -198,31 +192,45 @@ if SERVER then
         rollForce = 3500
     }
 
-    ENT.WeaponSlots = {
-        { maxAmmo = 0, fireRate = 0.08, replenishDelay = 0, ammoType = "explosive_cannon" },
-        { maxAmmo = 2, fireRate = 1.0, replenishDelay = 4, ammoType = "missile", lockOn = true },
-        { maxAmmo = 2, fireRate = 1.0, replenishDelay = 4, ammoType = "missile" }
-    }
-
-    -- Custom weapon logic
-    ENT.BulletOffsets = {
-        Vector( 130, 32, 15 ),
-        Vector( 130, -32, 15 )
-    }
-
-    ENT.MissileOffsets = {
-        Vector( 50, 124, -12 ),
-        Vector( 50, -124, -12 ),
-        Vector( 50, 163, -11 ),
-        Vector( 50, -163, -11 )
-    }
-
     function ENT:GetSpawnColor()
         return Color( 255, 255, 255, 255 )
     end
 
     function ENT:CreateFeatures()
         self:CreateSeat( Vector( 165, 0, 2 ), Angle( 0, 270, 10 ), Vector( 190, 120, 0 ), true )
+
+        self:CreateWeapon( "explosive_cannon", {
+            FireDelay = 0.08,
+            ProjectileOffsets = {
+                Vector( 130, 32, 15 ),
+                Vector( 130, -32, 15 )
+            }
+        } )
+
+        local missileOffsets = {
+            Vector( 50, 124, -12 ),
+            Vector( 50, -124, -12 ),
+            Vector( 50, 163, -11 ),
+            Vector( 50, -163, -11 )
+        }
+
+        self:CreateWeapon( "homing_launcher", {
+            MaxAmmo = 2,
+            AmmoType = "missile",
+            AmmoTypeShareCapacity = true,
+            FireDelay = 1.0,
+            ReloadDelay = 4.0,
+            ProjectileOffsets = missileOffsets
+        } )
+
+        self:CreateWeapon( "missile_launcher", {
+            MaxAmmo = 2,
+            AmmoType = "missile",
+            AmmoTypeShareCapacity = true,
+            FireDelay = 1.0,
+            ReloadDelay = 4.0,
+            ProjectileOffsets = missileOffsets
+        } )
 
         local wheelParams = {
             suspensionLength = 30,
@@ -249,46 +257,11 @@ if SERVER then
         for _, w in ipairs( self.wheels ) do
             Glide.HideEntity( w, true )
         end
-
-        self.missileIndex = 0
-        self.bulletIndex = 0
     end
 
-    function ENT:OnWeaponFire( weapon )
-        local attacker = self:GetSeatDriver( 1 )
-
-        if weapon.ammoType == "explosive_cannon" then
+    function ENT:OnWeaponStart( _, slotIndex )
+        if slotIndex == 1 then
             self:SetFiringGun( true )
-            self.bulletIndex = self.bulletIndex + 1
-
-            if self.bulletIndex > #self.BulletOffsets then
-                self.bulletIndex = 1
-            end
-
-            self:FireBullet( {
-                pos = self:LocalToWorld( self.BulletOffsets[self.bulletIndex] ),
-                ang = self:GetAngles(),
-                attacker = attacker,
-                isExplosive = true
-            } )
-
-        else
-            self.missileIndex = self.missileIndex + 1
-
-            if self.missileIndex > #self.MissileOffsets then
-                self.missileIndex = 1
-            end
-
-            local target
-
-            -- Only make the missile follow the target when
-            -- using the homing missiles and with a "hard" lock-on
-            if weapon.lockOn and self:GetLockOnState() == 2 then
-                target = self:GetLockOnTarget()
-            end
-
-            local pos = self:LocalToWorld( self.MissileOffsets[self.missileIndex] )
-            self:FireMissile( pos, self:GetAngles(), attacker, target )
         end
     end
 

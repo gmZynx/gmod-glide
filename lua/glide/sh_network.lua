@@ -1,5 +1,6 @@
 if SERVER then
     util.AddNetworkString( "glide.command" )
+    util.AddNetworkString( "glide.sync_weapon_data" )
 end
 
 -- Size limit for JSON data
@@ -21,6 +22,7 @@ Glide.CMD_SHOW_KEY_NOTIFICATION = 8
 Glide.CMD_SET_CURRENT_VEHICLE = 9
 Glide.CMD_UPLOAD_ENGINE_STREAM_PRESET = 10
 Glide.CMD_UPLOAD_MISC_SOUNDS_PRESET = 11
+Glide.CMD_RELOAD_VSWEP = 13
 
 function Glide.StartCommand( id, unreliable )
     net.Start( "glide.command", unreliable or false )

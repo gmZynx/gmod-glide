@@ -2,20 +2,6 @@ local ScaleSize = StyledTheme.ScaleSize
 local colors = StyledTheme.colors
 local L = Glide.GetLanguageText
 
--- Limits for stream parameters
-local KV_LIMITS = {
-    -- Min, max, decimals
-    pitch = { 0.5, 2, 2 },
-    volume = { 0.1, 2, 2 },
-    fadeDist = { 500, 4000, 0 },
-
-    redlineFrequency = { 30, 70, 0 },
-    redlineStrength = { 0, 0.5, 2 },
-
-    wobbleFrequency = { 10, 70, 0 },
-    wobbleStrength = { 0.1, 1.0, 2 }
-}
-
 local function OnStreamError( path, errorName )
     Derma_Message( string.format( L"stream_editor.load_error", path, errorName ), L"error", L"ok" )
 end
@@ -56,11 +42,13 @@ function PANEL:Init()
 
         StyledTheme.Apply( label )
 
+        local limits = Glide.STREAM_KV_LIMITS[key]
+
         local slider = vgui.Create( "DNumSlider", scrollParams )
         slider:SetText( "" )
-        slider:SetMin( KV_LIMITS[key][1] )
-        slider:SetMax( KV_LIMITS[key][2] )
-        slider:SetDecimals( KV_LIMITS[key][3] )
+        slider:SetMin( limits.min )
+        slider:SetMax( limits.max )
+        slider:SetDecimals( limits.decimals )
         slider:Dock( TOP )
         slider:DockMargin( 0, 0, 0, separator * 4 )
 
@@ -70,7 +58,7 @@ function PANEL:Init()
         self.paramSliders[key] = slider
 
         slider.OnValueChanged = function( _, value )
-            self.stream[key] = math.Round( value, KV_LIMITS[key][3] )
+            self.stream[key] = math.Round( value, limits.decimals )
             self:MarkAsUnsaved()
         end
     end
@@ -413,7 +401,7 @@ end
 
 function PANEL:UpdateStreamParamSliders()
     for k, slider in pairs( self.paramSliders ) do
-        slider:SetValue( self.stream[k] or KV_LIMITS[k][1] )
+        slider:SetValue( self.stream[k] or Glide.DEFAULT_STREAM_PARAMS[k] )
     end
 end
 

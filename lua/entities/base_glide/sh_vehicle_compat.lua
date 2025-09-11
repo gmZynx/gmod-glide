@@ -1,5 +1,8 @@
 --[[
-    A real "vehicle" in this game are actually the seats, but we still
+    A real "vehicle" in this game is actually something like the seats,
+    a entity the player gets parented to when they "get on" it.
+ 
+    Players aren't parented to Glide vehicles directly, but we still
     have to implement some functions from the `Vehicle` metatable,
     to prevent errors on other addons.
 

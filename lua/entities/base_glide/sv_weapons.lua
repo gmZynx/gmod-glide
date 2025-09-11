@@ -1,57 +1,95 @@
---- Reset the lock-on state
+function ENT:WeaponInit()
+    self.weapons = {}
+    self.weaponCount = 0
+    self.turretCount = 0
+
+    self.weaponState = {
+        index = 0, -- Current weapon slot index
+        lockOnThinkCD = 0, -- Lock-on logic update cooldown
+        lockOnStateCD = 0, -- Lock-on state change cooldown
+
+        earlySync = false, -- Should a weapon data sync happen early?
+        lastSyncT = 0 -- Last time a weapon data sync happened
+    }
+
+    -- Backwards compatibility with `ENT.WeaponSlots`
+    if self.WeaponSlots then
+        for _, data in ipairs( self.WeaponSlots ) do
+            self:CreateWeapon( "base", {
+                AmmoType = data.ammoType,
+                MaxAmmo = data.maxAmmo,
+                FireDelay = data.fireRate,
+                ReloadDelay = data.replenishDelay,
+                EnableLockOn = data.lockOn == true
+            } )
+        end
+    end
+end
+
+--- Returns the total count of weapons on this vehicle.
+--- This counts weapons created with `ENT:CreateWeapon` and `Glide.CreateTurret`.
+function ENT:GetWeaponCount()
+    return self.weaponCount + self.turretCount
+end
+
+--- Returns the index of the active weapon.
+function ENT:GetWeaponIndex()
+    return self.weaponState.index
+end
+
+--- Force a weapon data sync to happen early.
+function ENT:MarkWeaponDataAsDirty()
+    self.weaponState.earlySync = true
+end
+
 function ENT:ClearLockOnTarget()
     self:SetLockOnTarget( NULL )
     self:SetLockOnState( 0 )
 end
 
-function ENT:WeaponInit()
+function ENT:ClearWeapons()
+    local myWeapons = self.weapons
+    if not myWeapons then return end
+
+    for i = #myWeapons, 1, -1 do
+        myWeapons[i]:OnRemove()
+        myWeapons[i] = nil
+    end
+
     self.weapons = {}
-    self.weaponCount = #self.WeaponSlots
-    self.turretCount = 0
+    self.weaponCount = 0
+end
 
-    self.lockOnThinkCD = 0
-    self.lockOnStateCD = 0
+--- Add a VSWEP to this vehicle's weapon slots.
+--- `data` is a optional key-value table for the server-side
+--- properties of the weapon, like `FireDelay` and `MaxAmmo`. 
+function ENT:CreateWeapon( class, data )
+    local weapon = Glide.CreateVehicleWeapon( class, data )
+    local index = self.weaponCount + 1
 
-    if self.weaponCount == 0 then return end
+    self.weaponCount = index
+    self.weapons[index] = weapon
 
-    for i, data in ipairs( self.WeaponSlots ) do
-        local weapon = {
-            ammo = data.maxAmmo or 0,
-            nextFire = 0,
-            nextReload = 0
-        }
+    weapon.SlotIndex = index
+    weapon.Vehicle = self
+    weapon:Initialize()
 
-        -- This value can be any string/number. All this does when set is,
-        -- when switching to this weapon, it copies the ammo and cooldown
-        -- timings from the previous weapon if it has the same ammo type.
-        weapon.ammoType = data.ammoType
-
-        -- Set to 0 for unlimited clip ammo
-        weapon.maxAmmo = data.maxAmmo or 0
-
-        -- How often can this weapon fire?
-        weapon.fireRate = data.fireRate or 0.5
-
-        -- How long does it take to reload?
-        weapon.replenishDelay = data.replenishDelay or 1
-
-        -- Enable the lock-on system while using this weapon
-        weapon.lockOn = data.lockOn or false
-
-        self.weapons[i] = weapon
+    if self.weaponCount == 1 then
+        self:SelectWeaponIndex( 1 )
     end
 end
 
---- Returns the total count of weapons on this vehicle.
---- This includes both weapons from `ENT.WeaponSlots`
---- and turrets parented to this vehicle.
-function ENT:GetWeaponCount()
-    return self.weaponCount + self.turretCount
-end
+local CanUseWeaponry = Glide.CanUseWeaponry
 
 --- Switch the current active weapon.
 function ENT:SelectWeaponIndex( index )
     if self.weaponCount == 0 then return end
+
+    local driver = self:GetDriver()
+
+    if IsValid( driver ) and not CanUseWeaponry( driver ) then
+        return
+    end
 
     -- Wrap the index around if outside limits
     if index > self.weaponCount then
@@ -64,31 +102,136 @@ function ENT:SelectWeaponIndex( index )
     local weapon = self.weapons[index]
     if not weapon then return end
 
-    -- Trigger the "stop fire" event from the current weapon
-    local lastWeaponIndex = self:GetWeaponIndex()
-    local lastWeapon = self.weapons[lastWeaponIndex]
+    local lastIndex = self.weaponState.index
+    local lastWeapon = self.weapons[lastIndex]
 
-    if lastWeapon and lastWeapon.isFiring then
-        self:OnWeaponStop( lastWeapon, lastWeaponIndex )
-    end
-
-    -- Share the ammo count, reload and fire cooldowns
-    -- between all other weapons with the same ammo type
-    for i, otherWeapon in ipairs( self.weapons ) do
-        if i ~= lastWeaponIndex and lastWeapon.ammoType == otherWeapon.ammoType then
-            otherWeapon.ammo = lastWeapon.ammo
-            otherWeapon.nextFire = lastWeapon.nextFire
-            otherWeapon.nextReload = lastWeapon.nextReload
+    if lastWeapon then
+        if lastWeapon.isFiring then
+            lastWeapon.isFiring = false
+            self:OnWeaponStop( lastWeapon, lastWeapon.SlotIndex )
         end
+
+        local lastAmmoType = lastWeapon.AmmoType
+
+        if lastAmmoType ~= "" then
+            for i, otherWeapon in ipairs( self.weapons ) do
+                if i ~= lastIndex and lastAmmoType == otherWeapon.AmmoType then
+                    -- Share the reload and fire cooldowns to all
+                    -- other weapons with the same ammo type.
+                    otherWeapon.nextFire = lastWeapon.nextFire
+                    otherWeapon.nextReload = lastWeapon.nextReload
+
+                    -- Share the ammo count to all other weapons with the same
+                    -- ammo type AND that have `AmmoTypeShareCapacity` set to `true`.
+                    if otherWeapon.AmmoTypeShareCapacity then
+                        otherWeapon.ammo = lastWeapon.ammo
+                        otherWeapon.projectileOffsetIndex = lastWeapon.projectileOffsetIndex
+                    end
+                end
+            end
+        end
+
+        -- Let the last weapon know it's no longer active
+        lastWeapon:OnHolster()
     end
 
-    -- Set active weapon
-    self:SetWeaponIndex( index )
-    self:OnSwitchWeapon( index )
+    -- Let the current weapon know it's active
+    weapon:OnDeploy()
+
     self:ClearLockOnTarget()
+    self:MarkWeaponDataAsDirty()
+    self.weaponState.index = index
 end
 
 local IsValid = IsValid
+local CurTime = CurTime
+local CanLockOnEntity = Glide.CanLockOnEntity
+local FindLockOnTarget = Glide.FindLockOnTarget
+
+function ENT:WeaponThink()
+    local time = CurTime()
+    local state = self.weaponState
+
+    local weapon = self.weapons[state.index]
+    if not weapon then return end
+
+    weapon:InternalThink()
+
+    local driver = self:GetDriver()
+
+    if IsValid( driver ) then
+        -- Periodically sync the current weapon state with the driver.
+        if time > state.lastSyncT + ( state.earlySync and 0.15 or 0.5 ) then
+            state.lastSyncT = time
+            state.earlySync = false
+
+            -- Write some metadata
+            net.Start( "glide.sync_weapon_data", true )
+            net.WriteUInt( state.index, 5 )
+            net.WriteString( weapon.ClassName )
+
+            -- Let the weapon class write custom data
+            weapon:OnWriteData()
+
+            net.Send( driver )
+        end
+    else
+        -- Don't run the lock-on logic without a driver
+        return
+    end
+
+    -- Periodically update lock-on state, if this weapon uses it.
+    if not weapon.EnableLockOn or time < state.lockOnThinkCD then return end
+
+    state.lockOnThinkCD = time + 0.1
+
+    local target = self:GetLockOnTarget()
+    local myPos = self:GetPos()
+    local myDir = self:GetForward()
+
+    if IsValid( target ) then
+        local targetPos = target:GetPos()
+        local targetDir = targetPos - myPos
+        targetDir:Normalize()
+
+        if time > state.lockOnStateCD then
+            self:SetLockOnState( 2 ) -- Hard lock
+        end
+
+        -- Stick to the same target for as long as possible
+        if CanLockOnEntity( target, myPos, myDir, self.LockOnThreshold, self.LockOnMaxDistance, driver, true, self.selfTraceFilter ) then
+            return
+        end
+    end
+
+    -- Find a new target
+    target = FindLockOnTarget( myPos, myDir, self.LockOnThreshold, self.LockOnMaxDistance, driver, self.selfTraceFilter, self.seats )
+
+    if target ~= self:GetLockOnTarget() then
+        self:SetLockOnTarget( target )
+
+        if IsValid( target ) then
+            self:SetLockOnState( 1 ) -- Soft lock
+            state.lockOnStateCD = time + 0.45 * weapon.LockOnTimeMultiplier
+
+            if target.IsGlideVehicle then
+                -- If the target is a Glide vehicle, notify the passengers
+                Glide.SendLockOnDanger( target:GetAllPlayers() )
+
+            elseif target.GetDriver then
+                -- If the target is another type of vehicle, notify the driver
+                local ply = target:GetDriver()
+
+                if IsValid( ply ) then
+                    Glide.SendLockOnDanger( ply )
+                end
+            end
+        else
+            self:SetLockOnState( 0 )
+            state.lockOnStateCD = 0
+        end
+    end
+end
 
 --- Utility function to create a missile.
 function ENT:FireMissile( pos, ang, attacker, target )
@@ -124,102 +267,4 @@ function ENT:FireBullet( params )
     end
 
     FireBullet( params, self.selfTraceFilter )
-end
-
-local CanLockOnEntity = Glide.CanLockOnEntity
-local FindLockOnTarget = Glide.FindLockOnTarget
-
-function ENT:WeaponThink()
-    local weaponIndex = self:GetWeaponIndex()
-    local weapon = self.weapons[weaponIndex]
-    if not weapon then return end
-
-    local t = CurTime()
-
-    -- Reload if it is the time to do so
-    if weapon.ammo < 1 and t > weapon.nextReload then
-        weapon.ammo = weapon.maxAmmo
-    end
-
-    local isFiring = self:GetInputBool( 1, "attack" )
-
-    if isFiring and t > weapon.nextFire and ( weapon.ammo > 0 or weapon.maxAmmo == 0 ) then
-        weapon.ammo = weapon.ammo - 1
-        weapon.nextFire = t + weapon.fireRate
-
-        self:OnWeaponFire( weapon, weaponIndex )
-
-        if weapon.ammo < 1 and weapon.maxAmmo > 0 then
-            weapon.nextReload = t + weapon.replenishDelay
-        end
-    end
-
-    -- Trigger `OnWeaponStop` once the weapon runs out of ammo or
-    -- the driver is no longer pressing the attack button
-    isFiring = isFiring and ( weapon.maxAmmo == 0 or weapon.ammo > 0 )
-
-    if weapon.isFiring ~= isFiring then
-        weapon.isFiring = isFiring
-
-        if isFiring then
-            self:OnWeaponStart( weapon, weaponIndex )
-        else
-            self:OnWeaponStop( weapon, weaponIndex )
-        end
-    end
-
-    -- Lock-on targets
-    if not weapon.lockOn or t < self.lockOnThinkCD then return end
-
-    self.lockOnThinkCD = t + 0.2
-
-    local driver = self:GetSeatDriver( 1 )
-    if not IsValid( driver ) then return end
-
-    local target = self:GetLockOnTarget()
-    local myPos = self:GetPos()
-    local myDir = self:GetForward()
-
-    if IsValid( target ) then
-        local targetPos = target:GetPos()
-        local targetDir = targetPos - myPos
-        targetDir:Normalize()
-
-        if t > self.lockOnStateCD then
-            self:SetLockOnState( 2 ) -- Hard lock
-        end
-
-        -- Stick to the same target for as long as possible
-        if CanLockOnEntity( target, myPos, myDir, self.LockOnThreshold, self.LockOnMaxDistance, driver, true, self.selfTraceFilter ) then
-            return
-        end
-    end
-
-    -- Find a new target
-    target = FindLockOnTarget( myPos, myDir, self.LockOnThreshold, self.LockOnMaxDistance, driver, self.selfTraceFilter, self.seats )
-
-    if target ~= self:GetLockOnTarget() then
-        self:SetLockOnTarget( target )
-
-        if IsValid( target ) then
-            self:SetLockOnState( 1 ) -- Soft lock
-            self.lockOnStateCD = t + 0.4
-
-            if target.IsGlideVehicle then
-                -- If the target is a Glide vehicle, notify the passengers
-                Glide.SendLockOnDanger( target:GetAllPlayers() )
-
-            elseif target.GetDriver then
-                -- If the target is another type of vehicle, notify the driver
-                local ply = target:GetDriver()
-
-                if IsValid( ply ) then
-                    Glide.SendLockOnDanger( ply )
-                end
-            end
-        else
-            self:SetLockOnState( 0 )
-            self.lockOnStateCD = 0
-        end
-    end
 end

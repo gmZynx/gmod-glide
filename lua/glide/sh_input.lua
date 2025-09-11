@@ -31,13 +31,10 @@ Glide.InputGroups = Glide.InputGroups or {}
 --- Later, you can add actions to this `groupId` string, and then
 --- vehicles chose which input groups are activated when a player enters it.
 ---
---- `label` is a string used to show the input group on the settings page.
----
 --- WARNING: You must call this function with the exact same
 --- parameters on both SERVER and CLIENT for this to work properly!
 function Glide.SetupInputGroup( groupId )
     assert( type( groupId ) == "string", "Input groupId must be a string!" )
-    assert( type( groupId ) == "string", "Input group label must be a string!" )
 
     -- Create a empty actions table for this group
     Glide.InputGroups[groupId] = {}
@@ -74,7 +71,7 @@ end
 --[[
     Inputs that apply to all vehicle types
 ]]
-Glide.SetupInputGroup( "general_controls", "#glide.input.general_controls" )
+Glide.SetupInputGroup( "general_controls" )
 
 Glide.AddInputAction( "general_controls", "attack", MOUSE_LEFT )
 Glide.AddInputAction( "general_controls", "switch_weapon", KEY_R )
@@ -85,17 +82,17 @@ Glide.AddInputAction( "general_controls", "free_look", KEY_LALT )
 --[[
     Inputs that only apply to land vehicle types
 ]]
-Glide.SetupInputGroup( "land_controls", "#glide.input.land_controls" )
+Glide.SetupInputGroup( "land_controls" )
 
 Glide.AddInputAction( "land_controls", "steer_left", KEY_A )
 Glide.AddInputAction( "land_controls", "steer_right", KEY_D )
 Glide.AddInputAction( "land_controls", "accelerate", KEY_W )
 Glide.AddInputAction( "land_controls", "brake", KEY_S )
 Glide.AddInputAction( "land_controls", "handbrake", KEY_SPACE )
+Glide.AddInputAction( "land_controls", "throttle_modifier", KEY_LSHIFT )
 
 Glide.AddInputAction( "land_controls", "horn", KEY_R )
 Glide.AddInputAction( "land_controls", "siren", KEY_L )
-Glide.AddInputAction( "land_controls", "reduce_throttle", KEY_LSHIFT )
 Glide.AddInputAction( "land_controls", "detach_trailer", KEY_K )
 
 Glide.AddInputAction( "land_controls", "lean_forward", KEY_UP )
@@ -111,7 +108,7 @@ Glide.AddInputAction( "land_controls", "shift_neutral", KEY_N )
 --[[
     Inputs that only apply to aircraft vehicle types
 ]]
-Glide.SetupInputGroup( "aircraft_controls", "#glide.input.aircraft_controls" )
+Glide.SetupInputGroup( "aircraft_controls" )
 
 Glide.AddInputAction( "aircraft_controls", "attack_alt", KEY_SPACE )
 Glide.AddInputAction( "aircraft_controls", "landing_gear", KEY_G )

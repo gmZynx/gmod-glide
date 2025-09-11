@@ -45,7 +45,6 @@ function ENT:SetupDataTables()
     self:NetworkVar( "Bool", "IsEngineOnFire" )
     self:NetworkVar( "Bool", "IsLocked" )
 
-    self:NetworkVar( "Int", "WeaponIndex" )
     self:NetworkVar( "Int", "LockOnState" )
     self:NetworkVar( "Entity", "LockOnTarget" )
 
@@ -83,7 +82,6 @@ function ENT:SetupDataTables()
     self:SetEngineState( 0 )
     self:SetIsEngineOnFire( false )
 
-    self:SetWeaponIndex( 1 )
     self:SetLockOnState( 0 )
     self:SetLockOnTarget( NULL )
 
@@ -95,14 +93,8 @@ function ENT:SetupDataTables()
     self:NetworkVarNotify( "EngineState", self.OnEngineStateChange )
 
     if CLIENT then
-        -- Callback used to run `OnSwitchWeapon` clientside
-        self:NetworkVarNotify( "WeaponIndex", self.OnWeaponIndexChange )
-
         -- Callback used to play/stop the lock-on sound clientside
         self:NetworkVarNotify( "LockOnState", self.OnLockOnStateChange )
-
-        -- Callback used to setup the driver's HUD clientside
-        self:NetworkVarNotify( "Driver", self.OnDriverChange )
 
         -- Callback used to update the light color
         self:NetworkVarNotify( "HeadlightColor", self.OnHeadlightColorChange )
@@ -111,6 +103,14 @@ end
 
 function ENT:GravGunPickupAllowed( _ply )
     return false
+end
+
+do
+    local gravGunPuntCvar = GetConVar( "glide_allow_gravity_gun_punt" )
+
+    function ENT:GravGunPunt( _ply )
+        return gravGunPuntCvar:GetBool()
+    end
 end
 
 -- You can safely override these on children classes
@@ -135,7 +135,6 @@ function ENT:OnPostInitialize() end
 function ENT:OnEntityReload() end
 function ENT:OnTurnOn() end
 function ENT:OnTurnOff() end
-function ENT:OnSwitchWeapon( _weaponIndex ) end
 function ENT:UpdatePlayerPoseParameters( _ply ) return false end
 
 function ENT:GetPlayerSitSequence( seatIndex )
@@ -173,20 +172,6 @@ if CLIENT then
     -- Startup/ignition sounds, leave empty to disable
     ENT.StartSound = ""
     ENT.StartTailSound = ""
-
-    -- Set label/icons for each weapon slot.
-    -- This should contain a array of tables, where each table looks like these:
-    --
-    -- { name = "Machine Guns", icon = "glide/icons/bullets.png" }
-    -- { name = "Missiles", icon = "glide/icons/rocket.png" }
-    ENT.WeaponInfo = {}
-
-    -- Set crosshair parameters per weapon slot.
-    -- This should contain a array of tables, where each table looks like these:
-    --
-    -- { iconType = "dot", traceOrigin = Vector() }
-    -- { iconType = "square", traceOrigin = Vector(), traceAngle = Angle(), size = 0.1 }
-    ENT.CrosshairInfo = {}
 
     -- Positions where engine fire comes from.
     -- This should contain a array of tables, where each table contains:
@@ -241,6 +226,9 @@ if CLIENT then
     function ENT:OnActivateSounds() end
     function ENT:OnDeactivateSounds() end
     function ENT:OnUpdateSounds() end
+
+    function ENT:OnLocalPlayerEnter( _seatIndex ) end
+    function ENT:OnLocalPlayerExit() end
 
     function ENT:OnActivateMisc() end
     function ENT:OnDeactivateMisc() end
@@ -325,13 +313,6 @@ if SERVER then
 
     -- Spawn these gibs when the vehicle explodes
     ENT.ExplosionGibs = {}
-
-    -- Setup available weapon slots.
-    -- Should contain a array of tables, where each table looks like this:
-    --
-    -- { maxAmmo = 0, fireRate = 0.02 }
-    -- { maxAmmo = 2, fireRate = 1.0, replenishDelay = 2, ammoType = "missile" }
-    ENT.WeaponSlots = {}
 
     -- Suspension sounds
     ENT.SuspensionHeavySound = "Glide.Suspension.CompressHeavy"
@@ -441,7 +422,11 @@ if SERVER then
     function ENT:OnDriverEnter() end
     function ENT:OnDriverExit() end
     function ENT:OnSeatInput( _seatIndex, _action, _pressed ) end
-    function ENT:OnWeaponFire( _weapon, _weaponIndex ) end
+
+    function ENT:OnWeaponFire( _weapon, _weaponIndex )
+        return true -- Allow the VSWEP script to run it's own weapon fire logic
+    end
+
     function ENT:OnWeaponStart( _weapon, _weaponIndex ) end
     function ENT:OnWeaponStop( _weapon, _weaponIndex ) end
 

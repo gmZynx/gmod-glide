@@ -408,7 +408,7 @@ function SWEP:UpdateTarget()
                 -- If the target is another type of vehicle, notify the driver
                 local driver = target:GetDriver()
 
-                if IsValid( driver ) then
+                if IsValid( driver ) and driver:IsPlayer() then
                     Glide.SendLockOnDanger( driver )
                 end
             end

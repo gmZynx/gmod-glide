@@ -421,7 +421,7 @@ function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfa
     sideForce = sideForce * ( 1 - Clamp( Abs( gripLoss ) * 0.1, 0, 1 ) * 0.9 )
 
     -- Reduce sideways force as the suspension spring applies less force
-    --surfaceGrip = surfaceGrip * Clamp( springForce / params.springStrength, 0, 1 )
+    surfaceGrip = surfaceGrip * Clamp( springForce / params.springStrength, 0, 1 )
 
     -- Apply sideways traction force
     force:Add( Clamp( sideForce, -maxTraction, maxTraction ) * surfaceGrip * rt )

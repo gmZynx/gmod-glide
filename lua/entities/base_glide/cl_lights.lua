@@ -97,7 +97,7 @@ function ENT:UpdateLights()
         end
     end
 
-    if headlightState > 0 then
+    if headlightState > 0 and not self.isLazyThink then
         local l, hasLight
 
         for index, data in ipairs( self.Headlights ) do

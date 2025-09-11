@@ -112,6 +112,25 @@ do
     end
 end
 
+do
+    local pacifistModeCvar = GetConVar( "glide_pacifist_mode" )
+    local HookRun = hook.Run
+
+    --- Called by various weapon systems to check
+    --- if a player can use a vehicle VSWEP/turret.
+    function Glide.CanUseWeaponry( ply )
+        if pacifistModeCvar:GetBool() then
+            return false
+        end
+
+        if HookRun( "Glide_CanUseWeaponry", ply ) == false then
+            return false
+        end
+
+        return true
+    end
+end
+
 if CLIENT then
     function Glide.GetLanguageText( id )
         return language.GetPhrase( "glide." .. id )
@@ -139,7 +158,6 @@ if CLIENT then
         lastViewAng = EyeAngles()
     end )
 end
-
 
 do
     -- Custom iterator, similar to ipairs, but made to iterate
@@ -263,6 +281,20 @@ local DEFAULT_STREAM_PARAMS = {
 
 Glide.DEFAULT_STREAM_PARAMS = DEFAULT_STREAM_PARAMS
 
+local STREAM_KV_LIMITS = {
+    pitch = { min = 0.5, max = 2, decimals = 2 },
+    volume = { min = 0.1, max = 2, decimals = 2 },
+    fadeDist = { min = 500, max = 4000, decimals = 0 },
+
+    redlineFrequency = { min = 30, max = 70, decimals = 0 },
+    redlineStrength = { min = 0, max = 0.5, decimals = 2 },
+
+    wobbleFrequency = { min = 10, max = 70, decimals = 0 },
+    wobbleStrength = { min = 0.0, max = 1.0, decimals = 2 }
+}
+
+Glide.STREAM_KV_LIMITS = STREAM_KV_LIMITS
+
 function Glide.ValidateStreamData( data )
     if type( data ) ~= "table" then
         return false, "Preset is not a table!"
@@ -278,6 +310,12 @@ function Glide.ValidateStreamData( data )
         for k, v in pairs( keyValues ) do
             if not DEFAULT_STREAM_PARAMS[k] or type( v ) ~= "number" then
                 data[k] = nil -- If invalid, just remove KV pair
+            end
+
+            local limits = STREAM_KV_LIMITS[k]
+
+            if limits and data[k] then
+                data[k] = math.Clamp( math.Round( data[k], limits.decimals ), limits.min, limits.max )
             end
         end
     end

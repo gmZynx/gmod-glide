@@ -48,10 +48,6 @@ if CLIENT then
         { type = "signal_right", offset = Vector( 84, -33, -1.5 ), dir = Vector( 0.7, -0.5, 0 ), color = Glide.DEFAULT_TURN_SIGNAL_COLOR }
     }
 
-    ENT.WeaponInfo = {
-        { name = "#glide.weapons.mgs", icon = "glide/icons/bullets.png" },
-    }
-
     function ENT:OnCreateEngineStream( stream )
         stream:LoadPreset( "jb700" )
     end
@@ -81,20 +77,23 @@ if SERVER then
         { type = "signal_right", bodyGroupId = 12, subModelId = 1 }
     }
 
-    ENT.WeaponSlots = {
-        { maxAmmo = 0, fireRate = 0.25 }
-    }
-
-    ENT.BulletOffsets = {
-        Vector( 72, 30, 16 ),
-        Vector( 72, -30, 16 )
-    }
-
     function ENT:GetSpawnColor()
         return Color( 78, 81, 88 )
     end
 
     function ENT:CreateFeatures()
+        self:CreateWeapon( "base", {
+            Spread = 0.5,
+            Damage = 40,
+            TracerScale = 0.5,
+            SingleShotSound = "Glide.JB700.Fire",
+            FireDelay = 0.25,
+            ProjectileOffsets = {
+                Vector( 72, 30, 16 ),
+                Vector( 72, -30, 16 )
+            }
+        } )
+
         self:SetSuspensionLength( 8 )
         self:SetCounterSteer( 0.4 )
         self:SetSpringStrength( 600 )
@@ -133,25 +132,5 @@ if SERVER then
         } )
 
         self:ChangeWheelRadius( 15 )
-        self.sideGunIndex = 1
-    end
-
-    function ENT:OnWeaponFire()
-        self.sideGunIndex = self.sideGunIndex + 1
-
-        if self.sideGunIndex > #self.BulletOffsets then
-            self.sideGunIndex = 1
-        end
-
-        self:FireBullet( {
-            pos = self:LocalToWorld( self.BulletOffsets[self.sideGunIndex] ),
-            ang = self:GetAngles(),
-            attacker = self:GetSeatDriver( 1 ),
-            spread = 0.5,
-            damage = 40,
-            scale = 0.5
-        } )
-
-        self:EmitSound( "Glide.JB700.Fire" )
     end
 end
