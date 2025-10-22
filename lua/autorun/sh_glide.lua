@@ -40,6 +40,7 @@ Glide.LOCKON_WHITELIST = {
     ["base_glide_plane"] = true,
     ["base_glide_boat"] = true,
     ["base_glide_motorcycle"] = true,
+    ["base_glide_plane_vtol"] = true,
     ["prop_vehicle_prisoner_pod"] = true
 }
 
@@ -175,6 +176,7 @@ if SERVER then
     CreateConVar( "glide_blast_damage_multiplier", "1", FCVAR_ARCHIVE + FCVAR_NOTIFY, "Damage multiplier for explosions hitting Glide vehicles.", 0, 10 )
     CreateConVar( "glide_physics_damage_multiplier", "1", FCVAR_ARCHIVE + FCVAR_NOTIFY, "Damage multiplier taken by Glide vehicles after colliding against things that are not the world.", 0, 10 )
     CreateConVar( "glide_world_physics_damage_multiplier", "1", FCVAR_ARCHIVE + FCVAR_NOTIFY, "Damage multiplier taken by Glide vehicles after colliding against the world.", 0, 10 )
+    CreateConVar( "glide_global_damage_multiplier", "1", FCVAR_ARCHIVE + FCVAR_NOTIFY, "Multiplier for damage taken from any source (except collisions).", 0, 10 )
 end
 
 -- Toggles
@@ -329,6 +331,10 @@ if SERVER then
 end
 
 if CLIENT then
+    -- Make these tables are available before we load everything
+    Glide.Config = Glide.Config or {}
+    Glide.Camera = Glide.Camera or {}
+
     -- Shared files
     Glide.IncludeDir( "glide/", true, false )
 
