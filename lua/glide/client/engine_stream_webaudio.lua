@@ -435,10 +435,14 @@ function WebAudio:Think( dt )
 end
 
 hook.Add( "Glide_OnConfigChange", "WebAudio.RestartOnConfigChange", function()
-    if Glide.Config.engineStreamBackend == 2 then
-        WebAudio:Restart()
-    else
-        WebAudio:Disable()
+    if WebAudio.engineStreamBackend ~= Glide.Config.engineStreamBackend then
+        WebAudio.engineStreamBackend = Glide.Config.engineStreamBackend
+
+        if WebAudio.engineStreamBackend == 2 then
+            WebAudio:Restart()
+        else
+            WebAudio:Disable()
+        end
     end
 end )
 
