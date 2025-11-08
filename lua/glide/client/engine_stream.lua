@@ -18,7 +18,7 @@ Glide.EngineStream = EngineStream
 local streamInstances = Glide.streamInstances or {}
 Glide.streamInstances = streamInstances
 
-function Glide.CreateEngineStream( parent )
+function Glide.CreateEngineStream( parent, doNotUseWebAudio )
     local id = ( Glide.lastStreamInstanceID or 0 ) + 1
     Glide.lastStreamInstanceID = id
 
@@ -48,6 +48,12 @@ function Glide.CreateEngineStream( parent )
         stream[k] = v
     end
 
+    -- Use the Web Audio Bridge, if it is active AND there's enough free slots
+    if not doNotUseWebAudio and Glide.WAB.isReady and Glide.WAB.streamCount < Glide.WAB.MAX_STREAMS then
+        Glide.WAB.RequestStreamCreation( stream )
+        stream.isWebAudio = true
+    end
+
     streamInstances[id] = stream
     Glide.PrintDev( "Stream instance #%s has been created.", id )
 
@@ -55,6 +61,10 @@ function Glide.CreateEngineStream( parent )
 end
 
 function EngineStream:Destroy()
+    if self.isWebAudio then
+        Glide.WAB.RequestStreamDeletion( self.id )
+    end
+
     self:RemoveAllLayers()
     self.layers = nil
     self.parent = nil
@@ -102,6 +112,24 @@ function EngineStream:LoadJSON( data )
 
     for id, layer in SortedPairs( data.layers ) do
         self:AddLayer( id, layer.path, layer.controllers, layer.redline == true )
+    end
+
+    if self.isWebAudio then
+        -- Upload the (now sanitized) properties of this stream to the Web Audio Bridge
+        data = {
+            kv = data.kv,
+            layers = {}
+        }
+
+        for id, layer in pairs( self.layers ) do
+            data.layers[id] = {
+                path = layer.path,
+                redline = layer.redline,
+                controllers = layer.controllers
+            }
+        end
+
+        self.updateWebJSON = Glide.ToJSON( data, false )
     end
 end
 
@@ -245,11 +273,24 @@ local GetVolume = Glide.Config.GetVolume
 
 local baseVol, pitch
 
-function EngineStream:Think( dt, eyePos, eyeRight )
+function EngineStream:Think( dt, eyePos, eyeAng )
     if not self.isPlaying then return end
 
     local parent = self.parent
     if not IsValid( parent ) then return end
+
+    if self.isWebAudio then
+        -- If this stream is handled by the Web Audio Bridge,
+        -- then only update a few variables position - everything
+        -- else is handled by the Web Audio Bridge logic.
+        if self.firstPerson then
+            self.position = eyePos + eyeAng:Forward() * 10
+        else
+            self.position = parent:LocalToWorld( self.offset )
+        end
+
+        return
+    end
 
     if self.volumeMultiplier < 1 then
         self.volumeMultiplier = math.min( 1, Glide.ExpDecay( self.volumeMultiplier, 1.01, 4, dt ) )
@@ -289,6 +330,7 @@ function EngineStream:Think( dt, eyePos, eyeRight )
 
     inputs.redline = Approach( inputs.redline, self.isRedlining and 1 or 0, dt * 5 )
 
+    local eyeRight = eyeAng:Right()
     local fadeDist = self.fadeDist
     local firstPerson = self.firstPerson
     local channel, value, vol, pan
@@ -402,16 +444,15 @@ local GetLocalViewLocation = Glide.GetLocalViewLocation
 hook.Add( "Think", "Glide.ProcessEngineStreams", function()
     local dt = FrameTime()
     local eyePos, eyeAng = GetLocalViewLocation()
-    local eyeRight = eyeAng:Right()
 
     for streamId, stream in pairs( streamInstances ) do
         -- Let the stream do it's thing
-        stream:Think( dt, eyePos, eyeRight )
+        stream:Think( dt, eyePos, eyeAng )
 
         for layerId, layer in pairs( stream.layers ) do
             -- If this layer has not loaded yet,
             -- and we are not busy loading another one...
-            if not layer.isLoaded and loading == nil then
+            if not layer.isLoaded and not stream.isWebAudio and loading == nil then
                 loading = {
                     streamId = streamId,
                     layerId = layerId,
