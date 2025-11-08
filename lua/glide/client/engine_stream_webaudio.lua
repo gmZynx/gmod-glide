@@ -299,7 +299,7 @@ do
 
             self:SetBusParameter( "delayTime", delayTime )
             self:SetBusParameter( "delayFeedback", delayFeedback )
-            self:SetBusParameter( "postFilterBandGain", Camera.muffleSound and -20.0 or 0.0 )
+            self:SetBusParameter( "postFilterBandGain", Camera.muffleSound and -12.0 or 0.0 )
 
             local impulseResponseAudio = ROOM_INPULSE_RESPONSES[1][2]
 

@@ -384,8 +384,8 @@ class EngineStream {
         if (inputs.throttle > 0.5 && !this.isFirstAccel) {
             this.isFirstAccel = true;
 
-            const attackTime = 0.1;
-            const releaseTime = attackTime + 1.0;
+            const attackTime = 0.25;
+            const releaseTime = attackTime + 0.9;
             const attackFreq = 1000.0;
             const releaseFreq = 100.0;
 
@@ -444,6 +444,7 @@ class EngineStream {
 
         for (let id in this.layers) {
             const layer = this.layers[id];
+            if (!layer.audioBuffer) continue;
             
             outputs.volume = 1;
             outputs.pitch = 1;
@@ -545,8 +546,8 @@ class EngineStreamManager {
         // Add a lowpass filter for first-person effects
         this.postFilterNode = this.audioContext.createBiquadFilter();
         this.postFilterNode.type = "peaking";
-        this.postFilterNode.frequency.value = 9500.0;
-        this.postFilterNode.Q.value = 4.5;
+        this.postFilterNode.frequency.value = 12000.0;
+        this.postFilterNode.Q.value = 1.0;
 
         // Connect the "input" node to "dry" and "reverb" nodes.
         this.preGainNode.connect(compressorNode);
