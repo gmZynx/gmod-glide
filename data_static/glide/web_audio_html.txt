@@ -73,7 +73,7 @@ const createArrayBufferRequest = (url, resolve, reject) => {
     };
 
     xhr.onerror = () => {
-        console.error("Error when fetching data from: " + url);
+        console.error("Error when fetching data from: " + url, xhr.status, xhr.statusText, xhr.readyState);
         reject();
     };
 
@@ -322,6 +322,8 @@ class EngineStream {
         if (!layer.audioBuffer) return;
         if (layer.sourceNode) return;
 
+        layer.gainNode.gain.value = 0.0;
+
         layer.sourceNode = this.streamManager.audioContext.createBufferSource();
         layer.sourceNode.buffer = layer.audioBuffer;
         layer.sourceNode.loop = true;
@@ -390,22 +392,22 @@ class EngineStream {
             const t = this.streamManager.audioContext.currentTime;
 
             const trebleGain = this.trebleBoostNode.gain;
-            trebleGain.setValueAtTime(0.0, t);
+            trebleGain.cancelAndHoldAtTime(t);
             trebleGain.linearRampToValueAtTime(-4.0, t + attackTime);
             trebleGain.linearRampToValueAtTime(0.0, t + releaseTime);
 
             const bassGain = this.bassBoostNode.gain;
-            bassGain.setValueAtTime(0.0, t);
+            bassGain.cancelAndHoldAtTime(t);
             bassGain.linearRampToValueAtTime(5.0, t + attackTime);
             bassGain.linearRampToValueAtTime(0.0, t + releaseTime);
 
             const trebleFreq = this.trebleBoostNode.frequency;
-            trebleFreq.setValueAtTime(releaseFreq, t);
+            trebleFreq.cancelAndHoldAtTime(t);
             trebleFreq.linearRampToValueAtTime(attackFreq, t + attackTime);
             trebleFreq.linearRampToValueAtTime(releaseFreq, t + releaseTime);
 
             const bassFreq = this.bassBoostNode.frequency;
-            bassFreq.setValueAtTime(releaseFreq, t);
+            bassFreq.cancelAndHoldAtTime(t);
             bassFreq.linearRampToValueAtTime(attackFreq, t + attackTime);
             bassFreq.linearRampToValueAtTime(releaseFreq, t + releaseTime);
         }
@@ -438,6 +440,7 @@ class EngineStream {
 
         let value, layerVol, layerPitch;
         const outputs = {volume: 0, pitch: 0};
+        const curTime = this.streamManager.audioContext.currentTime;
 
         for (let id in this.layers) {
             const layer = this.layers[id];
@@ -456,13 +459,17 @@ class EngineStream {
                 outputs[c[3]] = outputs[c[3]] * value;
             }
 
-            layerVol = outputs.volume * (layer.redline ? redlineVol : 1);
+            layerVol = outputs.volume * baseVol * (layer.redline ? redlineVol : 1);
             layerPitch = outputs.pitch * pitch;
 
-            layer.gainNode.gain.value = layerVol * baseVol;
+            const gainParam = layer.gainNode.gain;
+            gainParam.cancelAndHoldAtTime(curTime);
+            gainParam.linearRampToValueAtTime(layerVol, curTime + dt);
 
             if (layer.sourceNode) {
-                layer.sourceNode.playbackRate.value = layerPitch;
+                const pitchParam = layer.sourceNode.playbackRate;
+                pitchParam.cancelAndHoldAtTime(curTime);
+                pitchParam.linearRampToValueAtTime(layerPitch, curTime + dt);
             }
             else {
                 this.volumeMultiplier = 0;
@@ -529,9 +536,9 @@ class EngineStreamManager {
 
         // Add a compressor to prevent audio clipping
         const compressorNode = this.audioContext.createDynamicsCompressor();
-        compressorNode.threshold.value = -30;
+        compressorNode.threshold.value = -35;
         compressorNode.knee.value = 40;
-        compressorNode.ratio.value = 12;
+        compressorNode.ratio.value = 4;
         compressorNode.attack.value = 0.1;
         compressorNode.release.value = 0.2;
 
@@ -592,21 +599,6 @@ class EngineStreamManager {
             nodeParam.value = value;
 
             debug.setRowValue(name, value);
-        }
-    }
-
-    changeBusParameter(name, value, time) {
-        const nodeParam = this.busParameters[name];
-
-        if (nodeParam) {
-            const curValue = nodeParam.value;
-            const curTime = this.audioContext.currentTime;
-    
-            nodeParam.cancelAndHoldAtTime(curTime);
-            nodeParam.setValueAtTime(curValue, curValue);
-            nodeParam.linearRampToValueAtTime(value, curTime + time);
-
-            debug.setRowValue(name, value + " [after " + time  + "s]");
         }
     }
 

@@ -27,11 +27,10 @@ function WAB.Enable()
     WAB.isReady = false
     WAB.Print( "Preparing..." )
 
-    local code = file.Read( WAB.HTML_FILE, "GAME" )
-    assert( code ~= nil, "Failed to load Web Audio HTML code!" )
+    assert( file.Exists( WAB.HTML_FILE, "GAME" ), "Failed to find the Web Audio HTML file!" )
 
     WAB.panel = vgui.Create( "HTML" )
-    WAB.panel:Dock( FILL ) -- TODO: remove this
+    WAB.panel:Dock( FILL )
 
     WAB.panel.OnFinishLoadingDocument = function()
         WAB.OnHTMLReady()
@@ -55,7 +54,7 @@ function WAB.Enable()
         end
     end
 
-    WAB.panel:SetHTML( code )
+    WAB.panel:OpenURL( "asset://garrysmod/" .. WAB.HTML_FILE )
 end
 
 --- Deactivates the Web Audio Bridge.
@@ -111,12 +110,12 @@ function WAB.OnHTMLReady()
     ) )
 
     WAB.busParameters = {
-        ["preGainVolume"] = { 1.0 },
-        ["postFilterBandGain"] = { 0.0 },
-        ["dryVolume"] = { 1.0 },
-        ["wetVolume"] = { 1.0 },
-        ["delayTime"] = { 0.1 },
-        ["delayFeedback"] = { 0.1, 0.1 },
+        ["preGainVolume"] = 1.0,
+        ["postFilterBandGain"] = 0.0,
+        ["dryVolume"] = 1.0,
+        ["wetVolume"] = 1.0,
+        ["delayTime"] = 0.1,
+        ["delayFeedback"] = 0.1, 0.1,
     }
 
     WAB.isReady = true
@@ -195,11 +194,11 @@ function WAB.RequestStreamDeletion( id )
     WAB.panel:RunJavascript( ( "manager.destroyStream('%s');" ):format( tostring( id ) ) )
 end
 
-function WAB.SetBusParameter( name, value, time )
+function WAB.SetBusParameter( name, value )
     assert( type( value ) == "number", "Bus parameter value must be a number!" )
 
     if WAB.busParameters[name] then
-        WAB.busParameters[name] = { value, time }
+        WAB.busParameters[name] = value
     end
 end
 
@@ -278,7 +277,6 @@ local Clamp = math.Clamp
 local ExpDecay = Glide.ExpDecay
 
 local JS_SET_PARAM = "manager.setBusParameter('%s', %f);"
-local JS_CHANGE_PARAM = "manager.changeBusParameter('%s', %f, %f);"
 local JS_UPDATE_LISTENER = "manager.updateListener(%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f);";
 local JS_UPDATE_STREAM = "manager.setStreamData('%s', %.2f, %.2f, %.2f, %.2f, %.2f, %.1f, %s);"
 
@@ -326,7 +324,6 @@ function WAB.Think( dt )
     updateEffectsTimer = updateEffectsTimer + dt
 
     if updateEffectsTimer > 0.2 then
-        local changeTime = updateEffectsTimer * 0.9
         local delayTime = 0.4
         local delayFeedback = Clamp( ( 1 - lastRoomSize ) * ( 1 - lastRoomOpenCeiling ) * 0.9, 0.05, 0.6 )
 
@@ -344,7 +341,7 @@ function WAB.Think( dt )
 
         WAB.SetBusParameter( "postFilterBandGain", muffleSound and -20.0 or 0.0 )
         WAB.SetBusParameter( "delayTime", delayTime )
-        WAB.SetBusParameter( "delayFeedback", delayFeedback, changeTime )
+        WAB.SetBusParameter( "delayFeedback", delayFeedback )
 
         local impulseResponseAudio = ROOM_INPULSE_RESPONSES[1][2]
 
@@ -379,12 +376,8 @@ function WAB.Think( dt )
     lineIndex = 0
     table.Empty( lines )
 
-    for name, data in pairs( WAB.busParameters ) do
-        if data[2] then
-            AddLine( JS_CHANGE_PARAM, name, Round( data[1], 3 ), Round( data[2], 3 ) )
-        else
-            AddLine( JS_SET_PARAM, name, Round( data[1], 3 ) )
-        end
+    for name, value in pairs( WAB.busParameters ) do
+        AddLine( JS_SET_PARAM, name, Round( value, 3 ) )
     end
 
     -- Update listener position and orientation
