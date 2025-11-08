@@ -137,7 +137,7 @@ debug.getRow = (id) => {
     return row;
 };
 
-debug.setRowValue = (id, value) => {
+debug.setValue = (id, value) => {
     if (!debug.enabled) return;
 
     debug.getRow(id).value.innerHTML = value.toString();
@@ -598,7 +598,7 @@ class EngineStreamManager {
         if (nodeParam) {
             nodeParam.value = value;
 
-            debug.setRowValue(name, value);
+            debug.setValue(name, value);
         }
     }
 
@@ -613,7 +613,7 @@ class EngineStreamManager {
         if (fileName === undefined) {
             this.convolverNode.normalize = false;
             this.convolverNode.buffer = this.impulseBufferCache["passthrough"];
-            debug.setRowValue("inpulseResponseAudio", "none");
+            debug.setValue("inpulseResponseAudio", "none");
             return;
         }
 
@@ -622,7 +622,7 @@ class EngineStreamManager {
         if (url in this.impulseBufferCache) {
             this.convolverNode.normalize = true;
             this.convolverNode.buffer = this.impulseBufferCache[url];
-            debug.setRowValue("inpulseResponseAudio", fileName + " (from memory cache)");
+            debug.setValue("inpulseResponseAudio", fileName + " (from memory cache)");
 
             return;
         }
@@ -633,7 +633,7 @@ class EngineStreamManager {
                     this.impulseBufferCache[url] = audioBuffer;
                     this.convolverNode.normalize = true;
                     this.convolverNode.buffer = audioBuffer;
-                    debug.setRowValue("inpulseResponseAudio", fileName);
+                    debug.setValue("inpulseResponseAudio", fileName);
                 })
                 .catch((err) => {
                     console.error(err.message);
@@ -665,7 +665,7 @@ class EngineStreamManager {
         if (!(id in this.streams)) {
             this.streams[id] = new EngineStream(id, this);
             console.log("Created EngineStream #" + id);
-            wab.OnStreamCreated(id);
+            webaudio.OnStreamCreated(id);
         }
 
         return this.streams[id];

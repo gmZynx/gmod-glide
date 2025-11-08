@@ -1,227 +1,251 @@
-local WAB = Glide.WAB or {}
-Glide.WAB = WAB
+local WebAudio = Glide.WebAudio
 
-WAB.MAX_STREAMS = 32
-WAB.HTML_FILE = "data_static/glide/web_audio_html.txt"
-WAB.CVAR_DEBUG = CreateClientConVar( "glide_webaudio_debug", "0", false, false, "", 0, 1 )
+WebAudio.MAX_STREAMS = 32
+WebAudio.HTML_FILE = "data_static/glide/web_audio_html.txt"
 
-cvars.RemoveChangeCallback( "glide_webaudio_debug_toggle" )
-cvars.AddChangeCallback( "glide_webaudio_debug", function( _, _, value )
-    if IsValid( WAB.panel ) then
-        WAB.debugEnabled = tonumber( value ) > 0
-        WAB.panel:RunJavascript( ( "debug.setEnabled(%s);" ):format( WAB.debugEnabled and "true" or "false" ) )
-    end
-end, "glide_webaudio_debug_toggle" )
+CreateClientConVar( "glide_webaudio_debug", "0", false, false, "", 0, 1 )
 
-function WAB.Print( str )
-    Glide.Print( "[Web Audio Bridge] %s", str )
+local function Print( str, ... )
+    Glide.Print( "[WebAudio] " .. str, ... )
 end
 
---- Activates the Web Audio Bridge.
---- Prepares the necessary HTML panel for handling audio.
-function WAB.Enable()
-    if IsValid( WAB.panel ) then
+function WebAudio:Restart()
+    self:Disable()
+
+    timer.Simple( 0.5, function()
+        self:Enable()
+    end )
+end
+
+function WebAudio:Enable()
+    local panel = self.panel
+
+    if IsValid( panel ) then
         return
     end
 
-    WAB.isReady = false
-    WAB.Print( "Preparing..." )
+    self.isReady = false
+    Print( "Preparing..." )
 
-    assert( file.Exists( WAB.HTML_FILE, "GAME" ), "Failed to find the Web Audio HTML file!" )
+    assert( file.Exists( self.HTML_FILE, "GAME" ), "The Web Audio HTML file does not exist!" )
 
-    WAB.panel = vgui.Create( "HTML" )
-    WAB.panel:Dock( FILL )
+    panel = vgui.Create( "HTML", GetHUDPanel() )
+    panel:Dock( FILL )
+    self.panel = panel
 
-    WAB.panel.OnFinishLoadingDocument = function()
-        WAB.OnHTMLReady()
+    panel.OnFinishLoadingDocument = function()
+        self:OnHTMLReady()
     end
 
-    WAB.panel.ConsoleMessage = function( _, msg, _, line, _ )
-        if not isstring( msg ) then return end
+    panel.OnCallback = function( _, obj, func, args )
+        if obj ~= "webaudio" then return end
+
+        if self[func] then
+            self[func]( self, unpack( args ) )
+        end
+    end
+
+    panel.ConsoleMessage = function( _, msg, _, line, _ )
+        if not isstring( msg ) then
+            msg = tostring( msg )
+        end
 
         if isnumber( line ) then
-            WAB.Print( ( "[JS:%d]: %s" ):format( line, msg )  )
+            Print( ( "[JS:%d]: %s" ):format( line, msg )  )
         else
-            WAB.Print( ( "[JS]: %s" ):format( msg )  )
+            Print( ( "[JS]: %s" ):format( msg )  )
         end
     end
 
-    WAB.panel.OnCallback = function( _, obj, func, args )
-        if obj ~= "wab" then return end
-
-        if WAB[func] then
-            WAB[func]( unpack( args ) )
-        end
-    end
-
-    WAB.panel:OpenURL( "asset://garrysmod/" .. WAB.HTML_FILE )
+    panel:OpenURL( "asset://garrysmod/" .. self.HTML_FILE )
 end
 
---- Deactivates the Web Audio Bridge.
---- Removes the HTML panel that handles audio.
-function WAB.Disable()
-    if IsValid( WAB.panel ) then
-        WAB.panel:Remove()
-        WAB.Print( "Disabled!" )
+function WebAudio:Disable()
+    hook.Remove( "Think", "Glide.WebAudio.Think" )
+
+    local panel = self.panel
+
+    if IsValid( panel ) then
+        panel:Remove()
+        Print( "Disabled!" )
     end
 
-    hook.Remove( "Think", "WebAudioBridge.Think" )
-    timer.Remove( "WAB.AutoRefreshHTML" )
+    self.panel = nil
+    self.isReady = false
 
-    WAB.isReady = false
-    WAB.panel = nil
-    WAB.streams = nil
-    WAB.streamCount = 0
-    WAB.busParameters = nil
-    WAB.lastImpulseResponseAudio = nil
+    self.streams = nil
+    self.streamCount = 0
+    self.busParameters = nil
+    self.room = nil
+    self.lastImpulseResponseAudio = nil
 
-    WAB.RemoveAllStreams()
+    Glide.DestroyAllEngineStreams()
 end
 
-function WAB.RemoveAllStreams()
-    -- Remove all existing streams so they can be recreated
-    -- with the regular EngineStream or Web Audio Brige backend.
-    local IsBasedOn = scripted_ents.IsBasedOn
+function WebAudio:SetDebugEnabled( enabled )
+    self.debugEnabled = enabled
 
-    for _, e in ents.Iterator() do
-        if IsValid( e ) and e.GetClass and IsBasedOn( e:GetClass(), "base_glide" ) and e.stream then
-            e.stream:Destroy()
-            e.stream = nil
-        end
+    if IsValid( self.panel ) then
+        self.panel:RunJavascript( ( "debug.setEnabled(%s);" ):format( enabled and "true" or "false" ) )
     end
 end
 
-function WAB.AddCallback( name )
-    WAB.panel:NewObjectCallback( "wab", name )
-end
+function WebAudio:OnHTMLReady()
+    local panel = self.panel
 
-function WAB.OnHTMLReady()
-    WAB.panel:NewObject( "wab" )
-    WAB.AddCallback( "OnStreamCreated" )
+    panel:NewObject( "webaudio" )
+    panel:NewObjectCallback( "webaudio", "OnStreamCreated" )
 
-    WAB.panel:RunJavascript( ( "DEFAULT_STREAM_PARAMETERS = JSON.parse(`%s`);" ):format(
+    panel:RunJavascript( ( "DEFAULT_STREAM_PARAMETERS = JSON.parse(`%s`);" ):format(
         Glide.ToJSON( Glide.DEFAULT_STREAM_PARAMS, false )
     ) )
 
-    WAB.debugEnabled = WAB.CVAR_DEBUG:GetInt() > 0
+    self:SetDebugEnabled( GetConVar( "glide_webaudio_debug" ):GetInt() > 0 )
 
-    WAB.panel:RunJavascript( ( "debug.setEnabled(%s);" ):format(
-        WAB.debugEnabled and "true" or "false"
-    ) )
+    self.isReady = true
+    self.streams = {}
+    self.streamCount = 0
 
-    WAB.busParameters = {
-        ["preGainVolume"] = 1.0,
-        ["postFilterBandGain"] = 0.0,
-        ["dryVolume"] = 1.0,
-        ["wetVolume"] = 1.0,
-        ["delayTime"] = 0.1,
-        ["delayFeedback"] = 0.1, 0.1,
+    self.busParameters = {
+        ["preGainVolume"] = { 1.0, true },
+        ["postFilterBandGain"] = { 0.0, true },
+        ["dryVolume"] = { 1.0, true },
+        ["wetVolume"] = { 1.0, true },
+        ["delayTime"] = { 0.1, true },
+        ["delayFeedback"] = { 0.1, 0.1, true }
     }
 
-    WAB.isReady = true
-    WAB.streams = {}
-    WAB.streamCount = 0
-    WAB.Print( "Ready!" )
+    self.room = {
+        hSize = 1.0,
+        vSize = 1.0,
+        targetHSize = 1.0,
+        targetVSize = 1.0
+    }
 
-    -- Watch for changes in the HTML code to auto-reload
-    local lastModified = file.Time( WAB.HTML_FILE, "GAME" )
+    Print( "Ready!" )
 
-    timer.Create( "WAB.AutoRefreshHTML", 1, 0, function()
-        local time = file.Time( WAB.HTML_FILE, "GAME" )
-
-        if time ~= lastModified then
-            lastModified = time
-            WAB.Restart()
-        end
-    end )
+    -- Remove existing bass Engine Streams, so that
+    -- they get re-created with WebAudio enabled.
+    Glide.DestroyAllEngineStreams()
 
     local RealTime = RealTime
     local nextThink, lastThink = RealTime(), RealTime()
 
-    hook.Add( "Think", "WebAudioBridge.Think", function()
+    hook.Add( "Think", "Glide.WebAudio.Think", function()
         local time = RealTime()
 
         -- Update the listener/engine stream positions
         -- 40 times per second at most.
         if time > nextThink then
-            WAB.Think( time - lastThink )
+            self:Think( time - lastThink )
 
             nextThink = time + 0.025
             lastThink = time
         end
     end )
-
-    WAB.RemoveAllStreams()
 end
 
-function WAB.OnStreamCreated( id )
+function WebAudio:OnStreamCreated( id )
     id = tonumber( id )
 
-    local stream = WAB.streams[id]
+    local stream = self.streams[id]
 
     if stream then
         stream.isReady = true
     else
         -- Remove the stream from the JS side
         -- if it no longer exists on the Lua side.
-        WAB.RequestStreamDeletion( id )
+        self:RequestStreamDeletion( id )
     end
 end
 
-function WAB.RequestStreamCreation( stream )
-    if not WAB.isReady then return end
+function WebAudio:RequestStreamCreation( stream )
+    if not self.isReady then return end
 
     local id = stream.id
-    if WAB.streams[id] then return end
+    if self.streams[id] then return end
 
     stream.isReady = false
     stream.isWebPlaying = false
     stream.position = Vector()
 
-    WAB.streams[id] = stream
-    WAB.streamCount = WAB.streamCount + 1
-    WAB.panel:RunJavascript( ( "manager.createStream('%s');" ):format( tostring( id ) ) )
+    self.streams[id] = stream
+    self.streamCount = self.streamCount + 1
+    self.panel:RunJavascript( ( "manager.createStream('%s');" ):format( tostring( id ) ) )
 end
 
-function WAB.RequestStreamDeletion( id )
-    if not WAB.isReady then return end
+function WebAudio:RequestStreamDeletion( id )
+    if not self.isReady then return end
 
-    if WAB.streams[id] then
-        WAB.streams[id] = nil
-        WAB.streamCount = WAB.streamCount - 1
+    if self.streams[id] then
+        self.streams[id] = nil
+        self.streamCount = self.streamCount - 1
     end
 
-    WAB.panel:RunJavascript( ( "manager.destroyStream('%s');" ):format( tostring( id ) ) )
-end
-
-function WAB.SetBusParameter( name, value )
-    assert( type( value ) == "number", "Bus parameter value must be a number!" )
-
-    if WAB.busParameters[name] then
-        WAB.busParameters[name] = value
-    end
+    self.panel:RunJavascript( ( "manager.destroyStream('%s');" ):format( tostring( id ) ) )
 end
 
 -- Set which audio file will be used to apply effects with the ConvolverNode.
 -- Just the file name is needed here, you can find them in `sound/glide/webaudio`.
-function WAB.SetConvolverInpulseResponseAudio( fileName )
-    if WAB.isReady then
-        fileName = fileName == nil and "undefined" or "'" .. fileName .. "'"
-        WAB.panel:RunJavascript( ( "manager.setConvolverInpulseResponseAudio(%s);" ):format( fileName ) )
+function WebAudio:SetConvolverInpulseResponseAudio( fileName )
+    if self.isReady then
+        self.panel:RunJavascript( ( "manager.setConvolverInpulseResponseAudio(%s);" ):format(
+            fileName == nil and "undefined" or "'" .. fileName .. "'"
+        ) )
     end
 end
 
-function WAB.SetDebugRowValue( id, value )
-    if WAB.isReady then
-        WAB.panel:RunJavascript( ( "debug.setRowValue('%s', '%s');" ):format( id, tostring( value ) ) )
+function WebAudio:SetDebugValue( id, value )
+    if self.isReady then
+        self.panel:RunJavascript( ( "debug.setValue('%s', '%s');" ):format( id, tostring( value ) ) )
     end
 end
 
 do
-    local CHECK_DIRECTIONS = {
+    -- Utilitiy to build one big JS string efficiently
+    local lines = {}
+    local lineIndex = 0
+
+    function WebAudio.AddLine( str, ... )
+        lineIndex = lineIndex + 1
+        lines[lineIndex] = str:format( ... )
+    end
+
+    function WebAudio.ClearLines()
+        lineIndex = 0
+        table.Empty( lines )
+    end
+
+    function WebAudio.RunLines( panel )
+        panel:RunJavascript( table.concat( lines, "\n" ) )
+    end
+end
+
+local Clamp = math.Clamp
+local ExpDecay = Glide.ExpDecay
+
+do
+    local ROOM_INPULSE_RESPONSES = {
+        -- Room size, Audio (closed ceiling), Audio (open ceiling)
+        { 0.3, "1.8s_99w_900hz_30m.wav", "1.8s_99w_100hz_30m.wav" },
+        { 0.6, "2.8s_99w_900hz_30m.wav", "2.8s_99w_100hz_30m.wav" },
+        { 0.8, "3.8s_99w_900hz_30m.wav", "3.8s_99w_100hz_30m.wav" },
+        { 1.0, "4.8s_99w_900hz_30m.wav", "4.8s_99w_100hz_30m.wav" }
+    }
+
+    local ROOM_ECHO_DELAYS = {
+        -- Room size, Echo delay
+        { 0.05, 0.02 },
+        { 0.2, 0.04 },
+        { 0.3, 0.1 },
+        { 0.6, 0.2 },
+        { 1.0, 0.3 }
+    }
+
+    local TRACE_DIRECTIONS = {
         Vector( 5000, 0, 0 ), -- North
-        Vector( 0, 5000, 0 ), -- West
         Vector( -5000, 0, 0 ), -- South
+        Vector( 0, 5000, 0 ), -- West
         Vector( 0, -5000, 0 ), -- East
         Vector( 0, 0, 3000 ) -- Up
     }
@@ -234,137 +258,121 @@ do
         collisiongroup = COLLISION_GROUP_WORLD
     }
 
+    local Camera = Glide.Camera
     local TraceLine = util.TraceLine
-    local dirIndex, accumulatedSize = 0, 0
-    local lastSize, lastOpenCeiling = 1, 1
+    local dirIndex, hSize, vSize = 0, 0, 0
 
-    function WAB.UpdateRoomValues( origin )
+    --- Update the room size properties.
+    ---
+    --- To check the room size, perform just one
+    --- trace every time this function is called.
+    --- Only after we've done traces in all directions,
+    --- we update the target room properties.
+    function WebAudio:UpdateRoom( dt, eyePos )
+        local room = self.room
+
         dirIndex = dirIndex + 1
 
         if dirIndex > 5 then
+            room.targetHSize = hSize / 4
+            room.targetVSize = vSize
+
             dirIndex = 1
-            lastSize = accumulatedSize / 5
-            accumulatedSize = 0
+            hSize = 0
+            vSize = 0
+
+            -- Update room delay parameters now
+            local delayTime = 0.4
+            local delayFeedback = Clamp( ( 1 - room.hSize ) * ( 1 - room.vSize ) * 0.9, 0.05, 0.6 )
+
+            if Camera.muffleSound then
+                delayTime = 0.03
+                delayFeedback = 0.5
+            else
+                for _, v in ipairs( ROOM_ECHO_DELAYS ) do
+                    if room.hSize < v[1] then
+                        delayTime = v[2]
+                        break
+                    end
+                end
+            end
+
+            self:SetBusParameter( "delayTime", delayTime )
+            self:SetBusParameter( "delayFeedback", delayFeedback )
+            self:SetBusParameter( "postFilterBandGain", Camera.muffleSound and -20.0 or 0.0 )
+
+            local impulseResponseAudio = ROOM_INPULSE_RESPONSES[1][2]
+
+            for _, v in ipairs( ROOM_INPULSE_RESPONSES ) do
+                if room.hSize < v[1] then
+                    impulseResponseAudio = v[room.vSize < 0.6 and 2 or 3]
+                    break
+                end
+            end
+
+            if self.lastImpulseResponseAudio ~= impulseResponseAudio then
+                self.lastImpulseResponseAudio = impulseResponseAudio
+                self:SetConvolverInpulseResponseAudio( impulseResponseAudio )
+            end
         end
 
-        traceData.start = origin
-        traceData.endpos = origin + CHECK_DIRECTIONS[dirIndex]
+        -- Update room values
+        room.hSize = ExpDecay( room.hSize, room.targetHSize, 20, dt )
+        room.vSize = ExpDecay( room.vSize, room.targetVSize, 10, dt )
+
+        -- Do one trace at a time
+        traceData.start = eyePos
+        traceData.endpos = eyePos + TRACE_DIRECTIONS[dirIndex]
 
         TraceLine( traceData )
 
         local isAir = ray.HitSky or not ray.Hit
 
         if dirIndex > 4 then
-            lastOpenCeiling = isAir and 1 or ray.Fraction
+            vSize = isAir and 1 or ray.Fraction
+        else
+            hSize = hSize + ( isAir and 1 or ray.Fraction )
         end
-
-        accumulatedSize = accumulatedSize + ( isAir and 1 or ray.Fraction )
-
-        return lastSize, lastOpenCeiling
     end
-end
-
-local lines = {}
-local lineIndex = 0
-
-local function AddLine( str, ... )
-    lineIndex = lineIndex + 1
-    lines[lineIndex] = str:format( ... )
 end
 
 local Round = math.Round
-local Clamp = math.Clamp
-local ExpDecay = Glide.ExpDecay
 
-local JS_SET_PARAM = "manager.setBusParameter('%s', %f);"
-local JS_UPDATE_LISTENER = "manager.updateListener(%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f);";
+function WebAudio:SetBusParameter( id, value )
+    value = Round( value, 3 )
+
+    local param = self.busParameters[id]
+
+    if param and value ~= param[1] then
+        param[1] = value -- New value
+        param[2] = true -- Update JS next tick
+    end
+end
+
+local JS_SET_BUS_PARAM = "manager.setBusParameter('%s', %f);"
+local JS_UPDATE_LISTENER = "manager.updateListener(%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f);"
 local JS_UPDATE_STREAM = "manager.setStreamData('%s', %.2f, %.2f, %.2f, %.2f, %.2f, %.1f, %s);"
 
-local ROOM_INPULSE_RESPONSES = {
-    -- Max. room size, Audio (closed ceiling), Audio (open ceiling)
-    { 0.3, "1.8s_99w_900hz_30m.wav", "1.8s_99w_100hz_30m.wav" },
-    { 0.6, "2.8s_99w_900hz_30m.wav", "2.8s_99w_100hz_30m.wav" },
-    { 0.8, "3.8s_99w_900hz_30m.wav", "3.8s_99w_100hz_30m.wav" },
-    { 1.0, "4.8s_99w_900hz_30m.wav", "4.8s_99w_100hz_30m.wav" },
-}
-
-local ROOM_ECHO_DELAYS = {
-    -- Max. room size, Echo delay
-    { 0.05, 0.02 },
-    { 0.2, 0.04 },
-    { 0.3, 0.1 },
-    { 0.6, 0.2 },
-    { 1.0, 0.3 },
-}
-
+local AddLine = WebAudio.AddLine
 local GetVolume = Glide.Config.GetVolume
-local updateEffectsTimer = 0
 
-function WAB.Think( dt )
-    local pos = MainEyePos()
-    local muffleSound = Glide.Camera.muffleSound
+function WebAudio:Think( dt )
+    local eyePos = MainEyePos()
+    self:UpdateRoom( dt, eyePos )
 
-    -- Update room effects
-    local lastRoomSize = WAB.lastRoomSize or 0
-    local lastRoomOpenCeiling = WAB.lastRoomOpenCeiling or 0
-    local roomSize, roomOpenCeiling = WAB.UpdateRoomValues( pos )
+    local room = self.room
 
-    lastRoomSize = ExpDecay( lastRoomSize, roomSize, 25, dt )
-    lastRoomOpenCeiling = ExpDecay( lastRoomOpenCeiling, roomOpenCeiling, 20, dt )
-
-    WAB.lastRoomSize = lastRoomSize
-    WAB.lastRoomOpenCeiling = lastRoomOpenCeiling
-
-    if WAB.debugEnabled then
-        WAB.SetDebugRowValue( "roomSize", lastRoomSize )
-        WAB.SetDebugRowValue( "roomCeiling", lastRoomOpenCeiling )
-        WAB.SetDebugRowValue( "streamCount", WAB.streamCount )
+    if self.debugEnabled then
+        self:SetDebugValue( "streamCount", self.streamCount )
+        self:SetDebugValue( "room.hSize", room.hSize )
+        self:SetDebugValue( "room.vSize", room.vSize )
     end
 
-    updateEffectsTimer = updateEffectsTimer + dt
+    local wetMultiplier = ( 1 - room.hSize ) * ( 0.5 + ( 0.4 - room.vSize * 0.6 ) )
 
-    if updateEffectsTimer > 0.2 then
-        local delayTime = 0.4
-        local delayFeedback = Clamp( ( 1 - lastRoomSize ) * ( 1 - lastRoomOpenCeiling ) * 0.9, 0.05, 0.6 )
-
-        if muffleSound then
-            delayTime = 0.03
-            delayFeedback = 0.5
-        else
-            for _, v in ipairs( ROOM_ECHO_DELAYS ) do
-                if lastRoomSize < v[1] then
-                    delayTime = v[2]
-                    break
-                end
-            end
-        end
-
-        WAB.SetBusParameter( "postFilterBandGain", muffleSound and -20.0 or 0.0 )
-        WAB.SetBusParameter( "delayTime", delayTime )
-        WAB.SetBusParameter( "delayFeedback", delayFeedback )
-
-        local impulseResponseAudio = ROOM_INPULSE_RESPONSES[1][2]
-
-        for _, v in ipairs( ROOM_INPULSE_RESPONSES ) do
-            if lastRoomSize < v[1] then
-                impulseResponseAudio = v[lastRoomOpenCeiling < 0.6 and 2 or 3]
-                break
-            end
-        end
-
-        if WAB.lastImpulseResponseAudio ~= impulseResponseAudio then
-            WAB.lastImpulseResponseAudio = impulseResponseAudio
-            WAB.SetConvolverInpulseResponseAudio( impulseResponseAudio )
-        end
-
-        updateEffectsTimer = 0
-    end
-
-    local wetMultiplier = ( 1 - lastRoomSize ) * ( 0.5 + ( 0.4 - lastRoomOpenCeiling * 0.6 ) )
-
-    WAB.SetBusParameter( "preGainVolume", GetVolume( "carVolume" ) )
-    WAB.SetBusParameter( "dryVolume", Round( Clamp( 1 - wetMultiplier * 0.1, 0.5, 1.0 ) * 1.15, 2 ) )
-    WAB.SetBusParameter( "wetVolume", Round( Clamp( wetMultiplier * 2.5, 0.1, 1.5 ), 2 ) )
+    self:SetBusParameter( "preGainVolume", GetVolume( "carVolume" ) )
+    self:SetBusParameter( "dryVolume", Round( Clamp( 1 - wetMultiplier * 0.1, 0.5, 1.0 ) * 1.15, 2 ) )
+    self:SetBusParameter( "wetVolume", Round( Clamp( wetMultiplier * 2.5, 0.1, 1.5 ), 2 ) )
 
     --[[
         Create one big Javascript snippet, which will:
@@ -372,13 +380,7 @@ function WAB.Think( dt )
         - Update bus parameters
         - Update all active stream parameters
     ]]
-
-    lineIndex = 0
-    table.Empty( lines )
-
-    for name, value in pairs( WAB.busParameters ) do
-        AddLine( JS_SET_PARAM, name, Round( value, 3 ) )
-    end
+    self.ClearLines()
 
     -- Update listener position and orientation
     local ang = MainEyeAngles()
@@ -386,24 +388,32 @@ function WAB.Think( dt )
     local up = ang:Up()
 
     AddLine( JS_UPDATE_LISTENER,
-        pos[1], pos[2], pos[3],
+        eyePos[1], eyePos[2], eyePos[3],
         fw[1], fw[2], fw[3],
         up[1], up[2], up[3]
     )
 
+    -- Update audio bus parameters that have changed
+    for name, data in pairs( self.busParameters ) do
+        if data[2] then
+            data[2] = false
+            AddLine( JS_SET_BUS_PARAM, name, data[1] )
+        end
+    end
+
     -- Update all streams
-    for id, stream in pairs( WAB.streams ) do
+    for id, stream in pairs( self.streams ) do
         if stream.isReady then
             -- If the stream preset has changed,
             -- send the full preset JSON to JS once.
             if stream.updateWebJSON then
-                WAB.panel:RunJavascript( ( "manager.setStreamJSON('%s', `%s`);" ):format( id, stream.updateWebJSON ) )
+                self.panel:RunJavascript( ( "manager.setStreamJSON('%s', `%s`);" ):format( id, stream.updateWebJSON ) )
                 stream.updateWebJSON = nil
             end
 
             if stream.isWebPlaying ~= stream.isPlaying then
                 stream.isWebPlaying = stream.isPlaying
-                WAB.panel:RunJavascript( ( "manager.setStreamPlaying('%s', %s);" ):format( id, stream.isPlaying and "true" or "false" ) )
+                self.panel:RunJavascript( ( "manager.setStreamPlaying('%s', %s);" ):format( id, stream.isPlaying and "true" or "false" ) )
             end
 
             local position = stream.position
@@ -421,21 +431,24 @@ function WAB.Think( dt )
         end
     end
 
-    WAB.panel:RunJavascript( table.concat( lines, "\n" ) )
+    self.RunLines( self.panel )
 end
 
-function WAB.Restart()
-    WAB.Disable()
-
-    timer.Create( "WAB.AutoRefreshPanel", 0.5, 1, function()
-        WAB.Enable()
-    end )
-end
-
-hook.Add( "Glide_OnConfigChange", "WAB.RestartOnConfigChange", function()
+hook.Add( "Glide_OnConfigChange", "WebAudio.RestartOnConfigChange", function()
     if Glide.Config.engineStreamBackend == 2 then
-        WAB.Restart()
+        WebAudio:Restart()
     else
-        WAB.Disable()
+        WebAudio:Disable()
+    end
+end )
+
+cvars.RemoveChangeCallback( "glide_webaudio_debug_toggle" )
+cvars.AddChangeCallback( "glide_webaudio_debug", function( _, _, value )
+    WebAudio:SetDebugEnabled( tonumber( value ) > 0 )
+end, "glide_webaudio_debug_toggle" )
+
+concommand.Add( "glide_webaudio_restart", function()
+    if Glide.Config.engineStreamBackend == 2 then
+        WebAudio:Restart()
     end
 end )

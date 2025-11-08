@@ -18,6 +18,17 @@ Glide.EngineStream = EngineStream
 local streamInstances = Glide.streamInstances or {}
 Glide.streamInstances = streamInstances
 
+function Glide.DestroyAllEngineStreams()
+    local IsBasedOn = scripted_ents.IsBasedOn
+
+    for _, e in ents.Iterator() do
+        if IsValid( e ) and e.GetClass and IsBasedOn( e:GetClass(), "base_glide" ) and e.stream then
+            e.stream:Destroy()
+            e.stream = nil
+        end
+    end
+end
+
 function Glide.CreateEngineStream( parent, doNotUseWebAudio )
     local id = ( Glide.lastStreamInstanceID or 0 ) + 1
     Glide.lastStreamInstanceID = id
@@ -48,9 +59,11 @@ function Glide.CreateEngineStream( parent, doNotUseWebAudio )
         stream[k] = v
     end
 
+    local WebAudio = Glide.WebAudio
+
     -- Use the Web Audio Bridge, if it is active AND there's enough free slots
-    if not doNotUseWebAudio and Glide.WAB.isReady and Glide.WAB.streamCount < Glide.WAB.MAX_STREAMS then
-        Glide.WAB.RequestStreamCreation( stream )
+    if not doNotUseWebAudio and WebAudio.isReady and WebAudio.streamCount < WebAudio.MAX_STREAMS then
+        WebAudio:RequestStreamCreation( stream )
         stream.isWebAudio = true
     end
 
@@ -62,7 +75,7 @@ end
 
 function EngineStream:Destroy()
     if self.isWebAudio then
-        Glide.WAB.RequestStreamDeletion( self.id )
+        Glide.WebAudio:RequestStreamDeletion( self.id )
     end
 
     self:RemoveAllLayers()
