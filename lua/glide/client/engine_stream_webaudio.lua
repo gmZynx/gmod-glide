@@ -432,9 +432,17 @@ function WAB.Think( dt )
 end
 
 function WAB.Restart()
-    WAB:Disable()
+    WAB.Disable()
 
     timer.Create( "WAB.AutoRefreshPanel", 0.5, 1, function()
-        WAB:Enable()
+        WAB.Enable()
     end )
 end
+
+hook.Add( "Glide_OnConfigChange", "WAB.RestartOnConfigChange", function()
+    if Glide.Config.engineStreamBackend == 2 then
+        WAB.Restart()
+    else
+        WAB.Disable()
+    end
+end )
