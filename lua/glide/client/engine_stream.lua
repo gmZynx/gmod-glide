@@ -61,10 +61,10 @@ function Glide.CreateEngineStream( parent, doNotUseWebAudio )
 
     local WebAudio = Glide.WebAudio
 
-    -- Use the Web Audio Bridge, if it is active AND there's enough free slots
-    if not doNotUseWebAudio and WebAudio.isReady and WebAudio.streamCount < WebAudio.MAX_STREAMS then
+    -- Use the Web Audio API. This does nothing if this
+    -- feature is disabled, or the streamCount limit has been reached.
+    if not doNotUseWebAudio then
         WebAudio:RequestStreamCreation( stream )
-        stream.isWebAudio = true
     end
 
     streamInstances[id] = stream

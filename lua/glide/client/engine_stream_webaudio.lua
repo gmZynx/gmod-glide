@@ -68,6 +68,7 @@ function WebAudio:Disable()
     if IsValid( panel ) then
         panel:Remove()
         Print( "Disabled!" )
+        Glide.DestroyAllEngineStreams()
     end
 
     self.panel = nil
@@ -78,8 +79,6 @@ function WebAudio:Disable()
     self.busParameters = nil
     self.room = nil
     self.lastImpulseResponseAudio = nil
-
-    Glide.DestroyAllEngineStreams()
 end
 
 function WebAudio:SetDebugEnabled( enabled )
@@ -161,10 +160,12 @@ end
 
 function WebAudio:RequestStreamCreation( stream )
     if not self.isReady then return end
+    if self.streamCount >= self.MAX_STREAMS then return end
 
     local id = stream.id
     if self.streams[id] then return end
 
+    stream.isWebAudio = true
     stream.isReady = false
     stream.isWebPlaying = false
     stream.position = Vector()
