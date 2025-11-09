@@ -356,9 +356,10 @@ local JS_UPDATE_STREAM = "manager.setStreamData('%s', %.2f, %.2f, %.2f, %.2f, %.
 
 local AddLine = WebAudio.AddLine
 local GetVolume = Glide.Config.GetVolume
+local GetLocalViewLocation = Glide.GetLocalViewLocation
 
 function WebAudio:Think( dt )
-    local eyePos = MainEyePos()
+    local eyePos, eyeAng = GetLocalViewLocation()
     self:UpdateRoom( dt, eyePos )
 
     local room = self.room
@@ -384,9 +385,8 @@ function WebAudio:Think( dt )
     self.ClearLines()
 
     -- Update listener position and orientation
-    local ang = MainEyeAngles()
-    local fw = ang:Forward()
-    local up = ang:Up()
+    local fw = eyeAng:Forward()
+    local up = eyeAng:Up()
 
     AddLine( JS_UPDATE_LISTENER,
         eyePos[1], eyePos[2], eyePos[3],
