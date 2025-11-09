@@ -1,7 +1,7 @@
 local WebAudio = Glide.WebAudio
 
 WebAudio.MAX_STREAMS = 32
-WebAudio.HTML_FILE = "data_static/glide/web_audio_html.txt"
+WebAudio.HTML_FILE = "data_static/glide/web_audio_html.xml"
 
 CreateClientConVar( "glide_webaudio_debug", "0", false, false, "", 0, 1 )
 
