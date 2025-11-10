@@ -1,45 +1,41 @@
 <!DOCTYPE html>
 <html>
 
-<head>
-    <title>Web Audio API Engine Stream</title>
-</head>
-
 <body></body>
 
 <style>
-    * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-    }
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
 
-    .debugPanel {
-        display: block;
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 400px;
+.debugPanel {
+    display: block;
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 400px;
 
-        font-weight: 500;
-        color: white;
-        background-color: #00000011;
-    }
+    font-weight: 500;
+    color: white;
+    background-color: #00000011;
+}
 
-    th {
-        padding: 10px;
-        text-align: center;
-        background: #000;
-    }
+th {
+    padding: 10px;
+    text-align: center;
+    background: #000;
+}
 
-    td {
-        width: 100%;
-        padding: 6px;
-    }
+td {
+    width: 100%;
+    padding: 6px;
+}
 
-    tr {
-        background-color: #111111aa;
-    }
+tr {
+    background-color: #111111aa;
+}
 </style>
 
 <script>
@@ -138,13 +134,11 @@ debug.getRow = (id) => {
 };
 
 debug.setValue = (id, value) => {
-    if (!debug.enabled) return;
-
-    debug.getRow(id).value.innerHTML = value.toString();
+    if (debug.enabled) debug.getRow(id).value.innerHTML = value.toString();
 };
 
 /*
-    Engine stream logic, plus audio node management
+    Logic to handle each individual Engine Stream
 */
 
 let DEFAULT_STREAM_PARAMETERS = {};
@@ -258,7 +252,9 @@ class EngineStream {
             layer.loadRequest.abort();
         }
 
-        // Remove layer gain node
+        // Remove audio nodes
+        this.stopLayer(id);
+
         layer.gainNode.disconnect();
         layer.gainNode = undefined;
 
@@ -266,7 +262,6 @@ class EngineStream {
         layer.audioBuffer = undefined;
         layer.loadRequest = undefined;
 
-        this.stopLayer(id);
         delete this.layers[id];
     }
 
@@ -393,12 +388,12 @@ class EngineStream {
 
             const trebleGain = this.trebleBoostNode.gain;
             trebleGain.cancelAndHoldAtTime(t);
-            trebleGain.linearRampToValueAtTime(-4.0, t + attackTime);
+            trebleGain.linearRampToValueAtTime(-5.0, t + attackTime);
             trebleGain.linearRampToValueAtTime(0.0, t + releaseTime);
 
             const bassGain = this.bassBoostNode.gain;
             bassGain.cancelAndHoldAtTime(t);
-            bassGain.linearRampToValueAtTime(5.0, t + attackTime);
+            bassGain.linearRampToValueAtTime(4.0, t + attackTime);
             bassGain.linearRampToValueAtTime(0.0, t + releaseTime);
 
             const trebleFreq = this.trebleBoostNode.frequency;
