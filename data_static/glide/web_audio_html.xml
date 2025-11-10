@@ -153,7 +153,7 @@ class EngineStream {
 
         this.isPlaying = false;
         this.isRedlining = false;
-        this.isFirstAccel = false;
+        this.isFirstAccel = true;
         this.wobbleTime = 0;
         this.redlineTime = 0;
         this.volumeMultiplier = 0;
@@ -376,24 +376,25 @@ class EngineStream {
             pitch = pitch + Math.cos(this.wobbleTime * params.wobbleFrequency) * this.wobbleTime * params.wobbleStrength * 0.3;
         }
 
+        // Throttle "punch"
         if (inputs.throttle > 0.5 && !this.isFirstAccel) {
             this.isFirstAccel = true;
 
-            const attackTime = 0.25;
-            const releaseTime = attackTime + 0.9;
-            const attackFreq = 1000.0;
+            const attackTime = params.wa_PunchAttack;
+            const releaseTime = attackTime + params.wa_PunchRelease;
+            const attackFreq = 1200.0;
             const releaseFreq = 100.0;
 
             const t = this.streamManager.audioContext.currentTime;
 
             const trebleGain = this.trebleBoostNode.gain;
             trebleGain.cancelAndHoldAtTime(t);
-            trebleGain.linearRampToValueAtTime(-5.0, t + attackTime);
+            trebleGain.linearRampToValueAtTime(-3.0 * params.wa_PunchStrength, t + attackTime);
             trebleGain.linearRampToValueAtTime(0.0, t + releaseTime);
 
             const bassGain = this.bassBoostNode.gain;
             bassGain.cancelAndHoldAtTime(t);
-            bassGain.linearRampToValueAtTime(4.0, t + attackTime);
+            bassGain.linearRampToValueAtTime(4.0 * params.wa_PunchStrength, t + attackTime);
             bassGain.linearRampToValueAtTime(0.0, t + releaseTime);
 
             const trebleFreq = this.trebleBoostNode.frequency;
@@ -532,7 +533,7 @@ class EngineStreamManager {
 
         // Add a compressor to prevent audio clipping
         const compressorNode = this.audioContext.createDynamicsCompressor();
-        compressorNode.threshold.value = -35;
+        compressorNode.threshold.value = -40;
         compressorNode.knee.value = 40;
         compressorNode.ratio.value = 4;
         compressorNode.attack.value = 0.1;
