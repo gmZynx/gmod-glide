@@ -73,7 +73,7 @@ local function GetFileSource( path )
         return "map", game.GetMap()
     end
 
-    if file.Exists( path, "MOD" ) then
+    if file.Exists( path, "GAME" ) then
         return "builtin", "Garry's Mod"
     end
 end
@@ -316,7 +316,8 @@ local SOURCE_TYPE_ICONS = {
     ["legacy"] = "icon16/folder.png",
     ["addon"] = "icon16/brick.png",
     ["download"] = "icon16/page_world.png",
-    ["map"] = "icon16/map.png"
+    ["map"] = "icon16/map.png",
+    ["builtin"] = "games/16/garrysmod.png"
 }
 
 local function UpdateInfoFromSound( path, labelFileSource, iconFileSource )
@@ -329,10 +330,10 @@ local function UpdateInfoFromSound( path, labelFileSource, iconFileSource )
     elseif sourceType and SOURCE_TYPE_ICONS[sourceType] then
         iconFileSource:SetImage( SOURCE_TYPE_ICONS[sourceType] )
     else
-        iconFileSource:SetImage( "games/16/garrysmod.png" )
+        iconFileSource:SetImage( "icon16/circlecross.png" )
     end
 
-    labelFileSource:SetText( description or "Garry's Mod" )
+    labelFileSource:SetText( description or "-" )
 end
 
 function PANEL:SetCurrentPreviewSound( path )
@@ -351,11 +352,27 @@ function PANEL:SetCurrentPreviewSound( path )
     self.buttonSelect:SetEnabled( self.onConfirmCallback ~= nil and path ~= nil )
 
     if path then
+        local props = sound.GetProperties( path )
+
         self.labelFileName:SetText( path )
 
         if isFilePath then
             UpdateInfoFromSound( path, self.labelFileSource, self.iconFileSource )
 
+        elseif Glide.soundSets[path] then
+            path = Glide.soundSets[path].paths[1]
+            UpdateInfoFromSound( path, self.labelFileSource, self.iconFileSource )
+
+        elseif props then
+            if type( props.sound ) == "string" then
+                UpdateInfoFromSound( props.sound, self.labelFileSource, self.iconFileSource )
+
+            elseif type( props.sound ) == "table" then
+                UpdateInfoFromSound( props.sound[1], self.labelFileSource, self.iconFileSource )
+            else
+                self.labelFileSource:SetText( "-" )
+                self.iconFileSource:SetImage( "icon16/cog.png" )
+            end
         else
             self.labelFileSource:SetText( "-" )
             self.iconFileSource:SetImage( "icon16/cog.png" )
