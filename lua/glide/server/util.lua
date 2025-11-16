@@ -42,7 +42,8 @@ do
         ["PhysicsObjects"] = true,
         ["Model"] = true,
         ["EntityMods"] = true, -- Entity modifiers (colors, materials, etc.)
-        ["BuildDupeInfo"] = true -- Required for parenting to work
+        ["BuildDupeInfo"] = true, -- Required for parenting to work
+        ["BodyG"] = true,
     }
 
     function Glide.FilterEntityCopyTable( data, nwFields, entFields )
@@ -139,6 +140,8 @@ end )
 
 -- Call a hook when a player finishes loading into the server
 -- and is ready to receive network events.
+local Player = Player
+
 hook.Add( "ClientSignOnStateChanged", "Glide.TriggerOnPlayerLoad", function( user, _, new )
     if new ~= SIGNONSTATE_FULL then return end
 

@@ -275,7 +275,12 @@ local DEFAULT_STREAM_PARAMS = {
     redlineStrength = 0.2,
 
     wobbleFrequency = 25,
-    wobbleStrength = 0.13
+    wobbleStrength = 0.13,
+
+    -- WebAudio-only parameters
+    wa_PunchStrength = 1.0,
+    wa_PunchAttack = 0.25,
+    wa_PunchRelease = 0.9,
 }
 
 Glide.DEFAULT_STREAM_PARAMS = DEFAULT_STREAM_PARAMS
@@ -289,10 +294,26 @@ local STREAM_KV_LIMITS = {
     redlineStrength = { min = 0, max = 0.5, decimals = 2 },
 
     wobbleFrequency = { min = 10, max = 70, decimals = 0 },
-    wobbleStrength = { min = 0.0, max = 1.0, decimals = 2 }
+    wobbleStrength = { min = 0.0, max = 1.0, decimals = 2 },
+
+    -- WebAudio-only parameters
+    wa_PunchStrength = { min = 0.1, max = 3.0, decimals = 1 },
+    wa_PunchAttack = { min = 0.05, max = 0.5, decimals = 2 },
+    wa_PunchRelease = { min = 0.1, max = 2.0, decimals = 2 },
 }
 
 Glide.STREAM_KV_LIMITS = STREAM_KV_LIMITS
+
+local STREAM_VALID_CONTROLLER_IN = {
+    throttle = true,
+    rpmFraction = true,
+    redline = true
+}
+
+local STREAM_VALID_CONTROLLER_OUT = {
+    volume = true,
+    pitch = true
+}
 
 function Glide.ValidateStreamData( data )
     if type( data ) ~= "table" then
@@ -344,6 +365,25 @@ function Glide.ValidateStreamData( data )
             return false, "Preset does not look like sound preset data!"
         end
 
+        if not table.IsSequential( c ) then
+            return false, "Preset does not have valid controller data!"
+        end
+
+        for _, ctr in ipairs( c ) do
+            if not STREAM_VALID_CONTROLLER_IN[ctr[1]] or not STREAM_VALID_CONTROLLER_OUT[ctr[4]] then
+                return false, "Preset does not have valid controller data!"
+            end
+
+            if
+                type( ctr[2] ) ~= "number" or
+                type( ctr[3] ) ~= "number" or
+                type( ctr[5] ) ~= "number" or
+                type( ctr[6] ) ~= "number"
+            then
+                return false, "Preset does not have valid controller data!"
+            end
+        end
+
         count = count + 1
 
         if count > max then
@@ -388,6 +428,7 @@ Glide.MISC_SOUND_CATEGORIES = {
         label = "#tool.glide_misc_sounds.category.brakes",
         acceptGlideSoundPresets = false,
         keys = {
+            "BrakeLoopSound",
             "BrakeReleaseSound",
             "BrakeSqueakSound"
         }

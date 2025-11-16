@@ -64,7 +64,9 @@ hook.Add( "PreDrawEffects", "Glide.DrawSprites", function()
         s = sprites[i]
 
         -- Make so the sprite draws over things that are right on top of it,
-        -- but does not draw on top of walls when viewed from far away.
+        -- but does not draw over walls when viewed from far away.
+        -- Due to the exponential nature of a depth buffer,
+        -- this requires some really small numbers, and it's not ideal.
         DepthRange( 0.0, Clamp( pos:DistToSqr( s[1] ) / 200000, 0.999, 1 ) )
 
         -- Make the sprite smaller as the viewer points away from it
