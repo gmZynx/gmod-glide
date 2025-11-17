@@ -27,7 +27,7 @@ if SERVER then
     --- replaced by Player:GlideGetAimAngles.
     function PlayerMeta:GlideGetCameraAngles()
         return self.GlideCameraAngles or Angle()
-    end 
+    end
 
     do
         local EnterVehicle = PlayerMeta.EnterVehicle
