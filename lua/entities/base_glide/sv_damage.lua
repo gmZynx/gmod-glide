@@ -222,6 +222,23 @@ function ENT:PhysicsCollide( data )
         dmg:SetDamageType( 1 ) -- DMG_CRUSH
         dmg:SetDamagePosition( data.HitPos )
         self:TakeDamageInfo( dmg )
+
+        if not GetConVar( "glide_enable_damage_player_on_collision" ):GetBool() then return end
+
+        for _, seat in ipairs(self.seats or {}) do
+            if not IsValid( seat ) then continue end
+
+            local ply = seat:GetDriver()
+            if not IsValid( ply ) then continue end
+
+            local dmg = DamageInfo()
+            dmg:SetAttacker( ent )
+            dmg:SetInflictor( self )
+            dmg:SetDamage( damage * 0.5 )
+            dmg:SetDamageType( DMG_VEHICLE )
+            ply:TakeDamageInfo( dmg )
+        end
+
     end
 end
 
