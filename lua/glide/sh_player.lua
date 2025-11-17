@@ -27,6 +27,22 @@ if SERVER then
     --- replaced by Player:GlideGetAimAngles.
     function PlayerMeta:GlideGetCameraAngles()
         return self.GlideCameraAngles or Angle()
+    end 
+
+    do
+        local EnterVehicle = PlayerMeta.EnterVehicle
+        function PlayerMeta:EnterVehicle( vehicle )
+            if vehicle.IsGlideVehicle and vehicle.GetFreeSeat and isfunction( vehicle.GetFreeSeat ) then
+                local seat = vehicle:GetFreeSeat()
+                if not IsValid( seat ) then
+                    return
+                end
+
+                return EnterVehicle( self, seat )
+            end
+
+            return EnterVehicle( self, vehicle )
+        end
     end
 
     --- Utility function to get the entity creator
