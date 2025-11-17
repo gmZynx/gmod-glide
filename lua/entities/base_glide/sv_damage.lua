@@ -234,7 +234,7 @@ function ENT:PhysicsCollide( data )
             local dmgPlayer = DamageInfo()
             dmgPlayer:SetAttacker( ent )
             dmgPlayer:SetInflictor( self )
-            dmgPlayer:SetDamage( damage * 0.5 )
+            dmgPlayer:SetDamage( damage * GetConVar( "glide_player_collision_damage_multiplier" ):GetFloat() )
             dmgPlayer:SetDamageType( DMG_VEHICLE )
             ply:TakeDamageInfo( dmgPlayer )
         end
