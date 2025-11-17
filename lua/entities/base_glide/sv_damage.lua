@@ -225,18 +225,18 @@ function ENT:PhysicsCollide( data )
 
         if not GetConVar( "glide_enable_damage_player_on_collision" ):GetBool() then return end
 
-        for _, seat in ipairs(self.seats or {}) do
+        for _, seat in ipairs( self.seats or {} ) do
             if not IsValid( seat ) then continue end
 
             local ply = seat:GetDriver()
             if not IsValid( ply ) then continue end
 
-            local dmg = DamageInfo()
-            dmg:SetAttacker( ent )
-            dmg:SetInflictor( self )
-            dmg:SetDamage( damage * 0.5 )
-            dmg:SetDamageType( DMG_VEHICLE )
-            ply:TakeDamageInfo( dmg )
+            local dmgPlayer = DamageInfo()
+            dmgPlayer:SetAttacker( ent )
+            dmgPlayer:SetInflictor( self )
+            dmgPlayer:SetDamage( damage * 0.5 )
+            dmgPlayer:SetDamageType( DMG_VEHICLE )
+            ply:TakeDamageInfo( dmgPlayer )
         end
 
     end
