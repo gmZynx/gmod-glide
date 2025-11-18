@@ -153,6 +153,7 @@ local PlaySoundSet = Glide.PlaySoundSet
 
 local cvarCollision = GetConVar( "glide_physics_damage_multiplier" )
 local cvarWorldCollision = GetConVar( "glide_world_physics_damage_multiplier" )
+local cvarPlayerDamage = GetConVar( "glide_enable_damage_player_on_collision" )
 
 function ENT:PhysicsCollide( data )
     if data.TheirSurfaceProps == 76 then -- default_silent
@@ -223,20 +224,18 @@ function ENT:PhysicsCollide( data )
         dmg:SetDamagePosition( data.HitPos )
         self:TakeDamageInfo( dmg )
 
-        if not GetConVar( "glide_enable_damage_player_on_collision" ):GetBool() then return end
+        if not cvarPlayerDamage:GetBool() then return end
 
-        for _, seat in ipairs( self.seats or {} ) do
-            if not IsValid( seat ) then continue end
-
+        for _, seat in Glide.EntityPairs( self.seats or {} ) do
             local ply = seat:GetDriver()
-            if not IsValid( ply ) then continue end
-
-            local dmgPlayer = DamageInfo()
-            dmgPlayer:SetAttacker( ent )
-            dmgPlayer:SetInflictor( self )
-            dmgPlayer:SetDamage( damage * GetConVar( "glide_player_collision_damage_multiplier" ):GetFloat() )
-            dmgPlayer:SetDamageType( DMG_VEHICLE )
-            ply:TakeDamageInfo( dmgPlayer )
+            if IsValid( ply ) then
+                local dmgPlayer = DamageInfo()
+                dmgPlayer:SetAttacker( ent )
+                dmgPlayer:SetInflictor( self )
+                dmgPlayer:SetDamage( damage * GetConVar( "glide_player_collision_damage_multiplier" ):GetFloat() )
+                dmgPlayer:SetDamageType( DMG_VEHICLE )
+                ply:TakeDamageInfo( dmgPlayer )
+            end
         end
 
     end
