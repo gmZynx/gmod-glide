@@ -3,6 +3,10 @@ function ENT:Repair()
     self:SetChassisHealth( self.MaxChassisHealth )
     self:SetEngineHealth( 1.0 )
     self:UpdateHealthOutputs()
+
+    for _, w in Glide.EntityPairs( self.wheels ) do
+        w:Repair()
+    end
 end
 
 function ENT:Explode( attacker, inflictor )
@@ -188,6 +192,7 @@ function ENT:PhysicsCollide( data )
     eff:SetOrigin( data.HitPos )
     eff:SetScale( math.min( speed * 0.02, 6 ) * self.CollisionParticleSize )
     eff:SetNormal( surfaceNormal )
+    eff:SetColor( 255 )
     util.Effect( "glide_metal_impact", eff )
 
     local isHardHit = speed > 300
