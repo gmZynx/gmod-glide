@@ -23,7 +23,7 @@ if game.SinglePlayer() then
 end
 
 function ENT:Initialize()
-    self:SetModel( "models/editor/axis_helper.mdl" )
+    self:SetModel( "models/hunter/misc/sphere025x025.mdl" )
     self:SetSolid( SOLID_NONE )
     self:SetMoveType( MOVETYPE_VPHYSICS )
     self:AddSolidFlags( FSOLID_TRIGGER )
