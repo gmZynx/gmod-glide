@@ -288,7 +288,8 @@ end
 
 do
     local EntityMeta = FindMetaTable( "Entity" )
-    local IsVehicle = EntityMeta.IsVehicle
+    local IsVehicle = Glide._OriginalEntityIsVehicle or EntityMeta.IsVehicle
+    Glide._OriginalEntityIsVehicle = IsVehicle
 
     --- Override `Entity:IsVehicle` to return `true` on Glide vehicles.
     function EntityMeta:IsVehicle()
