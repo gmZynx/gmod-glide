@@ -177,11 +177,13 @@ if SERVER then
     CreateConVar( "glide_physics_damage_multiplier", "1", FCVAR_ARCHIVE + FCVAR_NOTIFY, "Damage multiplier taken by Glide vehicles after colliding against things that are not the world.", 0, 10 )
     CreateConVar( "glide_world_physics_damage_multiplier", "1", FCVAR_ARCHIVE + FCVAR_NOTIFY, "Damage multiplier taken by Glide vehicles after colliding against the world.", 0, 10 )
     CreateConVar( "glide_global_damage_multiplier", "1", FCVAR_ARCHIVE + FCVAR_NOTIFY, "Multiplier for damage taken from any source (except collisions).", 0, 10 )
+    CreateConVar( "glide_player_collision_damage_multiplier", "0.5", FCVAR_ARCHIVE + FCVAR_NOTIFY, "Damage multiplier for players inside vehicles taking damage from hard collisions.", 0, 2 )
 end
 
 -- Toggles
 CreateConVar( "glide_pacifist_mode", "0", FCVAR_ARCHIVE + FCVAR_NOTIFY + FCVAR_REPLICATED, "When set to 1, disables VSWEPs and vehicle turrets.", 0, 1 )
 CreateConVar( "glide_allow_gravity_gun_punt", "0", FCVAR_ARCHIVE + FCVAR_NOTIFY + FCVAR_REPLICATED, "When set to 1, allows players to push vehicles with the Gravity Gun.", 0, 1 )
+CreateConVar( "glide_enable_damage_player_on_collision", "0", FCVAR_ARCHIVE + FCVAR_REPLICATED, "Whether players inside vehicles can take damage from hard collisions." )
 
 -- Sandbox limits
 cleanup.Register( "glide_vehicles" )
