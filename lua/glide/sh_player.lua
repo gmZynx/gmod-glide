@@ -32,8 +32,9 @@ if SERVER then
     do
         Glide._OriginalEnterVehicle = Glide._OriginalEnterVehicle or PlayerMeta.EnterVehicle
         local EnterVehicle = Glide._OriginalEnterVehicle
+
         function PlayerMeta:EnterVehicle( vehicle )
-            if vehicle.IsGlideVehicle and vehicle.GetFreeSeat and isfunction( vehicle.GetFreeSeat ) then
+            if vehicle.IsGlideVehicle and isfunction( vehicle.GetFreeSeat ) then
                 local seat = vehicle:GetFreeSeat()
                 if not IsValid( seat ) then
                     return
