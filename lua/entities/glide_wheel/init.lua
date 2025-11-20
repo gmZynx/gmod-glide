@@ -50,7 +50,8 @@ function ENT:Initialize()
         radius = 15,
         basePos = Vector(),
         steerMultiplier = 0,
-        enableAxleForces = false
+        enableAxleForces = false,
+        isBulletProof = false
     }
 
     self.state = {
@@ -135,6 +136,9 @@ function ENT:SetupWheel( t )
     -- (Recommended for small vehicles like the Blazer)
     params.enableAxleForces = t.enableAxleForces or false
 
+    -- Can this wheel take damage?
+    params.isBulletProof = t.isBulletProof == true
+
     -- Should this wheel play sounds?
     self:SetSoundsEnabled( t.disableSounds ~= true )
 
@@ -206,6 +210,8 @@ do
     local Max = math.max
 
     function ENT:OnTakeDamage( dmginfo )
+        if self.params.isBulletProof then return end
+
         local health = self:GetTireHealth()
         if health < 1 then return end
 
