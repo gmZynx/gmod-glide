@@ -280,6 +280,15 @@ function Glide.PartialRepair( vehicle, chassisAmount, engineAmount )
             end
         end
 
+        if vehicle.wheels then
+            -- Fix any blown wheels
+            for _, wheel in Glide.EntityPairs( vehicle.wheels ) do
+                if wheel:IsBlown() then
+                    wheel:Repair()
+                end
+            end
+        end
+
         -- No need to run the code below
         return false
     end
