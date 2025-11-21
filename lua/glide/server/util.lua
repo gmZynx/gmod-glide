@@ -290,7 +290,7 @@ function Glide.PartialRepair( vehicle, chassisAmount, engineAmount )
         end
 
         -- No need to run the code below
-        return false
+        return false, false
     end
 
     local wasHealthIncreased = false
@@ -307,7 +307,7 @@ function Glide.PartialRepair( vehicle, chassisAmount, engineAmount )
         end
     end
 
-    -- If if are at or overflowed the health limit, set it to
+    -- If are at the health limit, or have overflowed it, set it to
     -- the max. value, and call the vehicle's `Repair` function.
     if chassisHealth > vehicle.MaxChassisHealth then
         chassisHealth = vehicle.MaxChassisHealth
