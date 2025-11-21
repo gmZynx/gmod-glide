@@ -174,7 +174,7 @@ end
 
 function ENT:Blow()
     self:SetTireHealth( 0 )
-    self:ChangeRadius( self.params.radius )
+    self:ChangeRadius()
     self:EmitSound( "glide/wheels/blowout.wav", 80, math.random( 95, 105 ), 1 )
 end
 

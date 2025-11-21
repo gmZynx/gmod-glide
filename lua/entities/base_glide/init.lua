@@ -31,7 +31,7 @@ function ENT:OnEntityCopyTableFinish( data )
 
     for i, w in Glide.EntityPairs( self.wheels ) do
         if IsValid( w ) then
-            wheelRadius[i] = w:GetRadius()
+            wheelRadius[i] = w.params.radius
             wheelCount = wheelCount + 1
         end
     end
