@@ -61,7 +61,7 @@ function ENT:OnDuplicated( data )
         w = wheels[i]
 
         if IsValid( w ) and type( radius ) == "number" then
-            --w.params.radius = radius
+            w.params.radius = radius
             w:ChangeRadius( radius )
         end
     end
