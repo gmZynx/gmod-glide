@@ -80,9 +80,6 @@ function SWEP:Think()
     end
 end
 
-local CurTime = CurTime
-local REPAIR_SOUND = "glide/train/track_clank_%d.wav"
-
 function SWEP:PrimaryAttack()
     local user = self:GetOwner()
     if not IsValid( user ) then return end
@@ -95,72 +92,33 @@ function SWEP:PrimaryAttack()
     if not ent then return end
 
     local repairMul = repairSpeedMulCvar:GetFloat()
+    local wasHealthIncreased, hasFinished = Glide.PartialRepair( ent, 20 * repairMul, 0.03 * repairMul, user )
 
-    local engineHealth = ent:GetEngineHealth()
-    local chassisHealth = ent:GetChassisHealth()
-
-    if chassisHealth >= ent.MaxChassisHealth and engineHealth >= 1 then
-        local rotors = ent.rotors
-        if not rotors then return end
-
-        for i = 1, #rotors do
-            if not IsValid( rotors[i] ) then
-                ent:Repair()
-                user:EmitSound( "buttons/lever4.wav", 75, 150, 0.3 )
-                break
-            end
-        end
-
-        return
-    end
-
-    if chassisHealth < ent.MaxChassisHealth then
-        chassisHealth = chassisHealth + ( 20 * repairMul )
-        engineHealth = math.Clamp( engineHealth + ( 0.03 * repairMul ), 0, 1 )
+    if wasHealthIncreased then
+        user:EmitSound( ( "glide/train/track_clank_%d.wav" ):format( math.random( 6 ) ), 75, 150, 0.2 )
 
         if user.ViewPunch then
             user:ViewPunch( Angle( -0.2, 0, 0 ) )
         end
 
-        if chassisHealth > 0.3 and ent.SetIsEngineOnFire then
-            ent:SetIsEngineOnFire( false )
+        self:SendWeaponAnim( ACT_VM_PRIMARYATTACK )
+        user:SetAnimation( PLAYER_ATTACK1 )
+
+        local trace = self.repairTrace
+
+        if trace then
+            local data = EffectData()
+            data:SetOrigin( trace.HitPos + trace.HitNormal * 5 )
+            data:SetNormal( trace.HitNormal )
+            data:SetScale( 1 )
+            data:SetMagnitude( 1 )
+            data:SetRadius( 3 )
+            util.Effect( "cball_bounce", data, false, true )
         end
-
-        user:EmitSound( REPAIR_SOUND:format( math.random( 6 ) ), 75, 150, 0.2 )
     end
 
-    if chassisHealth > ent.MaxChassisHealth then
-        chassisHealth = ent.MaxChassisHealth
-        engineHealth = 1
-
-        ent:Repair()
+    if hasFinished then
         user:EmitSound( "buttons/lever6.wav", 75, math.random( 110, 120 ), 0.5 )
-    end
-
-    if chassisHealth >= ent.MaxChassisHealth then
-        engineHealth = 1
-    end
-
-    ent:SetChassisHealth( chassisHealth )
-    ent:SetEngineHealth( engineHealth )
-
-    self:SendWeaponAnim( ACT_VM_PRIMARYATTACK )
-    user:SetAnimation( PLAYER_ATTACK1 )
-
-    if ent.UpdateHealthOutputs then
-        ent:UpdateHealthOutputs()
-    end
-
-    local trace = self.repairTrace
-
-    if trace then
-        local data = EffectData()
-        data:SetOrigin( trace.HitPos + trace.HitNormal * 5 )
-        data:SetNormal( trace.HitNormal )
-        data:SetScale( 1 )
-        data:SetMagnitude( 1 )
-        data:SetRadius( 3 )
-        util.Effect( "cball_bounce", data, false, true )
     end
 end
 
@@ -169,9 +127,6 @@ end
 
 if not CLIENT then return end
 
-local SetColor = surface.SetDrawColor
-local ICON_AIM = Material( "glide/aim_area.png", "smooth" )
-
 function SWEP:DrawHUD()
     if not self:IsWeaponVisible() then return end
 
@@ -179,11 +134,8 @@ function SWEP:DrawHUD()
     if not IsValid( ent ) then return end
 
     local x, y = ScrW() * 0.5, ScrH() * 0.5
-    local size = math.floor( ScrH() * 0.07 )
 
-    SetColor( 255, 255, 255, 255 )
-    surface.SetMaterial( ICON_AIM )
-    surface.DrawTexturedRectRotated( x, y, size, size, 0 )
+    Glide.DrawWeaponCrosshair( x, y, "glide/aim_dot.png", 0.05, Color( 255, 255, 255, 255 ) )
 
     local w = math.floor( ScrH() * 0.4 )
     local h = math.floor( ScrH() * 0.03 )

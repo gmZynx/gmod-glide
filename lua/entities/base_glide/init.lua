@@ -31,7 +31,7 @@ function ENT:OnEntityCopyTableFinish( data )
 
     for i, w in Glide.EntityPairs( self.wheels ) do
         if IsValid( w ) then
-            wheelRadius[i] = w:GetRadius()
+            wheelRadius[i] = w.params.radius
             wheelCount = wheelCount + 1
         end
     end
@@ -61,6 +61,7 @@ function ENT:OnDuplicated( data )
         w = wheels[i]
 
         if IsValid( w ) and type( radius ) == "number" then
+            w.params.radius = radius
             w:ChangeRadius( radius )
         end
     end
@@ -326,6 +327,7 @@ do
         if not IsValid( seat ) then return end
         if not seat.GlideSeatIndex then return end
         if not ragdollEnableCvar:GetBool() then return end
+        if RCD and RCD.GetSetting( "ejectActivate", "boolean" ) then return end
 
         time = time or maxRagdollTimeCvar:GetFloat()
         vel = vel or self:GetVelocity()
