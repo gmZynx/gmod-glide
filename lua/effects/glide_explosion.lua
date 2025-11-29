@@ -4,7 +4,7 @@ local CurTime = CurTime
 function EFFECT:Init( data )
     local origin = data:GetOrigin()
     local normal = data:GetNormal()
-    local scale = Clamp( data:GetScale(), 0.1, 1.5 )
+    local scale = Clamp( data:GetScale(), -8.0, 8.0 )
 
     self.size = 1200 * scale
     self.origin = origin
