@@ -452,7 +452,10 @@ function WebAudio:Think( dt )
 
             -- Check if this stream is behind a wall
             if not checkedForWalls and not checkedWall[id] then
-                local freq = TraceLine( stream.position, eyePos, true ).Hit and 2000 or 20000
+                -- The max. filter frequency the BiquadFilterNode is 24000,
+                -- but using that value had a strange bug where the audio
+                -- would "drift" away from the source after some time.
+                local freq = TraceLine( stream.position, eyePos, true ).Hit and 2000 or 23000
                 AddLine( "manager.setStreamLowpassFilterFreq('%s', %.2f);", id, freq )
 
                 -- Flag that we've checked this stream already
