@@ -26,7 +26,7 @@ function ENT:Initialize()
     self:SetModel( "models/hunter/misc/sphere025x025.mdl" )
     self:SetSolid( SOLID_NONE )
     self:SetMoveType( MOVETYPE_VPHYSICS )
-    self:AddSolidFlags( FSOLID_TRIGGER )
+    self:SetSolidFlags( bit.bor( FSOLID_TRIGGER, FSOLID_TRIGGER_TOUCH_DEBRIS, FSOLID_USE_TRIGGER_BOUNDS ) )
 
     self.params = {
         -- Suspension
