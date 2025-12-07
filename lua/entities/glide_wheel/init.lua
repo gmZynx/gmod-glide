@@ -91,10 +91,6 @@ function ENT:Initialize()
     self:SetupWheel()
 end
 
-function ENT:Touch( ent )
-   -- print( "Wheel touched:", ent:GetClass() )
-end
-
 --- Set the size, models and steering properties to use on this wheel.
 function ENT:SetupWheel( t )
     t = t or {}
