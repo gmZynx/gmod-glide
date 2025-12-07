@@ -342,6 +342,26 @@ function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfa
     -- TraceResult gets stored on the `ray` table
     TraceHull( traceData )
 
+    local ent = ray.Entity
+    if IsValid( ent ) and ( game.GetWorld() ~= ent ) then
+        if ent ~= self.LastEntTarget and isfunction( self.StartTouch ) and isfunction( self.EndTouch ) then
+            self:StartTouch( ent )
+            self:EndTouch( self.LastEntTarget )
+        end
+
+        self:Touch( ent )
+
+        if isfunction( ent.Touch ) then
+            ent:Touch( self )
+
+            if ent ~= self.LastEntTarget and isfunction( ent.StartTouch ) and isfunction( ent.EndTouch ) then
+                ent:StartTouch( self )
+                ent:EndTouch( self.LastEntTarget )
+            end
+        end
+    end
+    self.LastEntTarget = ent
+
     fraction = Clamp( ray.Fraction, radius / maxLen, 1 )
     contactPos = pos - maxLen * fraction * up
 
