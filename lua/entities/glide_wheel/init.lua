@@ -91,6 +91,10 @@ function ENT:Initialize()
     self:SetupWheel()
 end
 
+function ENT:Touch( ent )
+   -- print( "Wheel touched:", ent:GetClass() )
+end
+
 --- Set the size, models and steering properties to use on this wheel.
 function ENT:SetupWheel( t )
     t = t or {}
@@ -341,6 +345,15 @@ function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfa
 
     -- TraceResult gets stored on the `ray` table
     TraceHull( traceData )
+
+    local ent = ray.Entity
+    if IsValid( ent ) and ( game.GetMap() ~= ent ) then
+        self:Touch( ent )
+
+        if isfunction( ent.Touch ) then
+            ent:Touch( self )
+        end
+    end
 
     fraction = Clamp( ray.Fraction, radius / maxLen, 1 )
     contactPos = pos - maxLen * fraction * up
