@@ -348,10 +348,21 @@ function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfa
 
     local ent = ray.Entity
     if IsValid( ent ) and ( game.GetMap() ~= ent ) then
+        if ent ~= self.LastEntTarget and isfunction( self.StartTouch ) and isfunction( self.EndTouch ) then
+            self:StartTouch( ent )
+            self:EndTouch( self.LastEntTarget )
+        end
+
         self:Touch( ent )
+        self.LastEntTarget = ent
 
         if isfunction( ent.Touch ) then
             ent:Touch( self )
+
+            if ent ~= self.LastEntTargetOn and isfunction( ent.StartTouch ) and isfunction( ent.EndTouch ) then
+                ent:StartTouch( self )
+                ent:EndTouch( self.LastEntTargetOn )
+            end
         end
     end
 
