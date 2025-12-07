@@ -307,7 +307,7 @@ local TraceHull = util.TraceHull
 local TractionRamp = Glide.TractionRamp
 
 -- Temporary variables
-local pos, ang, fw, rt, up, radius, maxLen, ent, isValidEnt
+local pos, ang, fw, rt, up, radius, maxLen, ent
 local fraction, contactPos, surfaceId, vel, velF, velR, velU, absVelR
 local offset, springForce, damperForce
 local surfaceGrip, maxTraction, brakeForce, forwardForce, signForwardForce
@@ -344,22 +344,21 @@ function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfa
 
     -- Run touch events on entities hit by the ray
     ent = ray.Entity
-    isValidEnt = ent and ent.IsValid and ent:IsValid()
-    ent = isValidEnt and ent or nil
+    ent = ( ent and ent.IsValid and ent:IsValid() ) and ent or nil
 
     if ent ~= state.lastTouchedEnt then
         if state.lastTouchedEnt and state.lastTouchedEnt.EndTouch then
             state.lastTouchedEnt:EndTouch( self )
         end
 
-        if isValidEnt and ent.StartTouch then
+        if ent and ent.StartTouch then
             ent:StartTouch( self )
         end
 
         state.lastTouchedEnt = ent
     end
 
-    if isValidEnt and ent.Touch then
+    if ent and ent.Touch then
         ent:Touch( self )
     end
 
