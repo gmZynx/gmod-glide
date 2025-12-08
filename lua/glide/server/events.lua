@@ -340,3 +340,12 @@ hook.Add( "PlayerSpawnSENT", "Glide.VehicleSpawnCheck", function( ply, entClass 
 
     return bHook
 end )
+
+hook.Add( "PlayerSpawnedSENT", "Glide.VehicleSpawnSetup", function( ply, ent )
+    if not IsValid( ent ) then return end
+    if not ent.IsGlideVehicle then return end
+
+    hook.Run( "PlayerSpawnedVehicle", ply, ent )
+
+    return true
+end )
