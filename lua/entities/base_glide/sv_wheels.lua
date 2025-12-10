@@ -134,3 +134,152 @@ function ENT:PhysicsSimulate( phys, dt )
 
     return angForce, linForce, 4 -- SIM_GLOBAL_FORCE
 end
+
+local function LimitInputWithAngle( value, ang, maxAng )
+    if ang > maxAng then
+        value = value * ( 1 - Clamp( ( ang - maxAng ) / 20, 0, 1 ) )
+    end
+
+    return value
+end
+
+local mass
+
+local function AddForce( out, f )
+    out[1] = out[1] + f[1] * mass
+    out[2] = out[2] + f[2] * mass
+    out[3] = out[3] + f[3] * mass
+end
+
+local linearImp, angularImp
+
+local function AddForceOffset( outLin, outAng, phys, dt, pos, f )
+    linearImp, angularImp = phys:CalculateForceOffset( f * mass, pos )
+
+    outLin[1] = outLin[1] + linearImp[1] / dt
+    outLin[2] = outLin[2] + linearImp[2] / dt
+    outLin[3] = outLin[3] + linearImp[3] / dt
+
+    outAng[1] = outAng[1] + angularImp[1] / dt
+    outAng[2] = outAng[2] + angularImp[2] / dt
+    outAng[3] = outAng[3] + angularImp[3] / dt
+end
+
+local TraceLine = util.TraceLine
+local GetGravity = physenv.GetGravity
+
+local ray = {}
+local traceData = { output = ray, endpos = Vector(), mask = MASK_SOLID + CONTENTS_WATER + CONTENTS_SLIME }
+local fw, rt, up, vel, speed
+local WORLD_UP = Vector( 0, 0, 1 )
+
+--- Simulate a hover/hovercraft vehicle.
+--- Can optionally fly depending on the `flightStrength`.
+---
+--- It requires a `HoverParams` table to be defined on this entity.
+---
+--- Returns the count of `hoverPoints` traces that have hit a surface.
+---
+function ENT:SimulateHovercraft( strength, flightStrength, hoverPoints, phys, dt, outLin, outAng )
+    mass = phys:GetMass()
+    fw = self:GetForward()
+    rt = self:GetRight()
+    up = self:GetUp()
+
+    vel = phys:GetVelocity()
+    speed = fw:Dot( vel )
+
+    local params = self.HoverParams
+
+    -- Hover forces
+    local hoverDist = params.hoverDistance
+    local hoverForce, upVel, avgNormal = 0, 0, Vector()
+    local contactHoverPointCount = 0
+
+    traceData.filter = self
+
+    for _, point in ipairs( hoverPoints ) do
+        point = self:LocalToWorld( point )
+
+        -- Check how far from a surface this point is
+        traceData.start = point
+        traceData.endpos[1] = point[1] - up[1] * hoverDist
+        traceData.endpos[2] = point[2] - up[2] * hoverDist
+        traceData.endpos[3] = point[3] - up[3] * hoverDist
+
+        TraceLine( traceData )
+
+        if ray.Hit then
+            upVel = up:Dot( phys:GetVelocityAtPoint( point ) )
+
+            hoverForce = params.hoverForce * ( 0.5 - ray.Fraction ) * strength
+            hoverForce = hoverForce - upVel * params.hoverZDrag
+
+            -- Don't push down if flightStrength is not 0
+            if hoverForce > 0 then
+                hoverForce = hoverForce * ( 1 - flightStrength )
+            end
+
+            AddForceOffset( outLin, outAng, phys, dt, point, up * hoverForce )
+
+            avgNormal[1] = avgNormal[1] + ray.HitNormal[1]
+            avgNormal[2] = avgNormal[2] + ray.HitNormal[2]
+            avgNormal[3] = avgNormal[3] + ray.HitNormal[3]
+
+            contactHoverPointCount = contactHoverPointCount + 1
+        else
+            avgNormal[3] = avgNormal[3] + 1
+        end
+    end
+
+    local count = #hoverPoints
+
+    avgNormal[1] = avgNormal[1] / count
+    avgNormal[2] = avgNormal[2] / count
+    avgNormal[3] = avgNormal[3] / count
+    avgNormal:Normalize()
+
+    -- Lift & keep upright forces
+    AddForce( outLin, -flightStrength * GetGravity()[3] * WORLD_UP )
+
+    outAng[1] = outAng[1] + rt:Dot( avgNormal ) * params.uprightForce * strength * mass
+    outAng[2] = outAng[2] + fw:Dot( avgNormal ) * params.uprightForce * strength * mass
+
+    -- Drag forces
+    AddForce( outLin, Clamp( speed, -500, 500 ) * -params.linearDrag[1] * strength * fw )
+    AddForce( outLin, rt:Dot( vel ) * -params.linearDrag[2] * strength * rt )
+    AddForce( outLin, up:Dot( vel ) * -params.linearDrag[3] * strength * flightStrength * up )
+
+    local angDrag = params.angularDrag
+    local angVel = phys:GetAngleVelocity()
+
+    outAng[1] = outAng[1] + angVel[1] * angDrag[1] * mass * strength
+    outAng[2] = outAng[2] + angVel[2] * angDrag[2] * mass * strength
+    outAng[3] = outAng[3] + angVel[3] * angDrag[3] * mass * strength
+
+    -- Engine force
+    local throttle = self:GetInputFloat( 1, "accelerate" ) - self:GetInputFloat( 1, "brake" )
+
+    if throttle > 0 and speed < params.maxSpeed then
+        AddForce( outLin, params.engineForce * throttle * strength * fw )
+
+    elseif throttle < 0 and speed > params.maxSpeed * -0.25 then
+        AddForce( outLin, params.engineForce * throttle * strength * fw )
+    end
+
+    -- Steering force
+    local steer = self:GetInputFloat( 1, "steer" )
+
+    if speed < -100 then
+        steer = -steer
+    end
+
+    outAng[3] = outAng[3] - params.turnForce * steer * mass * strength
+
+    -- Pitch force
+    local pitchInput = self:GetInputFloat( 1, "lean_pitch" )
+    pitchInput = LimitInputWithAngle( pitchInput, Abs( self:GetAngles()[1] ), 5 )
+    outAng[2] = outAng[2] + params.pitchForce * mass * pitchInput * flightStrength
+
+    return contactHoverPointCount
+end
