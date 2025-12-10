@@ -239,10 +239,6 @@ function ENT:Initialize()
     self:SetLagCompensated( true )
 end
 
-function ENT:GetVehicleClass()
-    return self:GetClass()
-end
-
 function ENT:InitializePhysics()
     self:SetSolid( SOLID_VPHYSICS )
     self:SetMoveType( MOVETYPE_VPHYSICS )
