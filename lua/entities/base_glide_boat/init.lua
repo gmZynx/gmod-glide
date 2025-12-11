@@ -36,13 +36,13 @@ end
 
 --- Implement this base class function.
 function ENT:OnDriverExit()
-    self:SetIsHonking( false )
+    local keepOn = IsValid( self.lastDriver ) and self.lastDriver:KeyDown( IN_WALK )
 
-    if self.hasTheDriverBeenRagdolled then
-        BaseClass.OnDriverExit( self )
-    else
+    if not self.hasTheDriverBeenRagdolled and not keepOn then
         self:TurnOff()
     end
+
+    self:SetIsHonking( false )
 end
 
 --- Implement this base class function.
