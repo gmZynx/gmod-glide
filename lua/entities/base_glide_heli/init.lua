@@ -78,7 +78,7 @@ end
 
 --- Implement this base class function.
 function ENT:OnDriverEnter()
-    if self:GetEngineHealth() > 0 then
+    if self:GetEngineHealth() > 0 and self.autoTurnOnEngine then
         self:TurnOn()
     end
 end
@@ -88,7 +88,7 @@ function ENT:OnDriverExit()
     if self.altitude > 400 and self:GetPower() > 0.2 then
         self:SetOutOfControl( true )
     else
-        self:TurnOff()
+        BaseClass.OnDriverExit( self )
     end
 end
 
