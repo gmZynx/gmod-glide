@@ -142,7 +142,9 @@ end
 
 --- Implement this base class function.
 function ENT:OnDriverEnter()
-    self:TurnOn()
+    if self.autoTurnOnEngine then
+        self:TurnOn()
+    end
 end
 
 --- Implement this base class function.

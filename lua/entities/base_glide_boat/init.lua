@@ -29,7 +29,7 @@ end
 function ENT:OnDriverEnter()
     if self.startupTimer then return end
 
-    if self:GetEngineState() < 2 then
+    if self:GetEngineState() < 2 and self.autoTurnOnEngine then
         self:TurnOn()
     end
 end

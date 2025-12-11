@@ -78,7 +78,7 @@ end
 
 --- Implement this base class function.
 function ENT:OnDriverEnter()
-    if self:GetEngineHealth() > 0 then
+    if self:GetEngineHealth() > 0 and self.autoTurnOnEngine then
         self:TurnOn()
     end
 end
