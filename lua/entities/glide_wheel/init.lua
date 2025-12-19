@@ -54,13 +54,21 @@ function ENT:Initialize()
         lastFraction = 1,
         lastSpringOffset = 0,
         angularVelocity = 0,
-        isDebugging = Glide.GetDevMode()
-    }
+        isDebugging = Glide.GetDevMode(),
 
-    -- Store the TraceResult on this table instead of
-    -- creating a new one every time. It's contents are
-    -- overritten every time a wheel calls `util.TraceHull`.
-    self.state.ray = {}
+        -- Store the TraceResult on this table instead of
+        -- creating a new one every time. It's contents are
+        -- overritten every time a wheel calls `util.TraceHull`.
+        ray = {},
+
+        -- Things calculated on `ENT:DoPhysics` that
+        -- `ENT:Update` needs (and vice versa).
+        radius = 0,
+        fraction = 0,
+        lastSurfaceId = 0,
+        lastForwardSlip = 0,
+        lastSideSlip = 0
+    }
 
     -- Used for raycasting, updates with wheel radius
     self.state.traceData = {
@@ -186,6 +194,8 @@ function ENT:ChangeRadius( radius )
 
     self:SetRadius( radius )
     self:SetModelScale2( scale )
+
+    state.radius = radius
     state.isBlown = self:IsBlown()
 
     -- Used on util.TraceHull
@@ -229,11 +239,17 @@ do
         ang:RotateAroundAxis( ang:Right(), state.spin )
         self:SetAngles( ang )
 
+        -- Do suspsension sounds
+        local fraction = state.fraction
+        self:DoSuspensionSounds( fraction - state.lastFraction, vehicle )
+        state.lastFraction = fraction
+
+        -- Set NW variables
         if isAsleep then
-            self:SetForwardSlip( 0 )
-            self:SetSideSlip( 0 )
+            self:SetContactSurface( 0 )
         else
             self:SetLastSpin( state.spin )
+            self:SetContactSurface( state.lastSurfaceId )
         end
 
         if isAsleep or not state.isOnGround then
@@ -242,6 +258,32 @@ do
 
             -- Slow down eventually
             state.angularVelocity = Approach( state.angularVelocity, 0, dt * 4 )
+
+            self:SetForwardSlip( 0 )
+            self:SetSideSlip( 0 )
+        else
+            self:SetForwardSlip( state.lastForwardSlip )
+            self:SetSideSlip( state.lastSideSlip )
+        end
+
+        -- Run touch events on entities our trace hits
+        local ent = state.ray.Entity
+        ent = ( ent and ent.IsValid and ent:IsValid() ) and ent or nil
+
+        if ent ~= state.lastTouchedEnt then
+            if state.lastTouchedEnt and state.lastTouchedEnt.EndTouch then
+                state.lastTouchedEnt:EndTouch( self )
+            end
+
+            if ent and ent.StartTouch then
+                ent:StartTouch( self )
+            end
+
+            state.lastTouchedEnt = ent
+        end
+
+        if ent and ent.Touch then
+            ent:Touch( self )
         end
     end
 
@@ -294,172 +336,164 @@ local Approach = math.Approach
 local TraceHull = util.TraceHull
 local TractionRamp = Glide.TractionRamp
 
--- Temporary variables
-local pos, ang, fw, rt, up, radius, maxLen, ent
-local fraction, contactPos, surfaceId, vel, velF, velR, velU, absVelR
-local offset, springForce, damperForce
-local surfaceGrip, maxTraction, brakeForce, forwardForce, signForwardForce
-local tractionCycle, gripLoss, groundAngularVelocity, angularVelocity = Vector()
-local slipAngle, sideForce
-local force, linearImp, angularImp
-local state, params, traceData, ray
+local VectorAdd = FindMetaTable( "Vector" ).Add
+local VectorDot = FindMetaTable( "Vector" ).Dot
+
+local AngForward = FindMetaTable( "Angle" ).Forward
+local AngRight = FindMetaTable( "Angle" ).Right
+local AngUp = FindMetaTable( "Angle" ).Up
+
+local PhysWorldToLocal = FindMetaTable( "PhysObj" ).WorldToLocal
+local PhysLocalToWorld = FindMetaTable( "PhysObj" ).LocalToWorld
+local PhysGetVelocityAtPoint = FindMetaTable( "PhysObj" ).GetVelocityAtPoint
+local PhysCalculateForceOffset = FindMetaTable( "PhysObj" ).CalculateForceOffset
+
+local EntLocalToWorldAngles = FindMetaTable( "Entity" ).LocalToWorldAngles
+local EntSetLocalPos = FindMetaTable( "Entity" ).SetLocalPos
+
+--local Accelerate = GlideAccelerate
+local tractionCycle = Vector()
 
 function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfaceGrip, vehSurfaceResistance, vehPos, vehVel, vehAngVel )
-    state, params = self.state, self.params
+    local state, params = self.state, self.params
 
     -- Get the starting point of the raycast, where the suspension connects to the chassis
-    pos = phys:LocalToWorld( params.basePos )
+    local pos = PhysLocalToWorld( phys, params.basePos )
 
     -- Get the wheel rotation relative to the chassis, applying the steering angle if necessary
-    ang = vehicle:LocalToWorldAngles( vehicle.steerAngle * params.steerMultiplier )
+    local ang = EntLocalToWorldAngles( vehicle, vehicle.steerAngle * params.steerMultiplier )
 
     -- Store some directions
-    fw = ang:Forward()
-    rt = ang:Right()
-    up = ang:Up()
+    local fw = AngForward( ang )
+    local rt = AngRight( ang )
+    local up = AngUp( ang )
 
     -- Do the raycast
-    radius = self:GetRadius()
-    maxLen = state.suspensionLengthMult * params.suspensionLength + radius
+    local radius = state.radius
+    local maxLen = state.suspensionLengthMult * params.suspensionLength + radius
 
-    traceData = state.traceData
+    local traceData = state.traceData
     traceData.filter = traceFilter
     traceData.start = pos
     traceData.endpos = pos - up * maxLen
-    ray = state.ray
 
-    -- TraceResult gets stored on the `ray` table
+    -- TraceResult gets stored on the `state.ray` table
     TraceHull( traceData )
 
     -- Run touch events on entities hit by the ray
-    ent = ray.Entity
-    ent = ( ent and ent.IsValid and ent:IsValid() ) and ent or nil
+    local ray = state.ray
+    state.fraction = Clamp( ray.Fraction, radius / maxLen, 1 )
 
-    if ent ~= state.lastTouchedEnt then
-        if state.lastTouchedEnt and state.lastTouchedEnt.EndTouch then
-            state.lastTouchedEnt:EndTouch( self )
-        end
-
-        if ent and ent.StartTouch then
-            ent:StartTouch( self )
-        end
-
-        state.lastTouchedEnt = ent
-    end
-
-    if ent and ent.Touch then
-        ent:Touch( self )
-    end
-
-    fraction = Clamp( ray.Fraction, radius / maxLen, 1 )
-    contactPos = pos - maxLen * fraction * up
+    local contactPos = pos - maxLen * state.fraction * up
+    EntSetLocalPos( self, PhysWorldToLocal( phys, contactPos + up * radius ) )
 
     -- Update ground contact NW variables
-    surfaceId = ray.Hit and ( ray.MatType or 0 ) or 0
+    local surfaceId = ray.Hit and ( ray.MatType or 0 ) or 0
     surfaceId = MAP_SURFACE_OVERRIDES[surfaceId] or surfaceId
 
     state.isOnGround = ray.Hit
-    self:SetContactSurface( surfaceId )
+    state.lastSurfaceId = surfaceId
 
     if state.isDebugging then
         debugoverlay.Cross( pos, 10, 0.05, Color( 100, 100, 100 ), true )
         debugoverlay.Box( contactPos, traceData.mins, traceData.maxs, 0.05, Color( 0, 200, 0 ) )
     end
 
-    -- Update the wheel position and sounds
-    self:SetLocalPos( phys:WorldToLocal( contactPos + up * radius ) )
-    self:DoSuspensionSounds( fraction - state.lastFraction, vehicle )
-    state.lastFraction = fraction
-
     if not ray.Hit then
-        self:SetForwardSlip( 0 )
-        self:SetSideSlip( 0 )
-
         return
     end
 
     pos = params.enableAxleForces and pos or contactPos
 
     -- Get the velocity at the wheel position
-    vel = phys:GetVelocityAtPoint( pos )
+    local vel = PhysGetVelocityAtPoint( phys, pos )
+
+    -- If the binary module is installed, use it to run the math.
+    --[[if Accelerate then
+        -- TODO
+        return
+    end]]
 
     -- Split that velocity among our local directions
-    velF = fw:Dot( vel )
-    velR = rt:Dot( vel )
-    velU = ray.HitNormal:Dot( vel )
-    absVelR = Abs( velR )
+    local velF = VectorDot( fw, vel )
+    local velR = VectorDot( rt, vel )
+    local velU = VectorDot( ray.HitNormal, vel )
+    local absVelR = Abs( velR )
 
     -- Make forward forces be perpendicular to the surface normal
     fw = ray.HitNormal:Cross( rt )
 
     -- Suspension spring force & damping
-    offset = maxLen - ( fraction * maxLen )
-    springForce = ( offset * params.springStrength )
-    damperForce = ( state.lastSpringOffset - offset ) * params.springDamper
+    local offset = maxLen - ( state.fraction * maxLen )
+    local springForce = ( offset * params.springStrength )
+    local damperForce = ( state.lastSpringOffset - offset ) * params.springDamper
     state.lastSpringOffset = offset
 
     -- If the suspension spring is going to be fully compressed on the next frame...
     if velU < 0 and offset + Abs( velU * dt ) > params.suspensionLength then
         -- Completely negate the downwards velocity at the local position
-        linearImp, angularImp = phys:CalculateVelocityOffset( ( -velU / dt ) * ray.HitNormal, pos )
-        vehVel:Add( linearImp )
-        vehAngVel:Add( angularImp )
+        local linearImp, angularImp = phys:CalculateVelocityOffset( ( -velU / dt ) * ray.HitNormal, pos )
+
+        VectorAdd( vehVel, linearImp )
+        VectorAdd( vehAngVel, angularImp )
 
         -- Teleport back up, using phys:SetPos to prevent going through stuff.
         linearImp = phys:CalculateVelocityOffset( ray.HitPos - ( contactPos + ray.HitNormal * velU * dt ), pos )
-        vehPos:Add( linearImp / dt )
+        VectorAdd( vehPos, linearImp / dt )
 
         -- Remove the damping force, to prevent a excessive bounce.
         damperForce = 0
     end
 
-    force = ( springForce - damperForce ) * up:Dot( ray.HitNormal ) * ray.HitNormal
+    local force = ( springForce - damperForce ) * VectorDot( up, ray.HitNormal ) * ray.HitNormal
 
     -- Rolling resistance
-    force:Add( ( vehSurfaceResistance[surfaceId] or 0.05 ) * -velF * fw )
+    VectorAdd( force, ( vehSurfaceResistance[surfaceId] or 0.05 ) * -velF * fw )
 
     -- Brake and torque forces
-    surfaceGrip = vehSurfaceGrip[surfaceId] or 1
-    maxTraction = params.forwardTractionMax * surfaceGrip * state.forwardTractionMult
+    local surfaceGrip = vehSurfaceGrip[surfaceId] or 1
+    local maxTraction = params.forwardTractionMax * surfaceGrip * state.forwardTractionMult
     maxTraction = state.isBlown and maxTraction * 0.5 or maxTraction
 
     -- Grip loss logic
-    brakeForce = ( velF > 0 and -state.brake or state.brake ) * params.brakePower * surfaceGrip
-    forwardForce = state.torque + brakeForce
-    signForwardForce = forwardForce > 0 and 1 or ( forwardForce < 0 and -1 or 0 )
+    local brakeForce = ( velF > 0 and -state.brake or state.brake ) * params.brakePower * surfaceGrip
+    local forwardForce = state.torque + brakeForce
+    local signForwardForce = forwardForce > 0 and 1 or ( forwardForce < 0 and -1 or 0 )
 
     -- Given an amount of sideways slippage (up to the max. traction)
     -- and the forward force, calculate how much grip we are losing.
     tractionCycle[1] = Min( absVelR, maxTraction )
     tractionCycle[2] = forwardForce
-    gripLoss = Max( tractionCycle:Length() - maxTraction, 0 )
+
+    local gripLoss = Max( tractionCycle:Length() - maxTraction, 0 )
 
     -- Reduce the forward force by the amount of grip we lost,
     -- but still allow some amount of brake force to apply regardless.
     forwardForce = forwardForce - ( gripLoss * signForwardForce ) + Clamp( brakeForce * 0.5, -maxTraction, maxTraction )
-    force:Add( fw * forwardForce )
+    VectorAdd( force, fw * forwardForce )
 
     -- Get how fast the wheel would be spinning if it had never lost grip
-    groundAngularVelocity = TAU * ( velF / ( radius * TAU ) )
+    local groundAngularVelocity = TAU * ( velF / ( radius * TAU ) )
 
     -- Add our grip loss to our spin velocity
-    angularVelocity = groundAngularVelocity + gripLoss * ( state.torque > 0 and 1 or ( state.torque < 0 and -1 or 0 ) )
+    local angularVelocity = groundAngularVelocity + gripLoss * ( state.torque > 0 and 1 or ( state.torque < 0 and -1 or 0 ) )
 
     -- Smoothly match our current angular velocity to the angular velocity affected by grip loss
     state.angularVelocity = Approach( state.angularVelocity, angularVelocity, dt * 200 )
 
     gripLoss = groundAngularVelocity - state.angularVelocity
-    self:SetForwardSlip( gripLoss )
+    state.lastForwardSlip = gripLoss
 
     -- Calculate side slip angle
-    slipAngle = ( Atan2( velR, Abs( velF ) ) / PI ) * 2
-    self:SetSideSlip( slipAngle * Clamp( vehicle.totalSpeed * 0.005, 0, 1 ) * 2 )
+    local slipAngle = ( Atan2( velR, Abs( velF ) ) / PI ) * 2
+    state.lastSideSlip = slipAngle * Clamp( vehicle.totalSpeed * 0.005, 0, 1 ) * 2
 
     -- Sideways traction ramp
     slipAngle = Abs( slipAngle * slipAngle )
     maxTraction = TractionRamp( slipAngle, params.sideTractionMaxAng, params.sideTractionMax, params.sideTractionMin )
     maxTraction = state.isBlown and maxTraction * 0.2 or maxTraction
-    sideForce = -rt:Dot( vel * params.sideTractionMultiplier * state.sideTractionMult )
+
+    local sideForce = -VectorDot( rt, vel * params.sideTractionMultiplier * state.sideTractionMult )
 
     -- Reduce sideways traction force as the wheel slips forward
     sideForce = sideForce * ( 1 - Clamp( Abs( gripLoss ) * 0.1, 0, 1 ) * 0.9 )
@@ -468,14 +502,14 @@ function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfa
     surfaceGrip = surfaceGrip * Clamp( springForce / params.springStrength, 0, 1 )
 
     -- Apply sideways traction force
-    force:Add( Clamp( sideForce, -maxTraction, maxTraction ) * surfaceGrip * rt )
+    VectorAdd( force, Clamp( sideForce, -maxTraction, maxTraction ) * surfaceGrip * rt )
 
     -- Apply an extra, small sideways force that is not clamped by maxTraction.
     -- This helps at lot with cornering at high speed.
-    force:Add( velR * params.sideTractionMultiplier * -0.1 * rt )
+    VectorAdd( force, velR * params.sideTractionMultiplier * -0.1 * rt )
 
     -- Apply the forces at the axle/ground contact position
-    linearImp, angularImp = phys:CalculateForceOffset( force, pos )
+    local linearImp, angularImp = PhysCalculateForceOffset( phys, force, pos )
 
     outLin[1] = outLin[1] + linearImp[1] / dt
     outLin[2] = outLin[2] + linearImp[2] / dt
