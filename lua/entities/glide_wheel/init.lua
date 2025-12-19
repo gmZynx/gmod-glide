@@ -200,7 +200,7 @@ function ENT:ChangeRadius( radius )
 
     -- Used on util.TraceHull
     state.traceData.mins = Vector( radius * -0.2, radius * -0.2, 0 )
-    state.traceData.maxs = Vector( radius * 0.2, radius * 0.2, 1 )
+    state.traceData.maxs = Vector( radius * 0.2, radius * 0.2, radius * 0.5 )
 end
 
 do
@@ -339,7 +339,6 @@ local TractionRamp = Glide.TractionRamp
 local VectorAdd = FindMetaTable( "Vector" ).Add
 local VectorDot = FindMetaTable( "Vector" ).Dot
 
-local AngForward = FindMetaTable( "Angle" ).Forward
 local AngRight = FindMetaTable( "Angle" ).Right
 local AngUp = FindMetaTable( "Angle" ).Up
 
@@ -363,12 +362,8 @@ function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfa
     -- Get the wheel rotation relative to the chassis, applying the steering angle if necessary
     local ang = EntLocalToWorldAngles( vehicle, vehicle.steerAngle * params.steerMultiplier )
 
-    -- Store some directions
-    local fw = AngForward( ang )
-    local rt = AngRight( ang )
-    local up = AngUp( ang )
-
     -- Do the raycast
+    local up = AngUp( ang )
     local radius = state.radius
     local maxLen = state.suspensionLengthMult * params.suspensionLength + radius
 
@@ -414,14 +409,17 @@ function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfa
         return
     end]]
 
+    -- Store some directions, perpendicular to the surface normal
+    up = ray.HitNormal
+
+    local fw = ray.HitNormal:Cross( AngRight( ang ) )
+    local rt = fw:Cross( up )
+
     -- Split that velocity among our local directions
     local velF = VectorDot( fw, vel )
     local velR = VectorDot( rt, vel )
-    local velU = VectorDot( ray.HitNormal, vel )
+    local velU = VectorDot( up, vel )
     local absVelR = Abs( velR )
-
-    -- Make forward forces be perpendicular to the surface normal
-    fw = ray.HitNormal:Cross( rt )
 
     -- Suspension spring force & damping
     local offset = maxLen - ( state.fraction * maxLen )
@@ -432,20 +430,20 @@ function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfa
     -- If the suspension spring is going to be fully compressed on the next frame...
     if velU < 0 and offset + Abs( velU * dt ) > params.suspensionLength then
         -- Completely negate the downwards velocity at the local position
-        local linearImp, angularImp = phys:CalculateVelocityOffset( ( -velU / dt ) * ray.HitNormal, pos )
+        local linearImp, angularImp = phys:CalculateVelocityOffset( ( -velU / dt ) * up, pos )
 
         VectorAdd( vehVel, linearImp )
         VectorAdd( vehAngVel, angularImp )
 
         -- Teleport back up, using phys:SetPos to prevent going through stuff.
-        linearImp = phys:CalculateVelocityOffset( ray.HitPos - ( contactPos + ray.HitNormal * velU * dt ), pos )
+        linearImp = phys:CalculateVelocityOffset( ray.HitPos - ( contactPos + up * velU * dt ), pos )
         VectorAdd( vehPos, linearImp / dt )
 
         -- Remove the damping force, to prevent a excessive bounce.
         damperForce = 0
     end
 
-    local force = ( springForce - damperForce ) * VectorDot( up, ray.HitNormal ) * ray.HitNormal
+    local force = ( springForce - damperForce ) * up
 
     -- Rolling resistance
     VectorAdd( force, ( vehSurfaceResistance[surfaceId] or 0.05 ) * -velF * fw )
