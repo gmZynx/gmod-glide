@@ -122,7 +122,7 @@ local type = type
 local function ValidateTarget( target )
     if type( target ) == "table" then
         for _, ent in ipairs( target ) do
-            if not IsValid( ent ) or ent:IsNPC() then
+            if not IsValid( ent ) or not ent:IsPlayer() then
                 return false
             end
         end
@@ -130,7 +130,7 @@ local function ValidateTarget( target )
         return #target > 0
     end
 
-    return IsValid( target ) and not target:IsNPC()
+    return IsValid( target ) and target:IsPlayer()
 end
 
 --- Send a notification message to the target(s).
