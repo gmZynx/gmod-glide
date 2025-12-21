@@ -75,6 +75,10 @@ function ENT:Initialize()
         mins = Vector(),
         maxs = Vector( 1, 1, 1 ),
 
+        -- Reuse Vector instances
+        start = Vector(),
+        endpos = Vector(),
+
         -- Output TraceResult to `ray`
         output = self.state.ray
     }
@@ -336,6 +340,8 @@ local Approach = math.Approach
 local TraceHull = util.TraceHull
 local TractionRamp = Glide.TractionRamp
 
+local VectorSet = FindMetaTable( "Vector" ).Set
+local VectorSub = FindMetaTable( "Vector" ).Sub
 local VectorAdd = FindMetaTable( "Vector" ).Add
 local VectorDot = FindMetaTable( "Vector" ).Dot
 
@@ -352,6 +358,7 @@ local EntSetLocalPos = FindMetaTable( "Entity" ).SetLocalPos
 
 --local Accelerate = GlideAccelerate
 local tractionCycle = Vector()
+local contactPos = Vector()
 
 function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfaceGrip, vehSurfaceResistance, vehPos, vehVel, vehAngVel )
     local state, params = self.state, self.params
@@ -369,8 +376,10 @@ function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfa
 
     local traceData = state.traceData
     traceData.filter = traceFilter
-    traceData.start = pos
-    traceData.endpos = pos - up * maxLen
+
+    VectorSet( traceData.start, pos )
+    VectorSet( traceData.endpos, pos )
+    VectorSub( traceData.endpos, up * maxLen )
 
     -- TraceResult gets stored on the `state.ray` table
     TraceHull( traceData )
@@ -379,7 +388,9 @@ function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfa
     local ray = state.ray
     state.fraction = Clamp( ray.Fraction, radius / maxLen, 1 )
 
-    local contactPos = pos - maxLen * state.fraction * up
+    VectorSet( contactPos, pos )
+    VectorSub( contactPos, maxLen * state.fraction * up )
+
     EntSetLocalPos( self, PhysWorldToLocal( phys, contactPos + up * radius ) )
 
     -- Update ground contact NW variables
