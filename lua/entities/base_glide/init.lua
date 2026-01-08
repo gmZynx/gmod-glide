@@ -119,8 +119,12 @@ function ENT:Initialize()
     self.inputFlyMode = 0           -- User mouse flying mode
     self.inputManualShift = false   -- User manual gear shifting setting
     self.autoTurnOffLights = false  -- User "turn off headlights" setting
+    self.autoTurnOnEngine = true
     self.inputThrottleModifierMode = 0  -- User throttle modifier setting
     self.inputThrottleModifierToggle = false
+
+    -- Input actions that can be held to run alternative logic.
+    self.holdInputActions = {}
 
     -- Setup collision variables
     self.collisionShakeCooldown = 0
@@ -163,7 +167,7 @@ function ENT:Initialize()
     phys:SetDamping( 0, 0 )
     phys:SetDragCoefficient( 0 )
     phys:SetAngleDragCoefficient( 0 )
-    phys:SetBuoyancyRatio( 0.05 )
+    phys:SetBuoyancyRatio( 0.07 )
     phys:EnableMotion( true )
     phys:Wake()
 
@@ -648,6 +652,7 @@ function ENT:CreateSeat( offset, angle, exitPos, isHidden )
     return seat
 end
 
+local Abs = math.abs
 local CurTime = CurTime
 local TickInterval = engine.TickInterval
 local GetDevMode = Glide.GetDevMode
@@ -702,7 +707,7 @@ function ENT:Think()
 
     -- Update weapons
     if selfTbl.weaponCount > 0 then
-        self:WeaponThink()
+        self:WeaponThink( selfTbl )
     end
 
     -- Update water logic
@@ -713,11 +718,11 @@ function ENT:Think()
         if self:WaterLevel() > 2 then
             self:SetIsEngineOnFire( false )
         else
-            local attacker = IsValid( self.lastDamageAttacker ) and self.lastDamageAttacker or self
-            local inflictor = IsValid( self.lastDamageInflictor ) and self.lastDamageInflictor or self
+            local attacker = IsValid( selfTbl.lastDamageAttacker ) and selfTbl.lastDamageAttacker or self
+            local inflictor = IsValid( selfTbl.lastDamageInflictor ) and selfTbl.lastDamageInflictor or self
 
             local dmg = DamageInfo()
-            dmg:SetDamage( self.MaxChassisHealth * self.ChassisFireDamageMultiplier * dt )
+            dmg:SetDamage( selfTbl.MaxChassisHealth * selfTbl.ChassisFireDamageMultiplier * dt )
             dmg:SetAttacker( attacker )
             dmg:SetInflictor( inflictor )
             dmg:SetDamageType( 0 )
@@ -729,12 +734,25 @@ function ENT:Think()
 
     -- Update wheels
     if selfTbl.wheelCount > 0 then
-        self:WheelThink( dt )
+        self:WheelThink( dt, selfTbl )
     end
 
     -- Update trailer sockets
     if selfTbl.socketCount > 0 then
         self:SocketThink( dt, time )
+    end
+
+    -- Handle hold input actions
+    for action, data in pairs( selfTbl.holdInputActions ) do
+        -- If this action has been held for long enough...
+        if data.timer and time > data.timer then
+            data.timer = nil
+            self:OnHoldInputAction( action, data )
+
+        elseif data.shouldRelease then
+            data.shouldRelease = nil
+            self:SetInputBool( 1, action, false )
+        end
     end
 
     -- Update bodygroups
@@ -749,7 +767,23 @@ function ENT:Think()
     local phys = self:GetPhysicsObject()
 
     if IsValid( phys ) then
-        self:ValidatePhysSettings( phys )
+        local lin, ang = phys:GetDamping()
+
+        if lin > 0 or ang > 0 then
+            phys:SetDamping( 0, 0 )
+        end
+
+        -- Make sure the physics stay awake when necessary,
+        -- otherwise the driver's input won't do anything.
+        local driverInput =
+            self:GetInputFloat( 1, "accelerate", selfTbl ) +
+            self:GetInputFloat( 1, "brake", selfTbl ) +
+            self:GetInputFloat( 1, "steer", selfTbl ) +
+            self:GetInputFloat( 1, "throttle", selfTbl )
+
+        if phys:IsAsleep() and Abs( driverInput ) > 0.01 then
+            phys:Wake()
+        end
     end
 
     -- Draw debug overlays, if `developer` cvar is active
@@ -758,32 +792,6 @@ function ENT:Think()
     end
 
     return true
-end
-
-local Abs = math.abs
-
---- Make sure nothing messed with
---- our physics damping and buoyancy values.
-function ENT:ValidatePhysSettings( phys )
-    phys:SetBuoyancyRatio( 0.02 )
-
-    local lin, ang = phys:GetDamping()
-
-    if lin > 0 or ang > 0 then
-        phys:SetDamping( 0, 0 )
-    end
-
-    -- Make sure the physics stay awake when necessary,
-    -- otherwise the driver's input won't do anything.
-    local driverInput =
-        self:GetInputFloat( 1, "accelerate" ) +
-        self:GetInputFloat( 1, "brake" ) +
-        self:GetInputFloat( 1, "steer" ) +
-        self:GetInputFloat( 1, "throttle" )
-
-    if phys:IsAsleep() and Abs( driverInput ) > 0.01 then
-        phys:Wake()
-    end
 end
 
 function ENT:UpdateHealthOutputs()
