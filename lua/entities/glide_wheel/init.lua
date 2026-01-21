@@ -418,7 +418,7 @@ function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfa
     -- Store some directions, perpendicular to the surface normal
     up = ray.HitNormal
 
-    local fw = ray.HitNormal:Cross( AngRight( ang ) )
+    local fw = ang:Forward()
     local rt = fw:Cross( up )
 
     -- Split that velocity among our local directions
