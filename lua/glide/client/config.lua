@@ -2,7 +2,7 @@ local Config = Glide.Config
 
 --- Reset settings to their default values.
 function Config:Reset()
-    self.version = 2
+    self.version = 3
 
     -- Audio settings
     self.carVolume = 1.0
@@ -205,6 +205,11 @@ function Config:CheckVersion( data )
             data.binds.land_controls.detach_trailer = nil
         end
 
+        upgraded = true
+
+    elseif data.version == 2 then
+        -- Engine stream backend defaults to WebAudio
+        data.engineStreamBackend = 2
         upgraded = true
     end
 
