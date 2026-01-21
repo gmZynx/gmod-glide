@@ -89,15 +89,6 @@ Glide.AddInputAction( "land_controls", "steer_right", KEY_D )
 Glide.AddInputAction( "land_controls", "accelerate", KEY_W )
 Glide.AddInputAction( "land_controls", "brake", KEY_S )
 
-if CLIENT then
-    hook.Add( "InitPostEntity", "GLide_DefaultButtons", function()
-        Glide.InputGroups["land_controls"]["accelerate"] = input.GetKeyCode( input.LookupBinding( "+forward" ) )
-        Glide.InputGroups["land_controls"]["brake"] = input.GetKeyCode( input.LookupBinding( "+back" ) )
-        Glide.InputGroups["land_controls"]["steer_left"] = input.GetKeyCode( input.LookupBinding( "+moveleft" ) )
-        Glide.InputGroups["land_controls"]["steer_right"] = input.GetKeyCode( input.LookupBinding( "+moveright" ) )
-    end )
-end
-
 Glide.AddInputAction( "land_controls", "handbrake", KEY_SPACE )
 Glide.AddInputAction( "land_controls", "throttle_modifier", KEY_LSHIFT )
 
