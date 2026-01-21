@@ -31,7 +31,6 @@ function ENT:Initialize()
         radius = 15,
         basePos = Vector(),
         steerMultiplier = 0,
-        enableAxleForces = false,
         isBulletProof = false
     }
 
@@ -129,10 +128,6 @@ function ENT:SetupWheel( t )
         params.radius = params.baseModelRadius
         params.modelScale = Vector( 1, 1, 1 )
     end
-
-    -- Should forces be applied at the axle position?
-    -- (Recommended for small vehicles like the Blazer)
-    params.enableAxleForces = t.enableAxleForces or false
 
     -- Can this wheel take damage?
     params.isBulletProof = t.isBulletProof == true
@@ -409,7 +404,7 @@ function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfa
         return
     end
 
-    pos = params.enableAxleForces and pos or contactPos
+    pos = contactPos
 
     -- Get the velocity at the wheel position
     local vel = PhysGetVelocityAtPoint( phys, pos )
