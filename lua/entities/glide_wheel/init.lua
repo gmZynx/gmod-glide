@@ -340,7 +340,7 @@ local VectorSub = FindMetaTable( "Vector" ).Sub
 local VectorAdd = FindMetaTable( "Vector" ).Add
 local VectorDot = FindMetaTable( "Vector" ).Dot
 
-local AngRight = FindMetaTable( "Angle" ).Right
+local AngForward = FindMetaTable( "Angle" ).Forward
 local AngUp = FindMetaTable( "Angle" ).Up
 
 local PhysWorldToLocal = FindMetaTable( "PhysObj" ).WorldToLocal
@@ -418,7 +418,7 @@ function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfa
     -- Store some directions, perpendicular to the surface normal
     up = ray.HitNormal
 
-    local fw = ang:Forward()
+    local fw = AngForward( ang )
     local rt = fw:Cross( up )
 
     -- Split that velocity among our local directions
