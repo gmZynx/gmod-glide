@@ -416,6 +416,8 @@ function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfa
     end]]
 
     -- Store some directions, perpendicular to the surface normal
+    local upAlign = VectorDot( up, ray.HitNormal )
+
     up = ray.HitNormal
 
     local fw = AngForward( ang )
@@ -423,7 +425,7 @@ function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfa
 
     -- Split that velocity among our local directions
     local velF = VectorDot( fw, vel )
-    local velR = VectorDot( rt, vel )
+    local velR = VectorDot( rt, vel ) * upAlign
     local velU = VectorDot( up, vel )
     local absVelR = Abs( velR )
 
@@ -434,7 +436,7 @@ function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfa
     state.lastSpringOffset = offset
 
     -- If the suspension spring is going to be fully compressed on the next frame...
-    if velU < 0 and offset + Abs( velU * dt ) > params.suspensionLength then
+    if upAlign > 0.5 and velU < 0 and offset + Abs( velU * dt ) > params.suspensionLength then
         -- Completely negate the downwards velocity at the local position
         local linearImp, angularImp = phys:CalculateVelocityOffset( ( -velU / dt ) * up, pos )
 
@@ -449,7 +451,7 @@ function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfa
         damperForce = 0
     end
 
-    local force = ( springForce - damperForce ) * up
+    local force = ( springForce - damperForce ) * upAlign * up
 
     -- Rolling resistance
     VectorAdd( force, ( vehSurfaceResistance[surfaceId] or 0.05 ) * -velF * fw )
