@@ -1174,7 +1174,7 @@ hook.Add( "Tick", "Glide.CheckVoiceActivity", function()
     glideVolume = Approach(
         glideVolume,
         isAnyoneTalking and Config.vcVolume or 1,
-        FrameTime() * ( isAnyoneTalking and 10 or 2 )
+        FrameTime() * ( isAnyoneTalking and 10 or 4 )
     )
 end )
 
