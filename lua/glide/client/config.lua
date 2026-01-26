@@ -87,10 +87,20 @@ function Config:ResetBinds()
     end
 
     -- Use the player's movement keys for these binds, for users with different keyboard layouts
-    binds["land_controls"]["accelerate"] = input.GetKeyCode( input.LookupBinding( "+forward" ) )
-    binds["land_controls"]["brake"] = input.GetKeyCode( input.LookupBinding( "+back" ) )
-    binds["land_controls"]["steer_left"] = input.GetKeyCode( input.LookupBinding( "+moveleft" ) )
-    binds["land_controls"]["steer_right"] = input.GetKeyCode( input.LookupBinding( "+moveright" ) )
+    local SetButtonFromBinding = function( bind, groupId, action )
+        local keyName = input.LookupBinding( bind )
+        if not keyName then return end
+
+        local buttonCode = input.GetKeyCode( keyName )
+        if not buttonCode then return end
+
+        binds[groupId][action] = buttonCode
+    end
+
+    SetButtonFromBinding( "+forward", "land_controls", "accelerate" )
+    SetButtonFromBinding( "+back", "land_controls", "brake" )
+    SetButtonFromBinding( "+moveleft", "land_controls", "steer_left" )
+    SetButtonFromBinding( "+moveright", "land_controls", "steer_right" )
 
     self.binds = binds
 end
