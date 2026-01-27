@@ -52,10 +52,8 @@ local GetTable = FindMetaTable( "Entity" ).GetTable
 function ENT:OnUpdateMisc()
     local selfTbl = GetTable( self )
 
-    if self:GetPower() > 0.1 then
-        if selfTbl.RotorBeatInterval and selfTbl.RotorBeatInterval > 0 then
-            self:DoRotorBeatSounds( selfTbl )
-        end
+    if self:GetPower() > 0.1 and selfTbl.RotorBeatInterval and selfTbl.RotorBeatInterval > 0 then
+        self:DoRotorBeatSounds( selfTbl )
     end
 
     if self:GetDriver() == NULL and self:GetPower() < 0.1 then return end
