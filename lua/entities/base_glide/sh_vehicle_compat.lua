@@ -59,11 +59,15 @@ end
 
 if SERVER then
     function ENT:EnableEngine( enable )
-        self:SetEngineHealth( enable and 1 or 0 )
+        self.isEngineEnabled = enable == true
+
+        if not self.isEngineEnabled and self:IsEngineOn() then
+            self:TurnOff()
+        end
     end
 
     function ENT:IsEngineEnabled()
-        return self:GetEngineHealth() > 0
+        return self.isEngineEnabled
     end
 
     function ENT:IsEngineStarted()
