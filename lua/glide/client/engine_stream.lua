@@ -276,6 +276,7 @@ function EngineStream:Play()
 
     -- Ensure WebAudio bridge has the stream data if layers were added directly
     self:CheckWebAudioJSON()
+
     for _, layer in pairs( self.layers ) do
         if IsValid( layer.channel ) then
             layer.channel:Play()
@@ -327,7 +328,7 @@ function EngineStream:Think( dt, eyePos, eyeAng )
 
     if self.isWebAudio then
         -- If this stream is handled by the Web Audio Bridge,
-        -- then only update a few variables position - everything
+        -- then only update the position - everything
         -- else is handled by the Web Audio Bridge logic.
         if self.firstPerson then
             self.position = eyePos + eyeAng:Forward() * 10
