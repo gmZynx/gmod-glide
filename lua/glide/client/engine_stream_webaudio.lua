@@ -392,9 +392,9 @@ local JS_SET_BUS_PARAM = "manager.setBusParameter('%s', %f);"
 local JS_UPDATE_LISTENER = "manager.updateListener(%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f);"
 local JS_UPDATE_STREAM = "manager.setStreamData('%s', %.2f, %.2f, %.2f, %.2f, %.2f, %.1f, %s);"
 
-local cvarVolume = GetConVar("volume")
-local cvarVolumeSfx = GetConVar("volume_sfx")
-local cvarMuteLoseFocus = GetConVar("snd_mute_losefocus")
+local cvarVolume = GetConVar( "volume" )
+local cvarVolumeSfx = GetConVar( "volume_sfx" )
+local cvarMuteLoseFocus = GetConVar( "snd_mute_losefocus" )
 
 local AddLine = WebAudio.AddLine
 local GetVolume = Glide.Config.GetVolume
@@ -414,9 +414,9 @@ function WebAudio:Think( dt )
         self:SetDebugValue( "room.vSize", room.vSize )
     end
 
-    local wetMultiplier = (1 - room.hSize) * (0.5 + (0.4 - room.vSize * 0.6))
+    local wetMultiplier = ( 1 - room.hSize ) * ( 0.5 + ( 0.4 - room.vSize * 0.6 ) )
     -- WebAudio bypasses Source Engine audio, so we need to apply volume convars manually
-    local preGainVolume = GetVolume("carVolume") * cvarVolume:GetFloat() * cvarVolumeSfx:GetFloat()
+    local preGainVolume = GetVolume( "carVolume" ) * cvarVolume:GetFloat() * cvarVolumeSfx:GetFloat()
 
     if cvarMuteLoseFocus:GetBool() and not system.HasFocus() then
         preGainVolume = 0

@@ -159,14 +159,14 @@ function EngineStream:CheckWebAudioJSON()
     }
 
     -- Copy customizable parameters
-    for k, v in pairs(DEFAULT_STREAM_PARAMS) do
+    for k, v in pairs( DEFAULT_STREAM_PARAMS ) do
         if self[k] ~= v then
             data.kv[k] = self[k]
         end
     end
 
     -- Copy layer data
-    for id, layer in pairs(self.layers) do
+    for id, layer in pairs( self.layers ) do
         data.layers[id] = {
             path = layer.path,
             redline = layer.redline,
@@ -174,8 +174,9 @@ function EngineStream:CheckWebAudioJSON()
         }
     end
 
-    self.updateWebJSON = Glide.ToJSON(data, false)
+    self.updateWebJSON = Glide.ToJSON( data, false )
 end
+
 local outputs = {
     volume = 0,
     pitch = 0
@@ -275,8 +276,8 @@ function EngineStream:Play()
 
     -- Ensure WebAudio bridge has the stream data if layers were added directly
     self:CheckWebAudioJSON()
-    for _, layer in pairs(self.layers) do
-        if IsValid(layer.channel) then
+    for _, layer in pairs( self.layers ) do
+        if IsValid( layer.channel ) then
             layer.channel:Play()
         end
     end
