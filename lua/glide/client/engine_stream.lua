@@ -146,6 +146,37 @@ function EngineStream:LoadJSON( data )
     end
 end
 
+--- Builds json for the Web Audio Bridge for streams added via Lua (AddLayer vs LoadJSON).
+--- Called automatically by Play() for streams configured via AddLayer().
+--- Does nothing if not using WebAudio or already finalized via LoadJSON().
+function EngineStream:CheckWebAudioJSON()
+    if not self.isWebAudio then return end
+    if self.updateWebJSON then return end
+
+    local data = {
+        kv = {},
+        layers = {},
+    }
+
+    -- Copy customizable parameters
+    for k, v in pairs( DEFAULT_STREAM_PARAMS ) do
+        if self[k] ~= v then
+            data.kv[k] = self[k]
+        end
+    end
+
+    -- Copy layer data
+    for id, layer in pairs( self.layers ) do
+        data.layers[id] = {
+            path = layer.path,
+            redline = layer.redline,
+            controllers = layer.controllers,
+        }
+    end
+
+    self.updateWebJSON = Glide.ToJSON( data, false )
+end
+
 local outputs = {
     volume = 0,
     pitch = 0
@@ -243,6 +274,8 @@ function EngineStream:Play()
     self.isPlaying = true
     self.volumeMultiplier = 0
 
+    -- Ensure WebAudio bridge has the stream data if layers were added directly
+    self:CheckWebAudioJSON()
     for _, layer in pairs( self.layers ) do
         if IsValid( layer.channel ) then
             layer.channel:Play()
