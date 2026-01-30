@@ -113,6 +113,7 @@ function ENT:Initialize()
     self.exitPos = {}   -- Per-seat exit offsets
     self.lastDriver = NULL
     self.lastBodygroups = {}
+    self.isEngineEnabled = true
 
     self.inputBools = {}        -- Per-seat bool inputs
     self.inputFloats = {}       -- Per-seat float inputs
@@ -141,7 +142,7 @@ function ENT:Initialize()
 
     -- Setup trace filter used by wheels to
     -- to ignore the vehicle's chassis and seats.
-    self.wheelTraceFilter = { self, "player" }
+    self.wheelTraceFilter = { self, "player", "npc_*" }
 
     -- Copy default surface multipliers to this vehicle.
     self.surfaceGrip = table.Copy( Glide.SURFACE_GRIP )
@@ -290,6 +291,8 @@ function ENT:OnEngineStateChange( _, lastState, state )
 end
 
 function ENT:TurnOn()
+    if not self.isEngineEnabled then return end
+
     local state = self:GetEngineState()
 
     if state == 3 then

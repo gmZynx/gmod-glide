@@ -118,7 +118,6 @@ function ENT:CreateFeatures()
         modelAngle = Angle( 0, 90, 0 ),
         modelScale = Vector( 0.38, 1, 1 ),
         steerMultiplier = 1,
-        enableAxleForces = true
     } )
 
     self:CreateWheel( Vector( 20, -19, -1 ), {
@@ -126,21 +125,18 @@ function ENT:CreateFeatures()
         modelAngle = Angle( 0, -90, 0 ),
         modelScale = Vector( 0.38, 1, 1 ),
         steerMultiplier = 1,
-        enableAxleForces = true
     } )
 
     self:CreateWheel( Vector( -20, 20, -1 ), {
         model = "models/gta5/vehicles/caddy2/wheel.mdl",
         modelAngle = Angle( 0, 90, 0 ),
         modelScale = Vector( 0.38, 1, 1 ),
-        enableAxleForces = true
     } )
 
     self:CreateWheel( Vector( -20, -20, -1 ), {
         model = "models/gta5/vehicles/caddy2/wheel.mdl",
         modelAngle = Angle( 0, -90, 0 ),
         modelScale = Vector( 0.38, 1, 1 ),
-        enableAxleForces = true
     } )
 
     self:ChangeWheelRadius( 10 )
@@ -208,7 +204,6 @@ end
 function ENT:TurnOff()
     BaseClass.TurnOff( self )
 
-    self:SetIsHonking( false )
     self:SetGear( 0 )
     self.startupTimer = nil
 
@@ -673,6 +668,14 @@ function ENT:WheelThink( dt, selfTbl )
 
         if state.isOnGround then
             groundedCount = groundedCount + 1
+        end
+    end
+
+    if groundedCount > selfTbl.groundedCount and selfTbl.groundedCount < 1 then
+        local vel = phys:GetVelocity():Length()
+
+        if vel > 100 and selfTbl.SuspensionLandFromFall ~= "" then
+            Glide.PlaySoundSet( selfTbl.SuspensionLandFromFall, self, Clamp( vel / 300, 0, 1 ) )
         end
     end
 

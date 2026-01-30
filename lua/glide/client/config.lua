@@ -2,7 +2,7 @@ local Config = Glide.Config
 
 --- Reset settings to their default values.
 function Config:Reset()
-    self.version = 2
+    self.version = 3
 
     -- Audio settings
     self.carVolume = 1.0
@@ -12,7 +12,7 @@ function Config:Reset()
     self.windVolume = 0.7
     self.warningVolume = 0.8
     self.vcVolume = 0.4
-    self.engineStreamBackend = 1
+    self.engineStreamBackend = 2
 
     -- Camera settings
     self.lookSensitivity = 1.0
@@ -85,6 +85,22 @@ function Config:ResetBinds()
             binds[groupId][action] = button
         end
     end
+
+    -- Use the player's movement keys for these binds, for users with different keyboard layouts
+    local SetButtonFromBinding = function( bind, groupId, action )
+        local keyName = input.LookupBinding( bind )
+        if not keyName then return end
+
+        local buttonCode = input.GetKeyCode( keyName )
+        if not buttonCode then return end
+
+        binds[groupId][action] = buttonCode
+    end
+
+    SetButtonFromBinding( "+forward", "land_controls", "accelerate" )
+    SetButtonFromBinding( "+back", "land_controls", "brake" )
+    SetButtonFromBinding( "+moveleft", "land_controls", "steer_left" )
+    SetButtonFromBinding( "+moveright", "land_controls", "steer_right" )
 
     self.binds = binds
 end
@@ -205,6 +221,11 @@ function Config:CheckVersion( data )
             data.binds.land_controls.detach_trailer = nil
         end
 
+        upgraded = true
+
+    elseif data.version == 2 then
+        -- Engine stream backend defaults to WebAudio
+        data.engineStreamBackend = 2
         upgraded = true
     end
 
@@ -1153,7 +1174,7 @@ hook.Add( "Tick", "Glide.CheckVoiceActivity", function()
     glideVolume = Approach(
         glideVolume,
         isAnyoneTalking and Config.vcVolume or 1,
-        FrameTime() * ( isAnyoneTalking and 10 or 2 )
+        FrameTime() * ( isAnyoneTalking and 10 or 4 )
     )
 end )
 

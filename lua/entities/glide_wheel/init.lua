@@ -31,7 +31,6 @@ function ENT:Initialize()
         radius = 15,
         basePos = Vector(),
         steerMultiplier = 0,
-        enableAxleForces = false,
         isBulletProof = false
     }
 
@@ -78,6 +77,10 @@ function ENT:Initialize()
         -- Reuse Vector instances
         start = Vector(),
         endpos = Vector(),
+
+        -- Filter options
+        mask = MASK_SHOT_HULL,
+        collisiongroup = COLLISION_GROUP_VEHICLE,
 
         -- Output TraceResult to `ray`
         output = self.state.ray
@@ -129,10 +132,6 @@ function ENT:SetupWheel( t )
         params.radius = params.baseModelRadius
         params.modelScale = Vector( 1, 1, 1 )
     end
-
-    -- Should forces be applied at the axle position?
-    -- (Recommended for small vehicles like the Blazer)
-    params.enableAxleForces = t.enableAxleForces or false
 
     -- Can this wheel take damage?
     params.isBulletProof = t.isBulletProof == true
@@ -323,7 +322,7 @@ do
             change = Abs( change )
 
             self.contractSoundCD = t + 0.3
-            PlaySoundSet( change > 0.03 and vehicle.SuspensionHeavySound or vehicle.SuspensionDownSound, self, Clamp( change * 20, 0, 1 ) )
+            PlaySoundSet( change > 0.03 and vehicle.SuspensionHeavySound or vehicle.SuspensionDownSound, self, Clamp( change * 10, 0, 1 ) )
         end
     end
 end
@@ -345,7 +344,7 @@ local VectorSub = FindMetaTable( "Vector" ).Sub
 local VectorAdd = FindMetaTable( "Vector" ).Add
 local VectorDot = FindMetaTable( "Vector" ).Dot
 
-local AngRight = FindMetaTable( "Angle" ).Right
+local AngForward = FindMetaTable( "Angle" ).Forward
 local AngUp = FindMetaTable( "Angle" ).Up
 
 local PhysWorldToLocal = FindMetaTable( "PhysObj" ).WorldToLocal
@@ -409,7 +408,7 @@ function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfa
         return
     end
 
-    pos = params.enableAxleForces and pos or contactPos
+    pos = contactPos
 
     -- Get the velocity at the wheel position
     local vel = PhysGetVelocityAtPoint( phys, pos )
@@ -421,14 +420,16 @@ function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfa
     end]]
 
     -- Store some directions, perpendicular to the surface normal
+    local upAlign = VectorDot( up, ray.HitNormal )
+
     up = ray.HitNormal
 
-    local fw = ray.HitNormal:Cross( AngRight( ang ) )
+    local fw = AngForward( ang )
     local rt = fw:Cross( up )
 
     -- Split that velocity among our local directions
     local velF = VectorDot( fw, vel )
-    local velR = VectorDot( rt, vel )
+    local velR = VectorDot( rt, vel ) * upAlign
     local velU = VectorDot( up, vel )
     local absVelR = Abs( velR )
 
@@ -439,7 +440,7 @@ function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfa
     state.lastSpringOffset = offset
 
     -- If the suspension spring is going to be fully compressed on the next frame...
-    if velU < 0 and offset + Abs( velU * dt ) > params.suspensionLength then
+    if upAlign > 0.5 and velU < 0 and offset + Abs( velU * dt ) > params.suspensionLength then
         -- Completely negate the downwards velocity at the local position
         local linearImp, angularImp = phys:CalculateVelocityOffset( ( -velU / dt ) * up, pos )
 
@@ -454,7 +455,7 @@ function ENT:DoPhysics( vehicle, phys, traceFilter, outLin, outAng, dt, vehSurfa
         damperForce = 0
     end
 
-    local force = ( springForce - damperForce ) * up
+    local force = ( springForce - damperForce ) * upAlign * up
 
     -- Rolling resistance
     VectorAdd( force, ( vehSurfaceResistance[surfaceId] or 0.05 ) * -velF * fw )

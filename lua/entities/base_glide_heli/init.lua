@@ -64,6 +64,7 @@ function ENT:CreateRotor( offset, radius, slowModel, fastModel )
     rotor:SetupRotor( offset, radius, slowModel, fastModel )
 
     self.rotors[#self.rotors + 1] = rotor
+    Glide.CopyEntityCreator( self, rotor )
 
     return rotor
 end
@@ -71,6 +72,8 @@ end
 --- Override this base class function.
 function ENT:TurnOn()
     BaseClass.TurnOn( self )
+
+    if not self.isEngineEnabled then return end
 
     self:SetEngineState( 2 )
     self:SetOutOfControl( false )

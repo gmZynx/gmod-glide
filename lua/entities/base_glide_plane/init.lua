@@ -67,6 +67,7 @@ function ENT:CreatePropeller( offset, radius, slowModel, fastModel )
     prop.maxSpinSpeed = 5000
 
     self.rotors[#self.rotors + 1] = prop
+    Glide.CopyEntityCreator( self, prop )
 
     return prop
 end
@@ -74,6 +75,8 @@ end
 --- Override this base class function.
 function ENT:TurnOn()
     BaseClass.TurnOn( self )
+
+    if not self.isEngineEnabled then return end
 
     self:SetEngineState( 2 )
     self:SetExtraPitch( 1 )
