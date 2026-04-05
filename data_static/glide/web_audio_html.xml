@@ -188,18 +188,18 @@ class EngineStream {
         this.lowpassNode = context.createBiquadFilter();
         this.lowpassNode.type = "highshelf";
         this.lowpassNode.frequency.value = 20000.0;
-        this.lowpassNode.gain.value = -12.0;
+        this.lowpassNode.gain.value = -20.0;
         this.lowpassNode.Q.value = 1.0;
 
         this.pannerNode = new PannerNode(context, {
             panningModel: "equalpower", //"HRTF",
-            distanceModel: "linear",
+            distanceModel: "inverse",
             positionX: this.position[0],
             positionY: this.position[1],
             positionZ: this.position[2],
+            refDistance: this.params.fadeDist * 0.1,
             maxDistance: this.params.fadeDist,
-            refDistance: 1,
-            rolloffFactor: 10
+            rolloffFactor: 0.8
         });
 
         this.pannerNode.channelCount = 1;
@@ -365,13 +365,14 @@ class EngineStream {
     think(dt) {
         if (!this.isPlaying) return;
 
-        if (this.volumeMultiplier < 1) {
-            this.volumeMultiplier = approach(this.volumeMultiplier, 1, dt);
+        if (this.volumeMultiplier < 0.8) {
+            this.volumeMultiplier = approach(this.volumeMultiplier, 0.8, dt);
         }
 
         const inputs = this.inputs;
         const params = this.params;
 
+        this.pannerNode.refDistance = params.fadeDist * 0.1;
         this.pannerNode.maxDistance = params.fadeDist;
 
         let baseVol = params.volume * this.volumeMultiplier;
@@ -540,9 +541,9 @@ class EngineStreamManager {
 
         // Add a compressor to prevent audio clipping
         const compressorNode = this.audioContext.createDynamicsCompressor();
-        compressorNode.threshold.value = -40;
-        compressorNode.knee.value = 40;
-        compressorNode.ratio.value = 4;
+        compressorNode.threshold.value = -20;
+        compressorNode.knee.value = 20;
+        compressorNode.ratio.value = 2;
         compressorNode.attack.value = 0.1;
         compressorNode.release.value = 0.2;
 

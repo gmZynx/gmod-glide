@@ -158,19 +158,34 @@ hook.Add( "ClientSignOnStateChanged", "Glide.TriggerOnPlayerLoad", function( use
     end )
 end )
 
+local function IsTrailerClass( class )
+    if class == "base_glide_trailer" then
+        return true
+    end
+
+    return scripted_ents.IsBasedOn( class, "base_glide_trailer" )
+end
+
 local IsValid = IsValid
 
-function Glide.CanSpawnVehicle( ply )
-    if hook.Run( "Glide_CanSpawnVehicle", ply ) == false then return false end
-
+function Glide.CanSpawnVehicle( ply, class )
     if not IsValid( ply ) then return false end
-    if not ply:CheckLimit( "glide_vehicles" ) then return false end
+
+    local limitName = IsTrailerClass( class ) and "glide_trailers" or "glide_vehicles"
+
+    if not ply:CheckLimit( limitName ) then
+        return false
+    end
+
+    if hook.Run( "Glide_CanSpawnVehicle", ply, class ) == false then
+        return false
+    end
 
     return true
 end
 
 function Glide.VehicleFactory( ply, data )
-    if not Glide.CanSpawnVehicle( ply ) then return end
+    if not Glide.CanSpawnVehicle( ply, data.Class ) then return end
 
     local ent = ents.Create( data.Class )
     if not IsValid( ent ) then return end
@@ -181,8 +196,10 @@ function Glide.VehicleFactory( ply, data )
     ent:Spawn()
     ent:Activate()
 
-    ply:AddCount( "glide_vehicles", ent )
-    cleanup.Add( ply, "glide_vehicles", ent )
+    local limitName = IsTrailerClass( data.Class ) and "glide_trailers" or "glide_vehicles"
+
+    ply:AddCount( limitName, ent )
+    cleanup.Add( ply, limitName, ent )
 
     return ent
 end
@@ -209,9 +226,15 @@ function Glide.CanLockVehicle( ply, vehicle )
     return hook.Run( "Glide_CanLockVehicle", ply, vehicle ) or false
 end
 
+local cvarAlwaysEnterLocked = GetConVar( "glide_always_can_enter_locked_vehicles" )
+
 --- Check if a player can enter a locked vehicle.
 function Glide.CanEnterLockedVehicle( ply, vehicle )
-    return hook.Run( "Glide_CanEnterLockedVehicle", ply, vehicle ) or Glide.CanLockVehicle( ply, vehicle )
+    if hook.Run( "Glide_CanEnterLockedVehicle", ply, vehicle ) == false then
+        return false
+    end
+
+    return cvarAlwaysEnterLocked:GetBool() or Glide.CanLockVehicle( ply, vehicle )
 end
 
 --- Make a player switch to another seat

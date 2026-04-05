@@ -188,15 +188,19 @@ end
 -- Toggles
 CreateConVar( "glide_pacifist_mode", "0", FCVAR_ARCHIVE + FCVAR_NOTIFY + FCVAR_REPLICATED, "When set to 1, disables VSWEPs and vehicle turrets.", 0, 1 )
 CreateConVar( "glide_allow_gravity_gun_punt", "0", FCVAR_ARCHIVE + FCVAR_NOTIFY + FCVAR_REPLICATED, "When set to 1, allows players to push vehicles with the Gravity Gun.", 0, 1 )
-CreateConVar( "glide_enable_damage_player_on_collision", "0", FCVAR_ARCHIVE + FCVAR_REPLICATED, "Whether players inside vehicles can take damage from hard collisions." )
+CreateConVar( "glide_enable_damage_player_on_collision", "0", FCVAR_ARCHIVE + FCVAR_REPLICATED, "Whether players inside vehicles can take damage from hard collisions.", 0, 1 )
+CreateConVar( "glide_always_can_enter_locked_vehicles", "0", FCVAR_ARCHIVE + FCVAR_REPLICATED, "Whether players can enter locked vehicles they don't own.", 0, 1 )
 
 -- Sandbox limits
 cleanup.Register( "glide_vehicles" )
+cleanup.Register( "glide_trailers" )
 cleanup.Register( "glide_standalone_turrets" )
 cleanup.Register( "glide_missile_launchers" )
 cleanup.Register( "glide_projectile_launchers" )
 
 CreateConVar( "sbox_maxglide_vehicles", "5", FCVAR_ARCHIVE + FCVAR_NOTIFY + FCVAR_REPLICATED, "Max. number of Glide vehicles that one player can have", 0 )
+CreateConVar( "sbox_maxglide_trailers", "5", FCVAR_ARCHIVE + FCVAR_NOTIFY + FCVAR_REPLICATED, "Max. number of Glide trailers that one player can have (separate from sbox_maxglide_vehicles)", 0 )
+
 CreateConVar( "sbox_maxglide_standalone_turrets", "5", FCVAR_ARCHIVE + FCVAR_NOTIFY + FCVAR_REPLICATED, "Max. number of Glide Turrets that one player can have", 0 )
 CreateConVar( "sbox_maxglide_missile_launchers", "5", FCVAR_ARCHIVE + FCVAR_NOTIFY + FCVAR_REPLICATED, "Max. number of Glide Missile Launchers that one player can have", 0 )
 CreateConVar( "sbox_maxglide_projectile_launchers", "5", FCVAR_ARCHIVE + FCVAR_NOTIFY + FCVAR_REPLICATED, "Max. number of Glide Projectile Launchers that one player can have", 0 )
