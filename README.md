@@ -138,4 +138,4 @@ A pack of content and entity classes to add cars, motorcycles, planes, helicopte
 
 ## Contributing
 
-Please follow the [these rules](https://github.com/StyledStrike/gmod-glide/blob/main/.github/pull_request_template.md) before opening pull requests.
+Please follow the [these rules](CONTRIBUTING.md) before opening pull requests.
