@@ -41,6 +41,7 @@ function Config:Reset()
     self.rollMouseAxis = 1 -- X
     self.mouseDeadzone = 0.15
     self.mouseShow = true
+    self.mouseFlyDecayRate = 0.0
 
     self.mouseSteerMode = Glide.MOUSE_STEER_MODE.DISABLED
     self.mouseSteerSensitivity = 0.5
@@ -160,6 +161,7 @@ function Config:Save( immediate )
         mouseSensitivityY = self.mouseSensitivityY,
         mouseInvertX = self.mouseInvertX,
         mouseInvertY = self.mouseInvertY,
+        mouseFlyDecayRate = self.mouseFlyDecayRate,
 
         mouseSteerMode = self.mouseSteerMode,
         mouseSteerSensitivity = self.mouseSteerSensitivity,
@@ -289,6 +291,7 @@ function Config:Load()
     SetNumber( self, "yawMouseAxis", data.yawMouseAxis, 0, 2, self.yawMouseAxis )
     SetNumber( self, "rollMouseAxis", data.rollMouseAxis, 0, 2, self.rollMouseAxis )
     SetNumber( self, "mouseDeadzone", data.mouseDeadzone, 0, 1, self.mouseDeadzone )
+    SetNumber( self, "mouseFlyDecayRate", data.mouseFlyDecayRate, 0, 3, self.mouseFlyDecayRate )
 
     self.mouseSteerMode = math.Round( Glide.ValidateNumber( data.mouseSteerMode, 0, 2, self.mouseSteerMode ) )
     SetNumber( self, "mouseSteerSensitivity", data.mouseSteerSensitivity, 0.05, 3, self.mouseSteerSensitivity )
@@ -543,7 +546,7 @@ function Config:OpenFrame()
 
     self.frame = frame
 
-    ----- Go back to last open tab ----- 
+    ----- Go back to last open tab -----
 
     timer.Simple( 0, function()
         if IsValid( self.frame ) then
@@ -772,6 +775,11 @@ function Config:OpenFrame()
 
         CreateSlider( directMouseFlyPanel, L"mouse.deadzone", self.mouseDeadzone, 0, 0.5, 2, function( value )
             self.mouseDeadzone = value
+            self:Save()
+        end )
+
+        CreateSlider( directMouseFlyPanel, L"mouse.decay_rate", self.mouseFlyDecayRate, 0, 3, 1, function( value )
+            self.mouseFlyDecayRate = value
             self:Save()
         end )
 
@@ -1073,6 +1081,8 @@ function Config:OpenFrame()
             { name = "glide_pacifist_mode", decimals = 0, min = 0, max = 1 },
             { name = "glide_allow_gravity_gun_punt", decimals = 0, min = 0, max = 1 },
             { name = "glide_enable_damage_player_on_collision", decimals = 0, min = 0, max = 1 },
+            { name = "glide_always_can_enter_locked_vehicles", decimals = 0, min = 0, max = 1 },
+            { name = "glide_allow_player_weapons_in_vehicle", decimals = 0, min = 0, max = 1 },
 
             { name = "glide_ragdoll_enable", decimals = 0, min = 0, max = 1 },
             { name = "glide_ragdoll_max_time", decimals = 0, min = 0, max = 30 },
@@ -1092,6 +1102,11 @@ function Config:OpenFrame()
             { name = "glide_projectile_launcher_max_lifetime", decimals = 1, min = 1, max = 30 },
             { name = "glide_projectile_launcher_max_radius", decimals = 0, min = 10, max = 1000 },
             { name = "glide_projectile_launcher_max_damage", decimals = 0, min = 0, max = 1000 },
+
+            { category = "#tool.glide_repair_ray.name" },
+            { name = "glide_repair_ray_max_capacity", decimals = 0, min = 1, max = 10000 },
+            { name = "glide_repair_ray_output_per_second", decimals = 0, min = 1, max = 1000 },
+            { name = "glide_repair_ray_refill_per_second", decimals = 0, min = 1, max = 1000 },
         }
 
         for _, data in ipairs( cvarList ) do
@@ -1157,27 +1172,7 @@ function Config:OpenFrame()
     end
 end
 
-local FrameTime = FrameTime
-local Approach = math.Approach
-
-local glideVolume = 1
-
-hook.Add( "Tick", "Glide.CheckVoiceActivity", function()
-    local isAnyoneTalking = false
-
-    for _, ply in ipairs( player.GetAll() ) do
-        if ply:IsVoiceAudible() and ply:VoiceVolume() > 0.05 then
-            isAnyoneTalking = true
-            break
-        end
-    end
-
-    glideVolume = Approach(
-        glideVolume,
-        isAnyoneTalking and Config.vcVolume or 1,
-        FrameTime() * ( isAnyoneTalking and 10 or 4 )
-    )
-end )
+local volumeMultiplier = 1.0
 
 -- Calculate the volume multiplier for a specific audio type,
 -- depending on settings and how loud the voice chat is.
@@ -1185,5 +1180,50 @@ end )
 -- audioType must be one of these:
 -- "carVolume", "aircraftVolume", "explosionVolume", "hornVolume", "windVolume", "warningVolume"
 function Config.GetVolume( audioType )
-    return Config[audioType] * glideVolume
+    return Config[audioType] * volumeMultiplier
 end
+
+-- Run the voice activity.
+-- Please note that any changes in the logic here require restarting
+-- the game to test, since many scripts localize `Config.GetVolume`.
+
+local FrameTime = FrameTime
+local Approach = math.Approach
+local PlayerIterator = player.Iterator
+
+local VoiceVolume = FindMetaTable( "Player" ).VoiceVolume
+local IsVoiceAudible = FindMetaTable( "Player" ).IsVoiceAudible
+local IsValid = IsValid
+
+local playerIndex = 0
+local isAnyoneTalking = false
+local shouldReduceVolume = false
+
+hook.Add( "Think", "Glide.DetectVoiceActivity", function()
+    -- Iterate over the list of players, checking for
+    -- voice activity on one player per frame.
+    local iterator, allPlayers = PlayerIterator()
+    local i, ply = iterator( allPlayers, playerIndex )
+
+    playerIndex = playerIndex + 1
+
+    if i and IsValid( ply ) and IsVoiceAudible( ply ) and VoiceVolume( ply ) > 0.01 then
+        isAnyoneTalking = true
+        i = nil -- Break out of the iteration early
+    end
+
+    -- When we reach the end of the iteration...
+    if not i then
+        shouldReduceVolume = isAnyoneTalking
+
+        -- Begin a new iteration
+        playerIndex = 0
+        isAnyoneTalking = false
+    end
+
+    volumeMultiplier = Approach(
+        volumeMultiplier,
+        shouldReduceVolume and Config.vcVolume or 1,
+        FrameTime() * ( shouldReduceVolume and 4 or 1 )
+    )
+end )

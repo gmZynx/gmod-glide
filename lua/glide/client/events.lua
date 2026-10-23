@@ -17,13 +17,12 @@ end, nil, "Switch seats while inside a Glide vehicle." )
 
 ----- Check if the local player has entered/left a Glide vehicle.
 
-local hideComponent = {
-    ["CHudHealth"] = true,
+local hideComponents = {
     ["CHudBattery"] = true
 }
 
 local function HUDShouldDraw( name )
-    if hideComponent[name] then return false end
+    if hideComponents[name] then return false end
 end
 
 -- Block (some) binds that uses the same buttons as Glide
@@ -56,7 +55,8 @@ local DONT_BLOCK = {
     ["+attack"] = true,
     ["+attack2"] = true,
     ["+attack3"] = true,
-    ["+walk"] = true
+    ["+walk"] = true,
+    ["+score"] = true
 }
 
 local function BlockBinds( _, bind, _, code )
@@ -78,6 +78,8 @@ local function DrawVehicleHUD()
         activeVehicle:DrawVehicleHUD( ScrW(), ScrH() )
     end
 end
+
+local calcViewFunctions = {}
 
 local function OnEnter( vehicle, seatIndex )
     vehicle:OnLocalPlayerEnter( seatIndex )
@@ -104,12 +106,18 @@ local function OnEnter( vehicle, seatIndex )
         RunConsoleCommand( "snd_fixed_rate", "1" )
     end
 
-    -- Simple ThirdPerson compatibility
-    local func = hook.GetTable()["CalcView"]["SimpleTP.Camera.View"]
+    -- Forcibly disable hooks from camera addons defined on Glide.CAMERA_CALC_VIEW_HOOKS
+    local calcViewHookTable = hook.GetTable()["CalcView"]
 
-    if func then
-        Glide.simpleThirdPersonHook = func
-        hook.Remove( "CalcView", "SimpleTP.Camera.View" )
+    if calcViewHookTable then
+        for hookId, _ in pairs( Glide.CAMERA_CALC_VIEW_HOOKS ) do
+            local func = calcViewHookTable[hookId]
+
+            if func then
+                calcViewFunctions[hookId] = func
+                hook.Remove( "CalcView", hookId )
+            end
+        end
     end
 end
 
@@ -137,13 +145,13 @@ local function OnLeave( ply )
         RunConsoleCommand( "snd_fixed_rate", "0" )
     end
 
-    -- Simple ThirdPerson compatibility
-    if Glide.simpleThirdPersonHook then
-        hook.Add( "CalcView", "SimpleTP.Camera.View", Glide.simpleThirdPersonHook )
-    end
-
     timer.Remove( "Glide.CheckMouseVisibility" )
     cvarIsMouseVisible:SetInt( 0 )
+
+    -- Restore disabled hooks from camera addons defined on Glide.CAMERA_CALC_VIEW_HOOKS
+    for hookId, func in pairs( calcViewFunctions ) do
+        hook.Add( "CalcView", hookId, func )
+    end
 end
 
 local IsValid = IsValid

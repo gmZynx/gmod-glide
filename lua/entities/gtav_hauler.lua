@@ -117,7 +117,7 @@ if SERVER then
         self:SetSideTractionMultiplier( 90 )
         self:SetForwardTractionMax( 6000 )
         self:SetSideTractionMax( 4000 )
-        self:SetSideTractionMin( 5500 )
+        self:SetSideTractionMin( 3000 )
 
         self:SetDifferentialRatio( 0.3 )
         self:SetPowerDistribution( -0.7 )

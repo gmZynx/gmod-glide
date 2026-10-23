@@ -113,6 +113,22 @@ A pack of content and entity classes to add cars, motorcycles, planes, helicopte
 | `glide_projectile_launcher_max_radius` `<number>` | Maximum radius from explosions created by Glide Projectile Launchers
 | `glide_projectile_launcher_max_damage` `<number>` | Maximum damage dealt by explosions from Glide Projectile Launchers
 
+### Flare Launcher tool limits
+
+| Command | Description |
+| ------- | ----------- |
+| `glide_flare_launcher_min_delay` `<number>` | Minimum delay allowed for Glide Flare Launchers |
+| `glide_flare_launcher_max_force` `<number>` | Maximum launch force allowed for Glide Flare Launchers |
+
+
+### Repair Ray tool limits
+
+| Command | Description
+| ------- | -----------
+| `glide_repair_ray_max_capacity` `<number>` | Maximum amount of HP that Glide Repair Rays can hold
+| `glide_repair_ray_output_per_second` `<number>` | How fast to output HP from the Glide Repair Rays, per second
+| `glide_repair_ray_refill_per_second` `<number>` | How fast to replenish the HP of Glide Repair Rays, per second
+
 ### Ragdolls
 
 | Command | Description
@@ -122,4 +138,4 @@ A pack of content and entity classes to add cars, motorcycles, planes, helicopte
 
 ## Contributing
 
-Please follow the [these rules](https://github.com/StyledStrike/gmod-glide/blob/main/.github/pull_request_template.md) before opening pull requests.
+Please follow the [these rules](CONTRIBUTING.md) before opening pull requests.

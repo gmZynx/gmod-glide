@@ -5,6 +5,8 @@ include( "shared.lua" )
 
 DEFINE_BASECLASS( "base_glide_car" )
 
+duplicator.RegisterEntityClass( "base_glide_tank", Glide.VehicleFactory, "Data" )
+
 --- Implement this base class function.
 function ENT:OnPostInitialize()
     BaseClass.OnPostInitialize( self )
@@ -191,7 +193,7 @@ function ENT:OnWeaponFire( weapon, slotIndex )
 
     local phys = self:GetPhysicsObject()
 
-    if IsValid( phys ) then
+    if self.hasValidPhysics then
         phys:ApplyForceOffset( dir * phys:GetMass() * -self.TurretRecoilForce, projectilePos )
     end
 
@@ -321,6 +323,7 @@ function ENT:UpdateSteering( dt, selfTbl )
 end
 
 local Clamp = math.Clamp
+local GetTable = FindMetaTable( "Entity" ).GetTable
 
 local traction, tractionFront, tractionRear
 local frontTorque, rearTorque, steerAngle, frontBrake, rearBrake
@@ -330,8 +333,7 @@ local groundedCount, rpm, avgRPM, totalSideSlip, totalForwardSlip, totalAngVel, 
 --- On tanks, if `isTurningInPlace` is true, `frontTorque` and `rearTorque`
 --- becomes the torque for the right-side track wheels and left-side track wheels respectively.
 function ENT:WheelThink( dt, selfTbl )
-    local phys = self:GetPhysicsObject()
-    local isAsleep = IsValid( phys ) and phys:IsAsleep()
+    local isAsleep = selfTbl.hasSleepingPhysics
     local isTurningInPlace = selfTbl.isTurningInPlace
 
     local maxRPM = self:GetTransmissionMaxRPM( self:GetGear(), selfTbl )
@@ -349,12 +351,13 @@ function ENT:WheelThink( dt, selfTbl )
     groundedCount, avgRPM, totalSideSlip, totalForwardSlip, totalAngVel = 0, 0, 0, 0, 0
 
     for _, w in EntityPairs( selfTbl.wheels ) do
-        w:Update( self, steerAngle, isAsleep, dt )
+        local wheelTbl = GetTable( w )
+        wheelTbl.Update( w, self, steerAngle, isAsleep, dt, wheelTbl )
 
-        totalSideSlip = totalSideSlip + w:GetSideSlip()
-        totalForwardSlip = totalForwardSlip + w:GetForwardSlip()
+        state = wheelTbl.state
+        totalSideSlip = totalSideSlip + state.lastSideSlip
+        totalForwardSlip = totalForwardSlip + state.lastForwardSlip
 
-        state = w.state
         rpm = w:GetRPM()
         avgRPM = avgRPM + rpm * state.distributionFactor
 

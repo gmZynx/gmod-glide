@@ -11,6 +11,27 @@ ENT.AutomaticFrameAdvance = true
 
 if not SERVER then return end
 
+list.Set( "starfall_creatable_sent", "glide_missile_launcher", {
+    _postFactory = function( _ply, ent, entTbl )
+        ent:SetReloadDelay( entTbl.ReloadDelay )
+        ent:SetMissileLifetime( entTbl.MissileLifetime )
+        ent:SetExplosionRadius( entTbl.ExplosionRadius )
+        ent:SetExplosionDamage( entTbl.ExplosionDamage )
+
+        ent:SetMissileModel( entTbl.MissileModel )
+        ent:SetMissileScale( entTbl.MissileModelScale )
+    end,
+
+    {
+        ["ReloadDelay"] = { TYPE_NUMBER, 1 },
+        ["MissileLifetime"] = { TYPE_NUMBER, 5 },
+        ["ExplosionRadius"] = { TYPE_NUMBER, 350 },
+        ["ExplosionDamage"] = { TYPE_NUMBER, 100 },
+        ["MissileModel"] = { TYPE_STRING, "models/glide/weapons/homing_rocket.mdl" },
+        ["MissileModelScale"] = { TYPE_NUMBER, 1 },
+    }
+} )
+
 local ENT_VARS = {
     ["reloadDelay"] = true,
     ["missileLifetime"] = true,
@@ -31,11 +52,14 @@ end
 function ENT:PostEntityPaste( ply, ent, createdEntities )
     Glide.PostEntityPaste( ply, ent, createdEntities )
 
-    -- Update parameters in case the limits/console variables are not set to default
+    -- Update parameters in case the limits/console variables
+    -- are different compared to when this entity was duped.
     self:SetReloadDelay( self.reloadDelay )
     self:SetMissileLifetime( self.missileLifetime )
     self:SetExplosionRadius( self.explosionRadius )
     self:SetExplosionDamage( self.explosionDamage )
+
+    self.nextShoot = CurTime() + self.reloadDelay
 end
 
 local function MakeSpawner( ply, data )
@@ -89,8 +113,9 @@ function ENT:Initialize()
     self.missileScale = 1
 
     self.isFiring = false
-    self.nextShoot = 0
+    self.nextShoot = CurTime() + self.reloadDelay
     self.homingTarget = NULL
+    self.lastPos = Vector()
 
     if WireLib then
         WireLib.CreateSpecialInputs( self,
@@ -105,12 +130,13 @@ local FireMissile = Glide.FireMissile
 
 function ENT:Think()
     local t = CurTime()
+    local myPos = self:GetPos()
 
     if self.isFiring and t > self.nextShoot then
         self.nextShoot = t + self.reloadDelay
 
         local dir = self:GetUp()
-        local pos = self:GetPos() + dir * 10
+        local pos = myPos + dir * 10
         local ang = dir:Angle()
 
         local parent = self:GetParent()
@@ -119,15 +145,21 @@ function ENT:Think()
             parent = self
         end
 
+        local speed = math.max( 0, dir:Dot( myPos - self.lastPos ) / FrameTime() )
+
         local missile = FireMissile( pos, ang, self:GetCreator(), parent, self.homingTarget )
         missile.radius = self.explosionRadius
         missile.damage = self.explosionDamage
         missile.lifeTime = t + self.missileLifetime
+        missile.speed = speed
 
         missile:SetModel( self.missileModel )
         missile:SetModelScale( self.missileScale )
+
+        Glide.CopyEntityCreator( self, missile )
     end
 
+    self.lastPos = myPos
     self:NextThink( t )
 
     return true

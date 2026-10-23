@@ -46,7 +46,7 @@ function ENT:Explode( attacker, inflictor )
                 gib:SetAngles( w:GetAngles() )
                 gib:SetModel( w:GetModel() )
                 gib:Spawn()
-                gib:CopyVelocities( self )
+                gib:SetupCopy( self )
 
                 SetEntityCreator( gib, creator )
 
@@ -68,14 +68,10 @@ function ENT:Explode( attacker, inflictor )
         gib:SetAngles( self:GetAngles() )
         gib:SetModel( self:GetModel() )
         gib:Spawn()
-        gib:CopyVelocities( self )
+        gib:SetupCopy( self )
         gib:SetOnFire()
 
         SetEntityCreator( gib, creator )
-
-        for _, v in ipairs( gib:GetBodyGroups() ) do
-            gib:SetBodygroup( v.id, 1 )
-        end
     else
         -- Spawn gibs given by the `ExplosionGibs` table
         for k, v in ipairs( self.ExplosionGibs ) do
@@ -84,7 +80,7 @@ function ENT:Explode( attacker, inflictor )
             gib:SetAngles( self:GetAngles() )
             gib:SetModel( v )
             gib:Spawn()
-            gib:CopyVelocities( self )
+            gib:SetupCopy( self )
 
             SetEntityCreator( gib, creator )
 
@@ -119,7 +115,7 @@ function ENT:OnTakeDamage( dmginfo )
 
         local phys = self:GetPhysicsObject()
 
-        if IsValid( phys ) then
+        if self.hasValidPhysics then
             local damagePos = dmginfo:GetDamagePosition()
             local damageForce = dmginfo:GetDamageForce() * phys:GetMass() * self.BlastForceMultiplier
 
@@ -130,7 +126,7 @@ function ENT:OnTakeDamage( dmginfo )
         amount = amount * self.BulletDamageMultiplier * cvarBullet:GetFloat()
     end
 
-    health = health - amount
+    health = math.max( 0, health - amount )
 
     self:SetChassisHealth( health )
     self:TakeEngineDamage( ( amount / self.MaxChassisHealth ) * self.EngineDamageMultiplier )
@@ -143,7 +139,7 @@ function ENT:OnTakeDamage( dmginfo )
         self:SetIsEngineOnFire( true )
     end
 
-    if health < 1 then
+    if health < 1 and self.CanExplode then
         self:Explode( self.lastDamageAttacker, self.lastDamageInflictor )
     end
 end

@@ -66,6 +66,26 @@ end
 
 if not SERVER then return end
 
+list.Set( "starfall_creatable_sent", "glide_standalone_turret", {
+    _postFactory = function( _ply, ent, entTbl )
+        ent:SetTurretExplosive( entTbl.IsExplosive )
+        ent:SetTurretDamage( entTbl.Damage )
+        ent:SetTurretDelay( entTbl.Delay )
+        ent:SetTurretSpread( entTbl.Spread )
+
+        local tracerColor = entTbl.TracerColor
+        ent:SetTracerColor( tracerColor.r, tracerColor.g, tracerColor.b )
+    end,
+
+    {
+        ["IsExplosive"] = { TYPE_BOOL, false },
+        ["Damage"] = { TYPE_NUMBER, 5 },
+        ["Delay"] = { TYPE_NUMBER, 0.05 },
+        ["Spread"] = { TYPE_NUMBER, 0.5 },
+        ["TracerColor"] = { TYPE_COLOR, Color( 255, 160, 35 ) },
+    }
+} )
+
 local DUPE_NW_VARS = {
     ["ShootLoopSound"] = true,
     ["ShootStopSound"] = true
@@ -90,7 +110,8 @@ end
 function ENT:PostEntityPaste( ply, ent, createdEntities )
     Glide.PostEntityPaste( ply, ent, createdEntities )
 
-    -- Update parameters in case the limits/console variables are not set to default
+    -- Update parameters in case the limits/console variables
+    -- are different compared to when this entity was duped.
     self:SetTurretExplosive( self.isExplosive )
     self:SetTurretDamage( self.turretDamage )
     self:SetTurretDelay( self.turretDelay )

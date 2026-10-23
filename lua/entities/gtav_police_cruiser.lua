@@ -101,6 +101,7 @@ end
 
 if SERVER then
     ENT.SpawnPositionOffset = Vector( 0, 0, 40 )
+    ENT.ChassisMass = 800
 
     ENT.LightBodygroups = {
         { type = "headlight", bodyGroupId = 17, subModelId = 1 }, -- Headlights
@@ -135,6 +136,9 @@ if SERVER then
 
         self:SetMaxRPMTorque( 4400 )
         self:SetBrakePower( 2500 )
+
+        self:SetSideTractionMultiplier( 12 )
+        self:SetSideTractionMaxAng( 10 )
 
         self:CreateSeat( Vector( -7, 20, -13 ), Angle( 0, 270, -5 ), Vector( 40, 80, 0 ), true )
         self:CreateSeat( Vector( 12, -20, -12 ), Angle( 0, 270, 15 ), Vector( -40, -80, 0 ), true )

@@ -21,8 +21,8 @@ local function AddHook( name, priority )
     local id = "GlideCamera_" .. name
     Camera.hooks[id] = name
 
-    hook.Add( name, id, function( a, b, c )
-        return Camera[name]( Camera, a, b, c )
+    hook.Add( name, id, function( a, b, c, d, e, f )
+        return Camera[name]( Camera, a, b, c, d, e, f )
     end, priority )
 end
 
@@ -61,6 +61,7 @@ function Camera:Initialize( user, vehicle, seatIndex )
     AddHook( "CreateMove", HOOK_HIGH )
     AddHook( "PlayerBindPress" )
     AddHook( "InputMouseApply", HOOK_HIGH )
+    AddHook( "CalcViewModelView", HOOK_HIGH )
 end
 
 function Camera:Shutdown()
@@ -480,8 +481,28 @@ function Camera:InputMouseApply( _, x, y )
 
     local angles = self.allowRolling and vehicle:WorldToLocalAngles( self.angles ) or self.angles
 
-    angles[1] = Clamp( angles[1] + lookY, -80, 60 )
+    angles[1] = Clamp( angles[1] + lookY, -80, 89 )
     angles[2] = ( angles[2] - lookX ) % 360
 
     self.angles = self.allowRolling and vehicle:LocalToWorldAngles( angles ) or angles
+end
+
+function Camera:CalcViewModelView( weapon, vm, oldPos, oldAng )
+    if not self.isActive or not self.isInFirstPerson then return end
+
+    local targetPos = self.position
+    local targetAng = self.angles + self.punchAngle
+    local finalPos, finalAng
+
+    if IsValid( weapon ) then
+        if weapon.CalcViewModelView then
+            finalPos, finalAng = weapon:CalcViewModelView( vm, oldPos, oldAng, targetPos, targetAng )
+        end
+
+        if weapon.GetViewModelPosition then
+            finalPos, finalAng = weapon:GetViewModelPosition( targetPos, targetAng )
+        end
+    end
+
+    return finalPos or targetPos, finalAng or targetAng
 end

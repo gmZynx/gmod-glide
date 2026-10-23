@@ -63,6 +63,13 @@ if SERVER then
         self:CreateSeat( Vector( -26, 18, -13 ), Angle( 0, 270, -5 ), Vector( 40, 80, 0 ), true )
         self:CreateSeat( Vector( -8, -18, -18 ), Angle( 0, 270, 5 ), Vector( -40, -80, 0 ), true )
 
+        self:SetBrakePower( 2000 )
+        self:SetCounterSteer( 0.3 )
+
+        self:SetSideTractionMultiplier( 10 )
+        self:SetSideTractionMax( 2300 )
+        self:SetSideTractionMin( 900 )
+
         -- Front left
         self:CreateWheel( Vector( 66.5, 37, -5 ), {
             model = "models/gta5/vehicles/dukes/wheel.mdl",

@@ -311,11 +311,18 @@ if SERVER then
     -- Should passengers fall when under water?
     ENT.FallWhileUnderWater = false
 
+    -- The force that makes this vehicle temporarely float on water.
+    -- Set to 0 to disable the slow water sinking logic.
+    ENT.SlowWaterSinkingBuoyancy = 600
+
     -- Damage things nearby when the vehicle explodes
     ENT.ExplosionRadius = 500
 
     -- Spawn these gibs when the vehicle explodes
     ENT.ExplosionGibs = {}
+
+    -- Can the vehicle explode?
+    ENT.CanExplode = true
 
     -- Suspension sounds
     ENT.SuspensionHeavySound = "Glide.Suspension.CompressHeavy"
@@ -435,7 +442,7 @@ if SERVER then
     function ENT:OnWeaponStop( _weapon, _weaponIndex ) end
 
     function ENT:OnPostThink( _dt, _selfTbl ) end
-    function ENT:OnSimulatePhysics( _phys, _dt, _outLin, _outAng ) end
+    function ENT:OnSimulatePhysics( _phys, _dt, _outLin, _outAng, _selfTbl ) end
     function ENT:OnUpdateFeatures( _dt ) end
 
     function ENT:OnSocketConnect( _socket, _otherVehicle ) end

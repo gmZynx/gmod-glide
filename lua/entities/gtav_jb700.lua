@@ -99,6 +99,12 @@ if SERVER then
         self:SetSuspensionLength( 8 )
         self:SetCounterSteer( 0.4 )
         self:SetSpringStrength( 600 )
+        self:SetBrakePower( 2000 )
+
+        self:SetSideTractionMultiplier( 12 )
+        self:SetSideTractionMaxAng( 10 )
+        self:SetSideTractionMax( 2500 )
+        self:SetSideTractionMin( 600 )
 
         self:CreateSeat( Vector( -38, 14, -17 ), Angle( 0, 270, 5 ), Vector( 20, 80, 0 ), true )
         self:CreateSeat( Vector( -18, -14, -12 ), Angle( 0, 270, 25 ), Vector( 20, -80, 0 ), true )

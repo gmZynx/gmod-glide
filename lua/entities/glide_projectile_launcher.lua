@@ -11,6 +11,38 @@ ENT.AutomaticFrameAdvance = true
 
 if not SERVER then return end
 
+list.Set( "starfall_creatable_sent", "glide_projectile_launcher", {
+    _postFactory = function( _ply, ent, entTbl )
+        ent:SetProjectileSpeed( entTbl.ProjectileSpeed )
+        ent:SetProjectileGravity( entTbl.ProjectileGravity )
+        ent:SetProjectileLifetime( entTbl.ProjectileLifetime )
+
+        ent:SetReloadDelay( entTbl.ReloadDelay )
+        ent:SetExplosionRadius( entTbl.ExplosionRadius )
+        ent:SetExplosionDamage( entTbl.ExplosionDamage )
+
+        ent:SetProjectileModel( entTbl.ProjectileModel )
+        ent:SetProjectileScale( entTbl.ProjectileModelScale )
+
+        local smokeColor = entTbl.SmokeColor
+        ent:SetSmokeColor( smokeColor.r, smokeColor.g, smokeColor.b )
+    end,
+
+    {
+        ["ProjectileSpeed"] = { TYPE_NUMBER, 10000 },
+        ["ProjectileGravity"] = { TYPE_NUMBER, 700 },
+        ["ProjectileLifetime"] = { TYPE_NUMBER, 5 },
+
+        ["ReloadDelay"] = { TYPE_NUMBER, 1 },
+        ["ExplosionRadius"] = { TYPE_NUMBER, 350 },
+        ["ExplosionDamage"] = { TYPE_NUMBER, 100 },
+
+        ["ProjectileModel"] = { TYPE_STRING, "models/glide/weapons/homing_rocket.mdl" },
+        ["ProjectileModelScale"] = { TYPE_NUMBER, 1 },
+        ["SmokeColor"] = { TYPE_COLOR, Color( 80, 80, 80 ) },
+    }
+} )
+
 local ENT_VARS = {
     ["projectileSpeed"] = true,
     ["projectileGravity"] = true,
@@ -34,13 +66,16 @@ end
 function ENT:PostEntityPaste( ply, ent, createdEntities )
     Glide.PostEntityPaste( ply, ent, createdEntities )
 
-    -- Update parameters in case the limits/console variables are not set to default
+    -- Update parameters in case the limits/console variables
+    -- are different compared to when this entity was duped.
     self:SetProjectileSpeed( self.projectileSpeed )
     self:SetProjectileGravity( self.projectileGravity )
     self:SetProjectileLifetime( self.projectileLifetime )
     self:SetReloadDelay( self.reloadDelay )
     self:SetExplosionRadius( self.explosionRadius )
     self:SetExplosionDamage( self.explosionDamage )
+
+    self.nextShoot = CurTime() + self.reloadDelay
 end
 
 local function MakeSpawner( ply, data )
@@ -98,7 +133,8 @@ function ENT:Initialize()
     self.projectileScale = 1
 
     self.isFiring = false
-    self.nextShoot = 0
+    self.nextShoot = CurTime() + self.reloadDelay
+    self.lastPos = Vector()
 
     if WireLib then
         WireLib.CreateSpecialInputs( self,
@@ -113,12 +149,13 @@ local FireProjectile = Glide.FireProjectile
 
 function ENT:Think()
     local t = CurTime()
+    local myPos = self:GetPos()
 
     if self.isFiring and t > self.nextShoot then
         self.nextShoot = t + self.reloadDelay
 
         local dir = self:GetUp()
-        local pos = self:GetPos() + dir * 10
+        local pos = myPos + dir * 10
         local ang = dir:Angle()
 
         local parent = self:GetParent()
@@ -127,18 +164,23 @@ function ENT:Think()
             parent = self
         end
 
+        local speed = math.max( 0, dir:Dot( myPos - self.lastPos ) / FrameTime() )
+
         local projectile = FireProjectile( pos, ang, self:GetCreator(), parent )
         projectile.radius = self.explosionRadius
         projectile.damage = self.explosionDamage
         projectile.lifeTime = t + self.projectileLifetime
-        projectile:SetProjectileSpeed( self.projectileSpeed )
+        projectile.velocity = projectile:GetForward() * ( speed + self.projectileSpeed )
         projectile:SetProjectileGravity( self.projectileGravity )
         projectile:SetSmokeColor( self.smokeColor )
 
         projectile:SetModel( self.projectileModel )
         projectile:SetModelScale( self.projectileScale )
+
+        Glide.CopyEntityCreator( self, projectile )
     end
 
+    self.lastPos = myPos
     self:NextThink( t )
 
     return true

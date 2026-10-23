@@ -94,7 +94,8 @@ if SERVER then
         self:SetMaxRPMTorque( 3000 )
 
         self:SetForwardTractionMax( 3600 )
-        self:SetSideTractionMultiplier( 30 )
+        self:SetSideTractionMultiplier( 15 )
+        self:SetSideTractionMaxAng( 12 )
         self:SetSideTractionMax( 2800 )
 
         self:CreateSeat( Vector( -12, 18, -18 ), Angle( 0, 270, 2 ), Vector( 20, 80, 0 ), true )

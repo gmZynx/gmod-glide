@@ -18,7 +18,7 @@ include( "sh_vehicle_compat.lua" )
 duplicator.RegisterEntityClass( "base_glide", Glide.VehicleFactory, "Data" )
 
 local EntityMeta = FindMetaTable( "Entity" )
-local getTable = EntityMeta.GetTable
+local GetTable = EntityMeta.GetTable
 
 local TriggerOutput = WireLib and WireLib.TriggerOutput or nil
 
@@ -73,6 +73,26 @@ end
 
 function ENT:PostEntityPaste( ply, ent, createdEntities )
     Glide.PostEntityPaste( ply, ent, createdEntities )
+
+    local editData = ent:GetEditingData()
+    if not editData then return end
+
+    local Clamp = math.Clamp
+    local getter, value
+
+    for name, data in pairs( editData ) do
+        if data.type == "Float" and data.min ~= nil and data.max ~= nil then
+            getter = "Get" .. name
+
+            if ent[getter] then
+                value = ent[getter]()
+
+                if value < data.min or value > data.max then
+                    ent["Set" .. name]( ent, Clamp( value, data.min, data.max ) )
+                end
+            end
+        end
+    end
 end
 
 --- Handle spawning this vehicle from the spawn menu or `gm_spawn` command.
@@ -148,6 +168,11 @@ function ENT:Initialize()
     self.surfaceGrip = table.Copy( Glide.SURFACE_GRIP )
     self.surfaceResistance = table.Copy( Glide.SURFACE_RESISTANCE )
 
+    -- Wiremod output cache
+    if TriggerOutput then
+        self.wiremodCache = {}
+    end
+
     -- Setup the chassis model and physics
     self:SetModel( self.ChassisModel )
     self:InitializePhysics()
@@ -168,7 +193,7 @@ function ENT:Initialize()
     phys:SetDamping( 0, 0 )
     phys:SetDragCoefficient( 0 )
     phys:SetAngleDragCoefficient( 0 )
-    phys:SetBuoyancyRatio( 0.07 )
+    phys:SetBuoyancyRatio( 0.0 )
     phys:EnableMotion( true )
     phys:Wake()
 
@@ -239,6 +264,13 @@ function ENT:Initialize()
 
     -- Allow players to shoot fast-moving vehicles when their ping is high
     self:SetLagCompensated( true )
+
+    -- Only check for PhysObj validity/sleepyness every one in a while instead of every tick.
+    -- This may approach might cause errors, but only for a brief time,
+    -- until the next PhysObj:IsValid call is made.
+    self.hasValidPhysics = true
+    self.hasSleepingPhysics = false
+    self.nextPhysicsValidCheck = 0
 end
 
 function ENT:InitializePhysics()
@@ -263,8 +295,7 @@ function ENT:Use( activator )
         local seat = self:GetFreeSeat()
 
         if seat then
-            activator:SetAllowWeaponsInVehicle( false )
-            activator:EnterVehicle( seat )
+            Glide.EnterVehicleSeat( activator, self, seat )
             return
         end
     end
@@ -272,8 +303,18 @@ function ENT:Use( activator )
     local freeSeat = self:GetClosestAvailableSeat( activator:GetShootPos() )
 
     if freeSeat then
-        activator:SetAllowWeaponsInVehicle( false )
-        activator:EnterVehicle( freeSeat )
+        Glide.EnterVehicleSeat( activator, self, freeSeat )
+    end
+end
+
+if TriggerOutput then
+    -- Utility to trigger Wiremod outputs, but only if the value
+    -- has changed since the last time you called this function.
+    function ENT.TriggerOutputIfChanged( self, cache, name, value )
+        if cache[name] ~= value then
+            cache[name] = value
+            TriggerOutput( self, name, value )
+        end
     end
 end
 
@@ -285,9 +326,11 @@ function ENT:OnEngineStateChange( _, lastState, state )
         self:OnTurnOff()
     end
 
-    if WireLib then
-        WireLib.TriggerOutput( self, "EngineState", state )
+    if TriggerOutput then
+        TriggerOutput( self, "EngineState", state )
     end
+
+    self:AwakePhysics()
 end
 
 function ENT:TurnOn()
@@ -381,10 +424,7 @@ do
     local GetDevMode = Glide.GetDevMode
     local TraceHull = util.TraceHull
 
-    local traceData = {
-        mask = MASK_SHOT_HULL - MASK_WATER, -- Ignore water
-        collisiongroup = COLLISION_GROUP_VEHICLE,
-    }
+    local traceData = {}
 
     local function ValidateExitPos( vehicle, origin, localPos )
         return Glide.ValidateExitPos( origin, vehicle:LocalToWorld( localPos ), traceData )
@@ -407,7 +447,6 @@ do
 
         -- Ignore the vehicle itself and players
         traceData.filter[#traceData.filter + 1] = self
-        traceData.filter[#traceData.filter + 1] = "player"
 
         -- Try the original exit position first
         local origin = self:LocalToWorld( self:OBBCenter() )
@@ -520,19 +559,20 @@ end
 
 --- Gets the closest available seat to a position.
 function ENT:GetClosestAvailableSeat( pos )
-    local closestSeat = nil
+    local closestSeat, closestSeatIndex = nil, nil
     local closestDistance = math.huge
 
-    for _, seat in EntityPairs( self.seats ) do
+    for i, seat in EntityPairs( self.seats ) do
         local distance = pos:DistToSqr( seat:GetPos() )
 
         if distance < closestDistance and not IsValid( seat:GetDriver() ) then
             closestSeat = seat
+            closestSeatIndex = i
             closestDistance = distance
         end
     end
 
-    return closestSeat
+    return closestSeat, closestSeatIndex
 end
 
 --- Create a new seat.
@@ -615,25 +655,27 @@ function ENT:CreateSeat( offset, angle, exitPos, isHidden )
     return seat
 end
 
-local Abs = math.abs
 local CurTime = CurTime
 local TickInterval = engine.TickInterval
 local GetDevMode = Glide.GetDevMode
 
 function ENT:Think()
     local dt = TickInterval()
-    local selfTbl = getTable( self )
+    local selfTbl = GetTable( self )
 
     -- Run again next tick
     local time = CurTime()
     self:NextThink( time )
 
     -- Update speed variables
-    selfTbl.localVelocity = self:WorldToLocal( self:GetPos() + self:GetVelocity() )
+    local pos = self:GetPos()
+    local velocity = self:GetVelocity()
+    velocity:Add( pos )
+
+    selfTbl.localVelocity = self:WorldToLocal( velocity )
     selfTbl.totalSpeed = selfTbl.localVelocity:Length()
 
     local forwardSpeed = selfTbl.localVelocity[1]
-
     selfTbl.forwardAcceleration = ( forwardSpeed - selfTbl.forwardSpeed ) / dt
     selfTbl.forwardSpeed = forwardSpeed
 
@@ -643,9 +685,9 @@ function ENT:Think()
         local driverSeat = selfTbl.seats[1]
         local driver = IsValid( driverSeat ) and driverSeat:GetDriver() or NULL
 
-        if driver ~= self:GetDriver() then
-            self:SetDriver( driver )
-            self:ClearLockOnTarget()
+        if driver ~= selfTbl.GetDriver( self ) then
+            selfTbl.SetDriver( self, driver )
+            selfTbl.ClearLockOnTarget( self )
 
             if IsValid( driver ) then
                 if TriggerOutput then
@@ -653,7 +695,7 @@ function ENT:Think()
                     TriggerOutput( self, "Driver", driver )
                 end
 
-                self:OnDriverEnter()
+                selfTbl.OnDriverEnter( self )
                 selfTbl.lastDriver = driver
             else
                 if TriggerOutput then
@@ -661,25 +703,42 @@ function ENT:Think()
                     TriggerOutput( self, "Driver", NULL )
                 end
 
-                self:OnDriverExit()
+                selfTbl.OnDriverExit( self )
             end
 
             selfTbl.hasTheDriverBeenRagdolled = nil
         end
     end
 
+    local phys = self:GetPhysicsObject()
+
+    -- Check physics object every 2 seconds
+    if time > selfTbl.nextPhysicsValidCheck then
+        selfTbl.nextPhysicsValidCheck = time + 2
+        selfTbl.hasValidPhysics = IsValid( phys )
+        selfTbl.hasSleepingPhysics = selfTbl.hasValidPhysics and phys:IsAsleep()
+
+        if selfTbl.hasValidPhysics then
+            local lin, ang = phys:GetDamping()
+
+            if lin > 0 or ang > 0 then
+                phys:SetDamping( 0, 0 )
+            end
+        end
+    end
+
     -- Update weapons
     if selfTbl.weaponCount > 0 then
-        self:WeaponThink( selfTbl )
+        selfTbl.WeaponThink( self, selfTbl )
     end
 
     -- Update water logic
-    self:WaterThink( selfTbl )
+    selfTbl.WaterThink( self, selfTbl, dt )
 
     -- Deal engine fire damage over time
-    if self:GetIsEngineOnFire() then
+    if selfTbl.GetIsEngineOnFire( self ) then
         if self:WaterLevel() > 2 then
-            self:SetIsEngineOnFire( false )
+            selfTbl.SetIsEngineOnFire( self, false )
         else
             local attacker = IsValid( selfTbl.lastDamageAttacker ) and selfTbl.lastDamageAttacker or self
             local inflictor = IsValid( selfTbl.lastDamageInflictor ) and selfTbl.lastDamageInflictor or self
@@ -690,19 +749,21 @@ function ENT:Think()
             dmg:SetInflictor( inflictor )
             dmg:SetDamageType( 0 )
             dmg:SetDamageForce( Vector() )
-            dmg:SetDamagePosition( self:GetPos() )
+            dmg:SetDamagePosition( pos )
             self:TakeDamageInfo( dmg )
         end
     end
 
+    local isValidPhys = selfTbl.hasValidPhysics
+
     -- Update wheels
-    if selfTbl.wheelCount > 0 then
-        self:WheelThink( dt, selfTbl )
+    if selfTbl.wheelCount > 0 and isValidPhys then
+        selfTbl.WheelThink( self, dt, selfTbl )
     end
 
     -- Update trailer sockets
     if selfTbl.socketCount > 0 then
-        self:SocketThink( dt, time )
+        selfTbl.SocketThink( self, dt, time, selfTbl )
     end
 
     -- Handle hold input actions
@@ -710,47 +771,25 @@ function ENT:Think()
         -- If this action has been held for long enough...
         if data.timer and time > data.timer then
             data.timer = nil
-            self:OnHoldInputAction( action, data )
+            selfTbl.OnHoldInputAction( self, action, data )
 
         elseif data.shouldRelease then
             data.shouldRelease = nil
-            self:SetInputBool( 1, action, false )
+            selfTbl.SetInputBool( self, 1, action, false )
         end
     end
 
     -- Update bodygroups
-    self:UpdateLightBodygroups()
+    selfTbl.UpdateLightBodygroups( self, selfTbl )
 
     -- Let children classes do their own stuff
-    self:OnPostThink( dt, selfTbl )
+    selfTbl.OnPostThink( self, dt, selfTbl )
 
     -- Let children classes update their features
-    self:OnUpdateFeatures( dt )
-
-    local phys = self:GetPhysicsObject()
-
-    if IsValid( phys ) then
-        local lin, ang = phys:GetDamping()
-
-        if lin > 0 or ang > 0 then
-            phys:SetDamping( 0, 0 )
-        end
-
-        -- Make sure the physics stay awake when necessary,
-        -- otherwise the driver's input won't do anything.
-        local driverInput =
-            self:GetInputFloat( 1, "accelerate", selfTbl ) +
-            self:GetInputFloat( 1, "brake", selfTbl ) +
-            self:GetInputFloat( 1, "steer", selfTbl ) +
-            self:GetInputFloat( 1, "throttle", selfTbl )
-
-        if phys:IsAsleep() and Abs( driverInput ) > 0.01 then
-            phys:Wake()
-        end
-    end
+    selfTbl.OnUpdateFeatures( self, dt )
 
     -- Draw debug overlays, if `developer` cvar is active
-    if GetDevMode() then
+    if GetDevMode() and isValidPhys then
         debugoverlay.Axis( self:LocalToWorld( phys:GetMassCenter() ), self:GetAngles(), 15, 0.1, true )
     end
 

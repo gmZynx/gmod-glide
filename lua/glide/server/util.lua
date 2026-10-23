@@ -118,27 +118,6 @@ do
     end
 end
 
--- Find and register all entities that are children of `base_glide`
--- (or any of it's children classes) on the duplicator/entity limit system.
--- Also make them spawnable on Starfall.
-hook.Add( "InitPostEntity", "Glide.RegisterEntityClasses", function()
-    local IsBasedOn = scripted_ents.IsBasedOn
-    local RegisterEntityClass = duplicator.RegisterEntityClass
-
-    local isStarfallAvailable = SF ~= nil
-    local starfallData = { {} }
-
-    for class, _ in pairs( scripted_ents.GetList() ) do
-        if IsBasedOn( class, "base_glide" ) then
-            RegisterEntityClass( class, Glide.VehicleFactory, "Data" )
-
-            if isStarfallAvailable then
-                list.Set( "starfall_creatable_sent", class, starfallData )
-            end
-        end
-    end
-end )
-
 -- Call a hook when a player finishes loading into the server
 -- and is ready to receive network events.
 local Player = Player
@@ -187,8 +166,19 @@ end
 function Glide.VehicleFactory( ply, data )
     if not Glide.CanSpawnVehicle( ply, data.Class ) then return end
 
+    local entTable = scripted_ents.GetStored( data.Class )
+    if not entTable then return end
+
+    local vehicleTable = entTable["t"]
+    if not vehicleTable or not isstring( vehicleTable["GlideCategory"] ) then return end
+
+    local bAllow = hook.Run( "PlayerSpawnVehicle", ply, vehicleTable["ChassisModel"], vehicleTable["PrintName"], vehicleTable )
+    if bAllow == false then return end
+
     local ent = ents.Create( data.Class )
     if not IsValid( ent ) then return end
+
+    hook.Run( "PlayerSpawnedVehicle", ply, ent )
 
     ent:SetPos( data.Pos )
     ent:SetAngles( data.Angle )
@@ -237,6 +227,23 @@ function Glide.CanEnterLockedVehicle( ply, vehicle )
     return cvarAlwaysEnterLocked:GetBool() or Glide.CanLockVehicle( ply, vehicle )
 end
 
+local cvarAllowPlayerWeaponsInVehicle = GetConVar( "glide_allow_player_weapons_in_vehicle" )
+
+function Glide.EnterVehicleSeat( ply, vehicle, seat )
+    if not IsValid( vehicle ) or not IsValid( seat ) then return end
+
+    local seatIndex = seat.GlideSeatIndex
+    if not seatIndex then return end
+
+    if seatIndex == 1 and vehicle.weaponCount > 0 then
+        ply:SetAllowWeaponsInVehicle( false )
+    else
+        ply:SetAllowWeaponsInVehicle( cvarAllowPlayerWeaponsInVehicle:GetBool() )
+    end
+
+    ply:EnterVehicle( seat )
+end
+
 --- Make a player switch to another seat
 --- while inside a Glide vehicle.
 function Glide.SwitchSeat( ply, seatIndex )
@@ -248,6 +255,7 @@ function Glide.SwitchSeat( ply, seatIndex )
     if not IsValid( vehicle ) then return end
 
     local seat = vehicle.seats[seatIndex]
+
     if not IsValid( seat ) then
         ply:EmitSound( "player/suit_denydevice.wav", 50, 100, 1.0, 6, 0, 0 )
         return
@@ -259,8 +267,7 @@ function Glide.SwitchSeat( ply, seatIndex )
     end
 
     ply:ExitVehicle()
-    ply:SetAllowWeaponsInVehicle( false )
-    ply:EnterVehicle( seat )
+    Glide.EnterVehicleSeat( ply, vehicle, seat )
 
     hook.Run( "Glide_PostSwitchSeat", ply, seatIndex )
 end
@@ -271,7 +278,7 @@ function Glide.GetNearbyPlayers( pos, radius )
 
     local found, count = {}, 0
 
-    for _, ply in ipairs( player.GetHumans() ) do
+    for _, ply in player.Iterator() do
         local dist = pos:DistToSqr( ply:GetPos() )
 
         if dist < radius then

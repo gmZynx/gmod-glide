@@ -81,11 +81,13 @@ if SERVER then
         self:SetSteerConeMaxSpeed( 1000 )
         self:SetForwardTractionBias( -0.15 )
         self:SetForwardTractionMax( 2100 )
+        self:SetSideTractionMultiplier( 15 )
+        self:SetSideTractionMaxAng( 10 )
 
         self:SetDifferentialRatio( 0.6 )
         self:SetTransmissionEfficiency( 0.75 )
         self:SetPowerDistribution( 0.8 )
-        self:SetBrakePower( 2400 )
+        self:SetBrakePower( 2000 )
         self.engineBrakeTorque = 3000
 
         self:SetMinRPM( 800 )
